@@ -77,9 +77,7 @@ export default function ProductManagementPage() {
   }, [router]);
 
   const handleEdit = (productId: string) => {
-    // TODO: 상품 수정 모달 또는 페이지로 이동
-    console.log('Edit product:', productId);
-    alert(`상품 수정 기능 (ID: ${productId})`);
+    router.push(`/product-management/${productId}`);
   };
 
   const handleDelete = (productId: string) => {
@@ -91,9 +89,7 @@ export default function ProductManagementPage() {
   };
 
   const handleAddProduct = () => {
-    // TODO: 상품 등록 모달 또는 페이지로 이동
-    console.log('Add new product');
-    alert('상품 등록 기능은 개발 중입니다');
+    router.push('/product-management/-1');
   };
 
   if (loading) {
