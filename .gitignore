@@ -54,3 +54,7 @@ backend/ENV/
 
 # Setup wizard progress
 .setup_progress
+
+# IDE
+.vscode/
+.idea/

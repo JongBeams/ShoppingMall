@@ -2,6 +2,62 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { CartItem as CartItemType, Product } from '../types';
+import Image from 'next/image';
+
+// 임시 더미 데이터(주문 내역)
+const dummyOrders: CartItemType[] = [
+  {
+    product: {
+      id: '1',
+      name: '무선 이어폰',
+      description: '고음질 블루투스 무선 이어폰',
+      price: 89000,
+      category: '전자제품',
+      imageUrl: '/placeholder-product.jpg',
+      stock: 50,
+    },
+    quantity: 50,
+  },
+  {
+    product: {
+      id: '3',
+      name: '백팩',
+      description: '심플한 디자인의 데일리 백팩',
+      price: 65000,
+      category: '패션',
+      imageUrl: '/placeholder-product.jpg',
+      stock: 20,
+    },
+    quantity: 2,
+  },
+];
+
+// 임시 더미 데이터 (찜목록)
+const dummyWishList: Product[] = [
+
+  {
+    id: '2',
+    name: '스마트워치',
+    description: '다양한 기능을 갖춘 스마트워치',
+    price: 250000,
+    category: '전자제품',
+    imageUrl: '/placeholder-product.jpg',
+    stock: 30,
+  },
+  {
+    id: '4',
+    name: '머그컵 세트',
+    description: '모던한 디자인의 머그컵 4개 세트',
+    price: 32000,
+    category: '생활용품',
+    imageUrl: '/placeholder-product.jpg',
+    stock: 100,
+  },
+];
+
+
+
 
 export default function MyPage() {
   const router = useRouter();
@@ -32,6 +88,14 @@ export default function MyPage() {
       setLoading(false);
     }
   }, [router]);
+
+  // URL 해시에 따라 활성 섹션 설정
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash) {
+      setActiveTab(hash);
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -356,13 +420,81 @@ export default function MyPage() {
                     </div>
                   </div>
                 ) : (
-                  /* 일반 사용자용 - 주문 내역 없음 */
-                  <div className="text-center py-12">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                    </svg>
-                    <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">주문 내역이 없습니다</p>
-                  </div>
+                  /* 일반 사용자용 - 주문 내역 */
+                  dummyOrders.length === 0 ? (
+                    <div className="text-center py-12">
+                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                      </svg>
+                      <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">주문 내역이 없습니다</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {dummyOrders.map((item) => (
+                        <div
+                          key={item.product.id}
+                          className="flex gap-4 border-b border-gray-100 pb-4 last:border-b-0 dark:border-gray-700"
+                        >
+                          {/* 상품 이미지 */}
+                          <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
+                            <div className="flex h-full items-center justify-center text-gray-400 dark:text-gray-500">
+                              <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                              </svg>
+                            </div>
+                          </div>
+
+                          {/* 상품 정보 */}
+                          <div className="flex flex-1 flex-col justify-between">
+                            <div>
+                              <h4 className="text-base font-semibold text-gray-900 dark:text-white">
+                                {item.product.name}
+                              </h4>
+                              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                {item.product.description}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+                                카테고리: {item.product.category}
+                              </p>
+                            </div>
+
+                            <div className="mt-2 flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <span className="text-sm text-gray-600 dark:text-gray-400">
+                                  수량: {item.quantity}개
+                                </span>
+                                <span className="text-base font-bold text-gray-900 dark:text-white">
+                                  {(item.product.price * item.quantity).toLocaleString()}원
+                                </span>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
+                                  배송 조회
+                                </button>
+                                <button className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                                  리뷰 작성
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* 총 주문 금액 */}
+                      <div className="mt-6 border-t border-gray-200 pt-4 dark:border-gray-700">
+                        <div className="flex justify-between text-lg font-bold text-gray-900 dark:text-white">
+                          <span>총 주문 금액</span>
+                          <span>
+                            {dummyOrders.reduce(
+                              (sum, item) => sum + item.product.price * item.quantity,
+                              0
+                            ).toLocaleString()}원
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
             )}
@@ -586,12 +718,71 @@ export default function MyPage() {
             {activeTab === 'wishlist' && (
               <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
                 <h3 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">찜한 상품</h3>
-                <div className="text-center py-12">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-                  </svg>
-                  <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">찜한 상품이 없습니다</p>
-                </div>
+                {dummyWishList.length === 0 ? (
+                  <div className="text-center py-12">
+                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                    </svg>
+                    <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">찜한 상품이 없습니다</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {dummyWishList.map((product) => (
+                      <div key={product.id} className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                        {/* Product Image */}
+                        <div className="aspect-square w-full overflow-hidden bg-gray-100 dark:bg-gray-700">
+                          <div className="flex h-full w-full items-center justify-center text-gray-400 dark:text-gray-500">
+                            <svg className="h-16 w-16" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* Remove from Wishlist Button */}
+                        <button
+                          className="absolute right-2 top-2 rounded-full bg-white p-2 shadow-md transition-colors hover:bg-red-50 dark:bg-gray-700 dark:hover:bg-red-900/20"
+                          onClick={() => {
+                            // TODO: Implement remove from wishlist
+                            console.log('Remove from wishlist:', product.id);
+                          }}
+                        >
+                          <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                          </svg>
+                        </button>
+
+                        {/* Product Info */}
+                        <div className="p-4">
+                          <h4 className="mb-1 text-sm font-medium text-gray-900 dark:text-white">
+                            {product.name}
+                          </h4>
+                          <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+                            {product.description}
+                          </p>
+                          <div className="mb-3 flex items-center justify-between">
+                            <p className="text-lg font-bold text-gray-900 dark:text-white">
+                              ₩{product.price.toLocaleString()}
+                            </p>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {product.category}
+                            </span>
+                          </div>
+
+                          {/* Add to Cart Button */}
+                          <button
+                            className="w-full rounded-md bg-gray-900 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+                            onClick={() => {
+                              // TODO: Implement add to cart
+                              console.log('Add to cart:', product.id);
+                            }}
+                          >
+                            장바구니 담기
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
