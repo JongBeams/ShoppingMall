@@ -25,6 +25,7 @@ async def send_otp(request: SendOTPRequest):
 
     try:
         # profiles 테이블에 이미 가입된 이메일인지 확인
+        # 일반/사업자 회원 중복 체크만 함 (관리자는 별도 테이블이므로 중복 가능)
         existing_user = supabase_admin.table("profiles").select("id").eq("email", request.email).execute()
         if existing_user.data:
             raise HTTPException(

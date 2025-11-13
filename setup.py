@@ -141,6 +141,7 @@ class SetupWizard:
                 "SECRET_KEY": backend_env.get("SECRET_KEY", ""),
                 "REDIS_HOST": backend_env.get("REDIS_HOST", "redis"),
                 "REDIS_PORT": backend_env.get("REDIS_PORT", "6379"),
+                "BACKEND_PORT": backend_env.get("BACKEND_PORT", "8000"),
             },
             "smtp": {
                 "SMTP_HOST": backend_env.get("SMTP_HOST", "smtp.gmail.com"),
@@ -152,7 +153,8 @@ class SetupWizard:
             "frontend": {
                 "NEXT_PUBLIC_SUPABASE_URL": frontend_env.get("NEXT_PUBLIC_SUPABASE_URL", ""),
                 "NEXT_PUBLIC_SUPABASE_ANON_KEY": frontend_env.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", ""),
-                "NEXT_PUBLIC_BACKEND_URL": frontend_env.get("NEXT_PUBLIC_BACKEND_URL", "http://localhost:8000"),
+                "NEXT_PUBLIC_BACKEND_URL": "http://localhost:8000",
+                "FRONTEND_PORT": frontend_env.get("FRONTEND_PORT", "3000"),
             },
         }
 

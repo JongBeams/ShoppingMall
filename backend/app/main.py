@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 
 # Routers
-from app.routers import auth
+from app.routers import auth, admin
 
 load_dotenv()
 
@@ -24,22 +24,9 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# OPTIONS 요청 전역 핸들러
-@app.options("/{full_path:path}")
-async def options_handler(request: Request):
-    origin = request.headers.get("origin", "http://localhost:3000")
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept, Origin, X-Requested-With",
-            "Access-Control-Allow-Credentials": "true",
-        }
-    )
-
 # Routers 등록
 app.include_router(auth.router)
+app.include_router(admin.router)
 
 @app.get("/")
 async def root():

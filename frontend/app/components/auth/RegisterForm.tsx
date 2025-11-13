@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authAPI } from '@/app/lib/api';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
 type UserType = 'buyer' | 'seller';
 
 export default function RegisterForm() {
@@ -118,7 +120,7 @@ export default function RegisterForm() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8000/auth/send-otp', {
+      const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -127,14 +129,15 @@ export default function RegisterForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || '인증번호 전송에 실패했습니다.');
+        setError(data.detail || '인증번호 전송에 실패했습니다.');
+        return;
       }
 
       setOtpSent(true);
       setTimeLeft(300); // 5분 = 300초
       setSuccessMessage(data.message);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || '인증번호 전송 중 오류가 발생했습니다.');
     } finally {
       setOtpLoading(false);
     }
@@ -152,7 +155,7 @@ export default function RegisterForm() {
     setSuccessMessage('');
 
     try {
-      const response = await fetch('http://localhost:8000/auth/verify-otp', {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, token: otpCode }),

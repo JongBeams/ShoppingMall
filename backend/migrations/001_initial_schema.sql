@@ -12,7 +12,7 @@ CREATE TABLE profiles (
     full_name TEXT NOT NULL,
     phone TEXT NOT NULL,
     avatar_url TEXT,
-    user_type TEXT NOT NULL CHECK (user_type IN ('buyer', 'seller', 'admin')),
+    user_type TEXT NOT NULL CHECK (user_type IN ('buyer', 'seller')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

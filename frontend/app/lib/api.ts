@@ -1,6 +1,6 @@
 // FastAPI 백엔드 연동을 위한 API 유틸리티
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 interface FetchOptions extends RequestInit {
   token?: string;
