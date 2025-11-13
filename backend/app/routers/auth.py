@@ -7,7 +7,7 @@ from app.models.user import (
     VendorResponse,
     MessageResponse,
 )
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_supabase_client, get_supabase_admin_client
 from datetime import datetime
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -21,8 +21,10 @@ async def register(user_data: UserRegisterRequest):
     - seller: 판매자 회원 (추가 정보 필요)
     """
     supabase = get_supabase_client()
+    supabase_admin = get_supabase_admin_client()
 
     try:
+        print(f"[DEBUG] 회원가입 요청: {user_data.email}, {user_data.user_type}")
         # 1. Supabase Auth에 사용자 등록
         auth_response = supabase.auth.sign_up({
             "email": user_data.email,
@@ -46,11 +48,11 @@ async def register(user_data: UserRegisterRequest):
             "user_type": user_data.user_type,
         }
 
-        profile_response = supabase.table("profiles").insert(profile_data).execute()
+        profile_response = supabase_admin.table("profiles").insert(profile_data).execute()
 
         if not profile_response.data:
             # profiles 생성 실패 시 auth 사용자도 삭제
-            supabase.auth.admin.delete_user(user_id)
+            supabase_admin.auth.admin.delete_user(user_id)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="프로필 생성에 실패했습니다."
@@ -79,7 +81,7 @@ async def register(user_data: UserRegisterRequest):
                 "is_verified": False,
             }
 
-            vendor_response = supabase.table("vendors").insert(vendor_data).execute()
+            vendor_response = supabase_admin.table("vendors").insert(vendor_data).execute()
 
             if not vendor_response.data:
                 raise HTTPException(
@@ -132,6 +134,18 @@ async def register(user_data: UserRegisterRequest):
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        print(f"[ERROR] 회원가입 오류: {str(e)}")
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+
+        # Rate limiting 에러 처리
+        error_message = str(e)
+        if "429" in error_message or "Too Many Requests" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="요청이 너무 많습니다. 잠시 후 다시 시도해주세요. (10초 후)"
+            )
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"회원가입 중 오류가 발생했습니다: {str(e)}"
