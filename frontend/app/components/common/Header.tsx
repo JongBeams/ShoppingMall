@@ -196,12 +196,20 @@ export default function Header() {
             </Link>
 
             {isLoggedIn ? (
-              <Link
-                href="/mypage"
-                className="text-sm font-medium text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-              >
-                {userName}님
-              </Link>
+              <>
+                <Link
+                  href="/mypage"
+                  className="text-sm font-medium text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                >
+                  {userName}님
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="text-sm font-medium text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                >
+                  로그아웃
+                </button>
+              </>
             ) : (
               <Link
                 href="/login"

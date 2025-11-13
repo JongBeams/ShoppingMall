@@ -30,7 +30,8 @@ export default function LoginForm() {
       }
 
       alert('로그인 성공!');
-      router.push('/');
+      // 페이지 이동 후 새로고침하여 헤더 업데이트
+      window.location.href = '/';
     } catch (err: any) {
       setError(err.message || '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
     } finally {

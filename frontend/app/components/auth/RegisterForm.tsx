@@ -65,6 +65,17 @@ export default function RegisterForm() {
     setFormData({ ...formData, phone: formatted });
   };
 
+  // 주소 검색
+  const handleAddressSearch = () => {
+    new (window as any).daum.Postcode({
+      oncomplete: function(data: any) {
+        // 도로명 주소 또는 지번 주소 선택
+        const fullAddress = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+        setFormData({ ...formData, businessAddress: fullAddress });
+      }
+    }).open();
+  };
+
   // 타이머 useEffect
   useEffect(() => {
     if (timeLeft <= 0) return;
@@ -432,14 +443,23 @@ export default function RegisterForm() {
                   <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     사업장 주소 <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={formData.businessAddress}
-                    onChange={(e) => setFormData({ ...formData, businessAddress: e.target.value })}
-                    placeholder="사업장 주소를 입력해주세요"
-                    required={userType === 'seller'}
-                    className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.businessAddress}
+                      placeholder="주소 검색 버튼을 클릭해주세요"
+                      required={userType === 'seller'}
+                      readOnly
+                      className="flex-1 border border-gray-300 bg-gray-100 px-4 py-3 text-sm text-gray-500 cursor-not-allowed dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddressSearch}
+                      className="whitespace-nowrap border border-gray-900 bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900"
+                    >
+                      주소 찾기
+                    </button>
+                  </div>
                 </div>
 
                 <div>
