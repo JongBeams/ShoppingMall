@@ -11,9 +11,8 @@ from app.models.user import (
 )
 from app.services.supabase import get_supabase_client, get_supabase_admin_client
 from app.services.email import send_otp_email
+from app.services.otp_store import get_otp_store
 from datetime import datetime
-import redis
-from app.config import get_settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -47,15 +46,10 @@ async def send_otp(request: SendOTPRequest):
         import random
         otp_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
 
-        # Redis에 OTP 저장 (TTL: 5분)
-        settings = get_settings()
-        redis_client = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            decode_responses=True
-        )
-        redis_client.setex(f"otp:{request.email}", 300, otp_code)  # 5분 TTL
-        print(f"[OTP] {request.email} 인증번호 생성 및 Redis 저장: {otp_code}")
+        # 메모리에 OTP 저장 (TTL: 5분)
+        otp_store = get_otp_store()
+        otp_store.set(request.email, otp_code, ttl_seconds=300)
+        print(f"[OTP] {request.email} 인증번호 생성 및 저장: {otp_code}")
 
         # 이메일 발송
         await send_otp_email(request.email, otp_code)
@@ -76,15 +70,9 @@ async def send_otp(request: SendOTPRequest):
 async def verify_otp(request: VerifyOTPRequest):
     """OTP 인증번호 확인"""
     try:
-        # Redis에서 OTP 조회
-        settings = get_settings()
-        redis_client = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            decode_responses=True
-        )
-
-        stored_otp = redis_client.get(f"otp:{request.email}")
+        # 메모리에서 OTP 조회
+        otp_store = get_otp_store()
+        stored_otp = otp_store.get(request.email)
 
         if not stored_otp:
             raise HTTPException(
@@ -99,7 +87,7 @@ async def verify_otp(request: VerifyOTPRequest):
             )
 
         # 인증 성공 - OTP 삭제
-        redis_client.delete(f"otp:{request.email}")
+        otp_store.delete(request.email)
         print(f"[OTP] {request.email} 인증 성공")
 
         return MessageResponse(message="이메일 인증이 완료되었습니다.")
@@ -383,6 +371,9 @@ async def login(credentials: UserLoginRequest):
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        print(f"[ERROR] 로그인 오류: {str(e)}")
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"로그인 중 오류가 발생했습니다: {str(e)}"

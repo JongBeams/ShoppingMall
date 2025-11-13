@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authAPI } from '@/app/lib/api';
@@ -17,6 +17,7 @@ export default function RegisterForm() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0); // 남은 시간 (초)
 
   // 일반 회원과 사업자 회원의 데이터를 별도로 관리
   const [buyerFormData, setBuyerFormData] = useState({
@@ -64,6 +65,30 @@ export default function RegisterForm() {
     setFormData({ ...formData, phone: formatted });
   };
 
+  // 타이머 useEffect
+  useEffect(() => {
+    if (timeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  // 시간 포맷팅 (5:00 형식)
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // OTP 전송
   const handleSendOTP = async () => {
     if (!email) {
@@ -95,6 +120,7 @@ export default function RegisterForm() {
       }
 
       setOtpSent(true);
+      setTimeLeft(300); // 5분 = 300초
       setSuccessMessage(data.message);
     } catch (err: any) {
       setError(err.message);
@@ -128,6 +154,7 @@ export default function RegisterForm() {
       }
 
       setIsEmailVerified(true);
+      setTimeLeft(0); // 타이머 종료
       setSuccessMessage(data.message);
     } catch (err: any) {
       setError(err.message);
@@ -193,19 +220,10 @@ export default function RegisterForm() {
         }),
       };
 
-      const response = await authAPI.register(registerData);
+      await authAPI.register(registerData);
 
-      // 토큰을 localStorage에 저장
-      localStorage.setItem('access_token', response.access_token);
-      localStorage.setItem('refresh_token', response.refresh_token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-
-      if (response.vendor) {
-        localStorage.setItem('vendor', JSON.stringify(response.vendor));
-      }
-
-      alert(`${userType === 'buyer' ? '일반 회원' : '사업자 회원'} 가입 성공!`);
-      router.push('/');
+      alert(`${userType === 'buyer' ? '일반 회원' : '사업자 회원'} 가입 성공! 로그인해주세요.`);
+      router.push('/login');
     } catch (err: any) {
       setError(err.message || '회원가입에 실패했습니다. 다시 시도해주세요.');
     } finally {
@@ -248,13 +266,13 @@ export default function RegisterForm() {
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            이름
+            이름 <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value } as any)}
-            placeholder="홍길동"
+            placeholder="이름을 입력해주세요"
             required
             className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
           />
@@ -263,14 +281,14 @@ export default function RegisterForm() {
         {/* 이메일 인증 섹션 */}
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            이메일 {isEmailVerified && <span className="text-green-600 dark:text-green-400">✓ 인증완료</span>}
+            이메일 <span className="text-red-500">*</span> {isEmailVerified && <span className="text-green-600 dark:text-green-400">✓ 인증완료</span>}
           </label>
           <div className="flex gap-2">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="example@email.com"
+              placeholder="이메일을 입력해주세요"
               disabled={isEmailVerified}
               required
               className="flex-1 border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white dark:disabled:bg-gray-600"
@@ -287,7 +305,7 @@ export default function RegisterForm() {
 
           {successMessage && otpSent && !isEmailVerified && (
             <p className="mt-2 text-sm text-green-600 dark:text-green-400">
-              {successMessage}
+              인증번호가 전송되었습니다.
             </p>
           )}
 
@@ -298,36 +316,47 @@ export default function RegisterForm() {
           )}
 
           {otpSent && !isEmailVerified && (
-            <div className="mt-2 flex gap-2">
-              <input
-                type="text"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="6자리 인증번호"
-                maxLength={6}
-                className="flex-1 border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
-              />
-              <button
-                type="button"
-                onClick={handleVerifyOTP}
-                disabled={otpLoading}
-                className="whitespace-nowrap border border-green-600 bg-green-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
-              >
-                {otpLoading ? '확인중...' : '인증확인'}
-              </button>
-            </div>
+            <>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="6자리 인증번호"
+                  maxLength={6}
+                  className="flex-1 border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
+                />
+                <button
+                  type="button"
+                  onClick={handleVerifyOTP}
+                  disabled={otpLoading || timeLeft === 0}
+                  className="whitespace-nowrap border border-green-600 bg-green-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+                >
+                  {otpLoading ? '확인중...' : '인증확인'}
+                </button>
+              </div>
+              {timeLeft > 0 ? (
+                <p className="mt-2 text-sm text-orange-600 dark:text-orange-400">
+                  남은 시간: {formatTime(timeLeft)}
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                  인증번호가 만료되었습니다. 재전송 버튼을 눌러주세요.
+                </p>
+              )}
+            </>
           )}
         </div>
 
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            전화번호
+            전화번호 <span className="text-red-500">*</span>
           </label>
           <input
             type="tel"
             value={formData.phone}
             onChange={handlePhoneChange}
-            placeholder="010-1234-5678"
+            placeholder="전화번호를 입력해주세요"
             maxLength={13}
             required
             className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
@@ -336,13 +365,13 @@ export default function RegisterForm() {
 
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            비밀번호
+            비밀번호 <span className="text-red-500">*</span> <span className="text-xs text-gray-500 dark:text-gray-400">(특수문자 포함 6자 이상)</span>
           </label>
           <input
             type="password"
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            placeholder="6자 이상, 특수문자 포함"
+            placeholder="비밀번호를 입력해주세요"
             required
             className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
           />
@@ -350,13 +379,13 @@ export default function RegisterForm() {
 
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            비밀번호 확인
+            비밀번호 확인 <span className="text-red-500">*</span>
           </label>
           <input
             type="password"
             value={formData.confirmPassword}
             onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-            placeholder="비밀번호를 다시 입력하세요"
+            placeholder="비밀번호 확인을 입력해주세요"
             required
             className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
           />
@@ -373,13 +402,13 @@ export default function RegisterForm() {
               <div className="space-y-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    사업자명
+                    사업자명 <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.businessName}
                     onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                    placeholder="상호명을 입력하세요"
+                    placeholder="사업자명을 입력해주세요"
                     required={userType === 'seller'}
                     className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
                   />

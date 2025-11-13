@@ -523,22 +523,10 @@ NEXT_PUBLIC_BACKEND_URL={self.env_vars['frontend']['NEXT_PUBLIC_BACKEND_URL']}
                 else:
                     print_success("프론트엔드 의존성이 이미 설치되어 있습니다")
 
-                # 3. Start Redis container
-                print(f"\n{Colors.YELLOW}[3/3] Redis 컨테이너 시작 중...{Colors.ENDC}")
-                redis_result = subprocess.run(
-                    ["docker", "run", "-d", "-p", "6379:6379", "--name", "shoppingmall-redis", "redis:7-alpine"],
-                    shell=True,
-                    encoding='utf-8',
-                    errors='replace',
-                    capture_output=True
-                )
-
-                if redis_result.returncode == 0:
-                    print_success("Redis 컨테이너 시작 완료")
-                elif "is already in use" in redis_result.stderr or "already exists" in redis_result.stderr:
-                    print_success("Redis 컨테이너가 이미 실행 중입니다")
-                else:
-                    print_warning("Redis 시작 실패 (수동으로 시작하세요)")
+                # 3. Redis is not required (using memory-based OTP store)
+                print(f"\n{Colors.YELLOW}[3/3] Redis 확인 중...{Colors.ENDC}")
+                print_info("Redis는 더 이상 필요하지 않습니다 (메모리 기반 OTP 저장소 사용)")
+                print_success("Redis 설정 건너뜀")
 
                 # Success message
                 print(f"\n{Colors.GREEN}{'='*50}{Colors.ENDC}")
