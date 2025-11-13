@@ -416,13 +416,13 @@ export default function RegisterForm() {
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    사업자등록번호
+                    사업자등록번호 <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.businessNumber}
                     onChange={(e) => setFormData({ ...formData, businessNumber: e.target.value })}
-                    placeholder="123-45-67890"
+                    placeholder="사업자등록번호를 입력해주세요"
                     required={userType === 'seller'}
                     className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
                   />
@@ -430,13 +430,13 @@ export default function RegisterForm() {
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    사업장 주소
+                    사업장 주소 <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.businessAddress}
                     onChange={(e) => setFormData({ ...formData, businessAddress: e.target.value })}
-                    placeholder="사업장 주소를 입력하세요"
+                    placeholder="사업장 주소를 입력해주세요"
                     required={userType === 'seller'}
                     className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
                   />
@@ -444,13 +444,13 @@ export default function RegisterForm() {
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    스토어 이름
+                    스토어 이름 <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.storeName}
                     onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
-                    placeholder="스토어 이름을 입력하세요"
+                    placeholder="스토어 이름을 입력해주세요"
                     required={userType === 'seller'}
                     className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
                   />
@@ -463,7 +463,7 @@ export default function RegisterForm() {
                   <textarea
                     value={formData.storeDescription}
                     onChange={(e) => setFormData({ ...formData, storeDescription: e.target.value })}
-                    placeholder="스토어에 대한 간단한 설명을 입력하세요"
+                    placeholder="스토어 설명을 입력해주세요 (선택사항)"
                     rows={3}
                     className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
                   />
