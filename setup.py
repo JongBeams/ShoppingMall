@@ -353,7 +353,10 @@ SMTP_PASSWORD={self.env_vars['smtp']['SMTP_PASSWORD']}
 SMTP_FROM_EMAIL={self.env_vars['smtp']['SMTP_FROM_EMAIL']}
 
 # CORS Configuration
-NEXT_PUBLIC_URL=http://localhost:3000
+NEXT_PUBLIC_URL=http://localhost:{self.env_vars['frontend']['FRONTEND_PORT']}
+
+# API Server Configuration
+BACKEND_PORT={self.env_vars['backend']['BACKEND_PORT']}
 """
 
         # Frontend .env.local
@@ -365,7 +368,10 @@ NEXT_PUBLIC_SUPABASE_URL={self.env_vars['supabase']['SUPABASE_URL']}
 NEXT_PUBLIC_SUPABASE_ANON_KEY={self.env_vars['supabase']['SUPABASE_ANON_KEY']}
 
 # Backend API Configuration
-NEXT_PUBLIC_BACKEND_URL={self.env_vars['frontend']['NEXT_PUBLIC_BACKEND_URL']}
+NEXT_PUBLIC_BACKEND_URL=http://localhost:{self.env_vars['backend']['BACKEND_PORT']}
+
+# Frontend Server Configuration
+FRONTEND_PORT={self.env_vars['frontend']['FRONTEND_PORT']}
 """
 
         # Write backend .env
@@ -424,10 +430,12 @@ NEXT_PUBLIC_BACKEND_URL={self.env_vars['frontend']['NEXT_PUBLIC_BACKEND_URL']}
 
                         if result.returncode == 0:
                             print_success("Docker 컨테이너가 성공적으로 시작되었습니다!")
+                            frontend_port = self.env_vars['frontend']['FRONTEND_PORT']
+                            backend_port = self.env_vars['backend']['BACKEND_PORT']
                             print(f"\n{Colors.CYAN}서비스 접속:{Colors.ENDC}")
-                            print(f"  - 프론트엔드: {Colors.GREEN}http://localhost:3000{Colors.ENDC}")
-                            print(f"  - 백엔드 API: {Colors.GREEN}http://localhost:8000{Colors.ENDC}")
-                            print(f"  - API 문서: {Colors.GREEN}http://localhost:8000/docs{Colors.ENDC}")
+                            print(f"  - 프론트엔드: {Colors.GREEN}http://localhost:{frontend_port}{Colors.ENDC}")
+                            print(f"  - 백엔드 API: {Colors.GREEN}http://localhost:{backend_port}{Colors.ENDC}")
+                            print(f"  - API 문서: {Colors.GREEN}http://localhost:{backend_port}/docs{Colors.ENDC}")
                             print(f"\n{Colors.CYAN}유용한 명령어:{Colors.ENDC}")
                             print(f"  - 로그 확인: {Colors.GREEN}docker-compose logs -f{Colors.ENDC}")
                             print(f"  - 중지: {Colors.GREEN}docker-compose down{Colors.ENDC}")
@@ -449,12 +457,14 @@ NEXT_PUBLIC_BACKEND_URL={self.env_vars['frontend']['NEXT_PUBLIC_BACKEND_URL']}
                         print(f"{Colors.GREEN}docker-compose up -d --build{Colors.ENDC}")
                         break
                 elif start_now in ['n', 'no']:
+                    frontend_port = self.env_vars['frontend']['FRONTEND_PORT']
+                    backend_port = self.env_vars['backend']['BACKEND_PORT']
                     print(f"\n{Colors.CYAN}나중에 다음 명령으로 시작하세요:{Colors.ENDC}")
                     print(f"{Colors.GREEN}docker-compose up -d --build{Colors.ENDC}")
                     print(f"\n{Colors.CYAN}서비스 접속:{Colors.ENDC}")
-                    print(f"  - 프론트엔드: {Colors.GREEN}http://localhost:3000{Colors.ENDC}")
-                    print(f"  - 백엔드 API: {Colors.GREEN}http://localhost:8000{Colors.ENDC}")
-                    print(f"  - API 문서: {Colors.GREEN}http://localhost:8000/docs{Colors.ENDC}")
+                    print(f"  - 프론트엔드: {Colors.GREEN}http://localhost:{frontend_port}{Colors.ENDC}")
+                    print(f"  - 백엔드 API: {Colors.GREEN}http://localhost:{backend_port}{Colors.ENDC}")
+                    print(f"  - API 문서: {Colors.GREEN}http://localhost:{backend_port}/docs{Colors.ENDC}")
                     docker_success = True  # User chose to skip, mark as success
                     break
                 else:
@@ -542,16 +552,17 @@ NEXT_PUBLIC_BACKEND_URL={self.env_vars['frontend']['NEXT_PUBLIC_BACKEND_URL']}
                 print_info("백엔드 서버 시작 중...")
                 is_windows = platform.system() == "Windows"
 
+                backend_port = self.env_vars['backend']['BACKEND_PORT']
                 if is_windows:
                     # Windows: use START command to open new window with python -m uvicorn
                     backend_proc = subprocess.Popen(
-                        'start "ShoppingMall Backend" cmd /k "cd backend && python -m uvicorn app.main:app --reload --port 8000"',
+                        f'start "ShoppingMall Backend" cmd /k "cd backend && python -m uvicorn app.main:app --reload --port {backend_port}"',
                         shell=True
                     )
                 else:
                     # Linux/Mac: use nohup or tmux
                     backend_proc = subprocess.Popen(
-                        ["python", "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000"],
+                        ["python", "-m", "uvicorn", "app.main:app", "--reload", "--port", backend_port],
                         cwd="backend",
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL
@@ -587,10 +598,12 @@ NEXT_PUBLIC_BACKEND_URL={self.env_vars['frontend']['NEXT_PUBLIC_BACKEND_URL']}
                 print_success("모든 서비스가 시작되었습니다!")
                 print(f"{Colors.GREEN}{'='*50}{Colors.ENDC}\n")
 
+                frontend_port = self.env_vars['frontend']['FRONTEND_PORT']
+                backend_port = self.env_vars['backend']['BACKEND_PORT']
                 print(f"{Colors.CYAN}서비스 접속:{Colors.ENDC}")
-                print(f"  - 프론트엔드: {Colors.GREEN}http://localhost:3000{Colors.ENDC}")
-                print(f"  - 백엔드 API: {Colors.GREEN}http://localhost:8000{Colors.ENDC}")
-                print(f"  - API 문서: {Colors.GREEN}http://localhost:8000/docs{Colors.ENDC}\n")
+                print(f"  - 프론트엔드: {Colors.GREEN}http://localhost:{frontend_port}{Colors.ENDC}")
+                print(f"  - 백엔드 API: {Colors.GREEN}http://localhost:{backend_port}{Colors.ENDC}")
+                print(f"  - API 문서: {Colors.GREEN}http://localhost:{backend_port}/docs{Colors.ENDC}\n")
 
                 print(f"{Colors.YELLOW}서비스 중지 방법:{Colors.ENDC}")
                 if is_windows:
