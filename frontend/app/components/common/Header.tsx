@@ -1,13 +1,43 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Header() {
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [menuHeight, setMenuHeight] = useState(0);
   const [transitionDuration, setTransitionDuration] = useState(0.4);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState('');
+
+  // 로그인 상태 확인
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    const user = localStorage.getItem('user');
+
+    if (token && user) {
+      setIsLoggedIn(true);
+      try {
+        const userData = JSON.parse(user);
+        setUserName(userData.full_name || '사용자');
+      } catch (e) {
+        console.error('Failed to parse user data:', e);
+      }
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('vendor');
+    setIsLoggedIn(false);
+    setUserName('');
+    router.push('/');
+  };
 
   const handleMenuEnter = (menuName: string) => {
     const menu = menuItems.find(item => item.name === menuName);
@@ -155,23 +185,33 @@ export default function Header() {
           </div>
 
           {/* Auth & Cart Links */}
-          <div className="hidden lg:flex lg:flex-1 lg:items-center lg:justify-end lg:gap-x-4">
+          <div className="hidden lg:flex lg:flex-1 lg:items-center lg:justify-end lg:gap-x-6">
             <Link
               href="/cart"
-              className="relative text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+              className="flex items-center text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
               </svg>
             </Link>
-            <Link
-              href="/login"
-              className="text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-              </svg>
-            </Link>
+
+            {isLoggedIn ? (
+              <Link
+                href="/mypage"
+                className="text-sm font-medium text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+              >
+                {userName}님
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="flex items-center text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+              </Link>
+            )}
           </div>
         </nav>
 
