@@ -422,7 +422,7 @@ NEXT_PUBLIC_BACKEND_URL={self.env_vars['frontend']['NEXT_PUBLIC_BACKEND_URL']}
                 print(f"{Colors.YELLOW}[1/3] 백엔드 의존성 확인 중...{Colors.ENDC}")
 
                 # Check if backend dependencies are installed
-                backend_check = subprocess.run(
+                fastapi_check = subprocess.run(
                     ["pip", "show", "fastapi"],
                     shell=True,
                     capture_output=True,
@@ -430,7 +430,15 @@ NEXT_PUBLIC_BACKEND_URL={self.env_vars['frontend']['NEXT_PUBLIC_BACKEND_URL']}
                     errors='replace'
                 )
 
-                if backend_check.returncode != 0:
+                uvicorn_check = subprocess.run(
+                    ["pip", "show", "uvicorn"],
+                    shell=True,
+                    capture_output=True,
+                    encoding='utf-8',
+                    errors='replace'
+                )
+
+                if fastapi_check.returncode != 0 or uvicorn_check.returncode != 0:
                     print_info("백엔드 의존성 설치가 필요합니다. 설치 중...")
                     backend_result = subprocess.run(
                         ["pip", "install", "-r", "backend/requirements.txt"],
@@ -490,85 +498,69 @@ NEXT_PUBLIC_BACKEND_URL={self.env_vars['frontend']['NEXT_PUBLIC_BACKEND_URL']}
                 print_success("의존성 설치가 완료되었습니다!")
                 print(f"{Colors.GREEN}{'='*50}{Colors.ENDC}\n")
 
-                # Ask to start services
-                start_services = input(f"{Colors.CYAN}서비스를 자동으로 시작하시겠습니까? (Y/n): {Colors.ENDC}").strip().lower()
+                # Auto-start services without asking
+                print(f"\n{Colors.CYAN}서비스를 시작합니다...{Colors.ENDC}\n")
 
-                if start_services in ['y', 'yes', '']:
-                    print(f"\n{Colors.CYAN}서비스를 시작합니다...{Colors.ENDC}\n")
+                # Start backend in background
+                print_info("백엔드 서버 시작 중...")
+                is_windows = platform.system() == "Windows"
 
-                    # Start backend in background
-                    print_info("백엔드 서버 시작 중...")
-                    is_windows = platform.system() == "Windows"
-
-                    if is_windows:
-                        # Windows: use START command to open new window
-                        backend_proc = subprocess.Popen(
-                            'start "ShoppingMall Backend" cmd /k "cd backend && uvicorn app.main:app --reload --port 8000"',
-                            shell=True
-                        )
-                    else:
-                        # Linux/Mac: use nohup or tmux
-                        backend_proc = subprocess.Popen(
-                            ["uvicorn", "app.main:app", "--reload", "--port", "8000"],
-                            cwd="backend",
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL
-                        )
-
-                    import time
-                    time.sleep(2)
-                    print_success("백엔드 서버가 시작되었습니다")
-
-                    # Start frontend in background
-                    print_info("프론트엔드 서버 시작 중...")
-                    npm_cmd = "npm.cmd" if is_windows else "npm"
-
-                    if is_windows:
-                        # Windows: use START command to open new window
-                        frontend_proc = subprocess.Popen(
-                            'start "ShoppingMall Frontend" cmd /k "cd frontend && npm run dev"',
-                            shell=True
-                        )
-                    else:
-                        # Linux/Mac
-                        frontend_proc = subprocess.Popen(
-                            [npm_cmd, "run", "dev"],
-                            cwd="frontend",
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL
-                        )
-
-                    time.sleep(2)
-                    print_success("프론트엔드 서버가 시작되었습니다")
-
-                    print(f"\n{Colors.GREEN}{'='*50}{Colors.ENDC}")
-                    print_success("모든 서비스가 시작되었습니다!")
-                    print(f"{Colors.GREEN}{'='*50}{Colors.ENDC}\n")
-
-                    print(f"{Colors.CYAN}서비스 접속:{Colors.ENDC}")
-                    print(f"  - 프론트엔드: {Colors.GREEN}http://localhost:3000{Colors.ENDC}")
-                    print(f"  - 백엔드 API: {Colors.GREEN}http://localhost:8000{Colors.ENDC}")
-                    print(f"  - API 문서: {Colors.GREEN}http://localhost:8000/docs{Colors.ENDC}\n")
-
-                    print(f"{Colors.YELLOW}서비스 중지 방법:{Colors.ENDC}")
-                    if is_windows:
-                        print(f"  - 각 터미널 창에서 {Colors.GREEN}Ctrl+C{Colors.ENDC} 누르기")
-                    else:
-                        print(f"  - 백엔드: {Colors.GREEN}pkill -f uvicorn{Colors.ENDC}")
-                        print(f"  - 프론트엔드: {Colors.GREEN}pkill -f 'npm run dev'{Colors.ENDC}")
-
+                if is_windows:
+                    # Windows: use START command to open new window with python -m uvicorn
+                    backend_proc = subprocess.Popen(
+                        'start "ShoppingMall Backend" cmd /k "cd backend && python -m uvicorn app.main:app --reload --port 8000"',
+                        shell=True
+                    )
                 else:
-                    print(f"\n{Colors.CYAN}나중에 다음 명령으로 서비스를 시작하세요:{Colors.ENDC}\n")
-                    print(f"{Colors.YELLOW}백엔드 (터미널 1):{Colors.ENDC}")
-                    print(f"{Colors.GREEN}cd backend{Colors.ENDC}")
-                    print(f"{Colors.GREEN}uvicorn app.main:app --reload --port 8000{Colors.ENDC}\n")
-                    print(f"{Colors.YELLOW}프론트엔드 (터미널 2):{Colors.ENDC}")
-                    print(f"{Colors.GREEN}cd frontend{Colors.ENDC}")
-                    print(f"{Colors.GREEN}npm run dev{Colors.ENDC}\n")
-                    print(f"{Colors.CYAN}서비스 접속:{Colors.ENDC}")
-                    print(f"  - 프론트엔드: {Colors.GREEN}http://localhost:3000{Colors.ENDC}")
-                    print(f"  - 백엔드 API: {Colors.GREEN}http://localhost:8000{Colors.ENDC}")
-                    print(f"  - API 문서: {Colors.GREEN}http://localhost:8000/docs{Colors.ENDC}")
+                    # Linux/Mac: use nohup or tmux
+                    backend_proc = subprocess.Popen(
+                        ["python", "-m", "uvicorn", "app.main:app", "--reload", "--port", "8000"],
+                        cwd="backend",
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+
+                import time
+                time.sleep(2)
+                print_success("백엔드 서버가 시작되었습니다")
+
+                # Start frontend in background
+                print_info("프론트엔드 서버 시작 중...")
+                npm_cmd = "npm.cmd" if is_windows else "npm"
+
+                if is_windows:
+                    # Windows: use START command to open new window
+                    frontend_proc = subprocess.Popen(
+                        'start "ShoppingMall Frontend" cmd /k "cd frontend && npm run dev"',
+                        shell=True
+                    )
+                else:
+                    # Linux/Mac
+                    frontend_proc = subprocess.Popen(
+                        [npm_cmd, "run", "dev"],
+                        cwd="frontend",
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+
+                time.sleep(2)
+                print_success("프론트엔드 서버가 시작되었습니다")
+
+                print(f"\n{Colors.GREEN}{'='*50}{Colors.ENDC}")
+                print_success("모든 서비스가 시작되었습니다!")
+                print(f"{Colors.GREEN}{'='*50}{Colors.ENDC}\n")
+
+                print(f"{Colors.CYAN}서비스 접속:{Colors.ENDC}")
+                print(f"  - 프론트엔드: {Colors.GREEN}http://localhost:3000{Colors.ENDC}")
+                print(f"  - 백엔드 API: {Colors.GREEN}http://localhost:8000{Colors.ENDC}")
+                print(f"  - API 문서: {Colors.GREEN}http://localhost:8000/docs{Colors.ENDC}\n")
+
+                print(f"{Colors.YELLOW}서비스 중지 방법:{Colors.ENDC}")
+                if is_windows:
+                    print(f"  - 각 터미널 창에서 {Colors.GREEN}Ctrl+C{Colors.ENDC} 누르기")
+                else:
+                    print(f"  - 백엔드: {Colors.GREEN}pkill -f uvicorn{Colors.ENDC}")
+                    print(f"  - 프론트엔드: {Colors.GREEN}pkill -f 'npm run dev'{Colors.ENDC}")
 
                 docker_success = True
 
