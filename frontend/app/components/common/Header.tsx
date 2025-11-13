@@ -256,22 +256,40 @@ export default function Header() {
               <div className="flex-1">
                 <div className="grid grid-cols-4 gap-6">
                   {menuItems.find(item => item.name === activeMenu)?.submenu.map((subitem) => (
-                    <Link
-                      key={subitem.name}
-                      href={subitem.href}
-                      className="group flex flex-col items-center gap-3"
-                    >
-                      <div className="relative h-28 w-28 overflow-hidden rounded-lg bg-gray-100 transition-transform group-hover:scale-105 dark:bg-gray-800">
-                        <img
-                          src={subitem.image}
-                          alt={subitem.name}
-                          className="h-full w-full object-cover"
-                        />
+                    subitem.name === 'FAQ' ? (
+                      <div
+                        key={subitem.name}
+                        className="flex flex-col items-center gap-3 cursor-not-allowed opacity-50"
+                      >
+                        <div className="relative h-28 w-28 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+                          <img
+                            src={subitem.image}
+                            alt={subitem.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <p className="text-center text-sm font-medium text-gray-900 dark:text-white">
+                          {subitem.name}
+                        </p>
                       </div>
-                      <p className="text-center text-sm font-medium text-gray-900 transition-colors group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
-                        {subitem.name}
-                      </p>
-                    </Link>
+                    ) : (
+                      <Link
+                        key={subitem.name}
+                        href={subitem.href}
+                        className="group flex flex-col items-center gap-3"
+                      >
+                        <div className="relative h-28 w-28 overflow-hidden rounded-lg bg-gray-100 transition-transform group-hover:scale-105 dark:bg-gray-800">
+                          <img
+                            src={subitem.image}
+                            alt={subitem.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <p className="text-center text-sm font-medium text-gray-900 transition-colors group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
+                          {subitem.name}
+                        </p>
+                      </Link>
+                    )
                   ))}
                 </div>
               </div>
