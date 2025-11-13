@@ -2,15 +2,116 @@ from fastapi import APIRouter, HTTPException, status
 from app.models.user import (
     UserRegisterRequest,
     UserLoginRequest,
+    SendOTPRequest,
+    VerifyOTPRequest,
     AuthResponse,
     ProfileResponse,
     VendorResponse,
     MessageResponse,
 )
 from app.services.supabase import get_supabase_client, get_supabase_admin_client
+from app.services.email import send_otp_email
 from datetime import datetime
+import redis
+from app.config import get_settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.post("/send-otp", response_model=MessageResponse)
+async def send_otp(request: SendOTPRequest):
+    """이메일로 OTP 인증번호 전송"""
+    supabase = get_supabase_client()
+    supabase_admin = get_supabase_admin_client()
+
+    try:
+        # profiles 테이블에 이미 가입된 이메일인지 확인
+        existing_user = supabase_admin.table("profiles").select("id").eq("email", request.email).execute()
+        if existing_user.data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 가입된 이메일입니다."
+            )
+
+        # Auth에만 있고 profiles에 없는 경우 (미완료 회원가입) - Auth에서도 삭제
+        try:
+            auth_users = supabase_admin.auth.admin.list_users()
+            for user in auth_users:
+                if hasattr(user, 'email') and user.email == request.email:
+                    print(f"[DEBUG] Auth에만 존재하는 사용자 삭제: {request.email}")
+                    supabase_admin.auth.admin.delete_user(user.id)
+        except Exception as e:
+            print(f"[DEBUG] Auth 사용자 확인 중 오류 (무시): {str(e)}")
+
+        # OTP 코드 생성
+        import random
+        otp_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+
+        # Redis에 OTP 저장 (TTL: 5분)
+        settings = get_settings()
+        redis_client = redis.Redis(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            decode_responses=True
+        )
+        redis_client.setex(f"otp:{request.email}", 300, otp_code)  # 5분 TTL
+        print(f"[OTP] {request.email} 인증번호 생성 및 Redis 저장: {otp_code}")
+
+        # 이메일 발송
+        await send_otp_email(request.email, otp_code)
+
+        return MessageResponse(message=f"{request.email}로 인증번호가 전송되었습니다.")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] OTP 전송 오류: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"인증번호 전송에 실패했습니다: {str(e)}"
+        )
+
+
+@router.post("/verify-otp", response_model=MessageResponse)
+async def verify_otp(request: VerifyOTPRequest):
+    """OTP 인증번호 확인"""
+    try:
+        # Redis에서 OTP 조회
+        settings = get_settings()
+        redis_client = redis.Redis(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            decode_responses=True
+        )
+
+        stored_otp = redis_client.get(f"otp:{request.email}")
+
+        if not stored_otp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="인증번호가 만료되었거나 존재하지 않습니다."
+            )
+
+        if stored_otp != request.token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="인증번호가 올바르지 않습니다."
+            )
+
+        # 인증 성공 - OTP 삭제
+        redis_client.delete(f"otp:{request.email}")
+        print(f"[OTP] {request.email} 인증 성공")
+
+        return MessageResponse(message="이메일 인증이 완료되었습니다.")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] OTP 검증 오류: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="인증번호 확인에 실패했습니다. 올바른 인증번호를 입력하세요."
+        )
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
@@ -38,6 +139,55 @@ async def register(user_data: UserRegisterRequest):
             )
 
         user_id = auth_response.user.id
+
+        # 이메일 확인이 필요한 경우 (세션이 없음)
+        if not auth_response.session:
+            print(f"[DEBUG] 이메일 확인 필요 - 세션 없음")
+            # profiles 테이블에는 저장하되, 토큰 없이 응답
+            profile_data = {
+                "id": user_id,
+                "email": user_data.email,
+                "full_name": user_data.full_name,
+                "phone": user_data.phone,
+                "user_type": user_data.user_type,
+            }
+
+            profile_response = supabase_admin.table("profiles").insert(profile_data).execute()
+
+            if not profile_response.data:
+                supabase_admin.auth.admin.delete_user(user_id)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="프로필 생성에 실패했습니다."
+                )
+
+            # seller인 경우 vendors 테이블에도 저장
+            if user_data.user_type == "seller":
+                if not all([user_data.business_name, user_data.business_number,
+                           user_data.business_address, user_data.store_name]):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="판매자 회원가입에 필요한 정보가 부족합니다."
+                    )
+
+                vendor_data = {
+                    "user_id": user_id,
+                    "business_name": user_data.business_name,
+                    "business_number": user_data.business_number,
+                    "business_address": user_data.business_address,
+                    "store_name": user_data.store_name,
+                    "store_description": user_data.store_description,
+                    "is_active": False,
+                    "is_verified": False,
+                }
+
+                supabase_admin.table("vendors").insert(vendor_data).execute()
+
+            # 이메일 확인 메시지 반환
+            raise HTTPException(
+                status_code=status.HTTP_201_CREATED,
+                detail="회원가입이 완료되었습니다. 이메일을 확인하여 계정을 활성화해주세요."
+            )
 
         # 2. profiles 테이블에 사용자 정보 저장
         profile_data = {

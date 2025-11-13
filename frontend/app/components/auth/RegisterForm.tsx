@@ -11,10 +11,16 @@ export default function RegisterForm() {
   const router = useRouter();
   const [userType, setUserType] = useState<UserType>('buyer');
 
+  // 이메일 인증 상태
+  const [email, setEmail] = useState('');
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+
   // 일반 회원과 사업자 회원의 데이터를 별도로 관리
   const [buyerFormData, setBuyerFormData] = useState({
     name: '',
-    email: '',
     password: '',
     confirmPassword: '',
     phone: '',
@@ -22,7 +28,6 @@ export default function RegisterForm() {
 
   const [sellerFormData, setSellerFormData] = useState({
     name: '',
-    email: '',
     password: '',
     confirmPassword: '',
     phone: '',
@@ -34,6 +39,7 @@ export default function RegisterForm() {
   });
 
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
@@ -58,9 +64,86 @@ export default function RegisterForm() {
     setFormData({ ...formData, phone: formatted });
   };
 
+  // OTP 전송
+  const handleSendOTP = async () => {
+    if (!email) {
+      setError('이메일을 입력해주세요.');
+      return;
+    }
+
+    // 이메일 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('올바른 이메일 형식이 아닙니다.');
+      return;
+    }
+
+    setOtpLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:8000/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || '인증번호 전송에 실패했습니다.');
+      }
+
+      setOtpSent(true);
+      setSuccessMessage(data.message);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // OTP 검증
+  const handleVerifyOTP = async () => {
+    if (!otpCode || otpCode.length !== 6) {
+      setError('6자리 인증번호를 입력해주세요.');
+      return;
+    }
+
+    setOtpLoading(true);
+    setError('');
+    setSuccessMessage('');
+
+    try {
+      const response = await fetch('http://localhost:8000/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token: otpCode }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || '인증번호 확인에 실패했습니다.');
+      }
+
+      setIsEmailVerified(true);
+      setSuccessMessage(data.message);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!isEmailVerified) {
+      setError('이메일 인증을 완료해주세요.');
+      return;
+    }
 
     if (!agreedToTerms) {
       setError('이용약관에 동의해주세요.');
@@ -96,7 +179,7 @@ export default function RegisterForm() {
 
     try {
       const registerData = {
-        email: formData.email,
+        email: email,
         password: formData.password,
         full_name: formData.name,
         phone: formData.phone,
@@ -170,25 +253,70 @@ export default function RegisterForm() {
           <input
             type="text"
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value } as any)}
             placeholder="홍길동"
             required
             className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
           />
         </div>
 
+        {/* 이메일 인증 섹션 */}
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            이메일
+            이메일 {isEmailVerified && <span className="text-green-600 dark:text-green-400">✓ 인증완료</span>}
           </label>
-          <input
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            placeholder="example@email.com"
-            required
-            className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
-          />
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="example@email.com"
+              disabled={isEmailVerified}
+              required
+              className="flex-1 border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none disabled:bg-gray-100 disabled:text-gray-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white dark:disabled:bg-gray-600"
+            />
+            <button
+              type="button"
+              onClick={handleSendOTP}
+              disabled={isEmailVerified || otpLoading}
+              className="whitespace-nowrap border border-gray-900 bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50 dark:border-white dark:bg-white dark:text-gray-900"
+            >
+              {otpLoading ? '전송중...' : otpSent ? '재전송' : '인증'}
+            </button>
+          </div>
+
+          {successMessage && otpSent && !isEmailVerified && (
+            <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+              {successMessage}
+            </p>
+          )}
+
+          {isEmailVerified && (
+            <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+              ✓ 이메일 인증이 완료되었습니다.
+            </p>
+          )}
+
+          {otpSent && !isEmailVerified && (
+            <div className="mt-2 flex gap-2">
+              <input
+                type="text"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="6자리 인증번호"
+                maxLength={6}
+                className="flex-1 border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
+              />
+              <button
+                type="button"
+                onClick={handleVerifyOTP}
+                disabled={otpLoading}
+                className="whitespace-nowrap border border-green-600 bg-green-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-50"
+              >
+                {otpLoading ? '확인중...' : '인증확인'}
+              </button>
+            </div>
+          )}
         </div>
 
         <div>
@@ -322,6 +450,12 @@ export default function RegisterForm() {
               type="checkbox"
               checked={agreedToTerms}
               onChange={(e) => setAgreedToTerms(e.target.checked)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  setAgreedToTerms(!agreedToTerms);
+                }
+              }}
               className="h-4 w-4 border-gray-300 dark:border-gray-600"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -336,9 +470,10 @@ export default function RegisterForm() {
           </div>
         )}
 
+
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !isEmailVerified}
           className="w-full border border-gray-900 bg-gray-900 py-3 text-sm font-bold text-white transition hover:bg-gray-800 disabled:opacity-50 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
         >
           {isLoading ? '가입 중...' : '회원가입'}

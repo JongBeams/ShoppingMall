@@ -39,6 +39,17 @@ class UserLoginRequest(BaseModel):
     password: str
 
 
+class SendOTPRequest(BaseModel):
+    """OTP 전송 요청 모델"""
+    email: EmailStr
+
+
+class VerifyOTPRequest(BaseModel):
+    """OTP 검증 요청 모델"""
+    email: EmailStr
+    token: str = Field(..., min_length=6, max_length=6)
+
+
 # ============================================
 # RESPONSE MODELS
 # ============================================

@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379
 
+    # SMTP
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str
+    SMTP_PASSWORD: str
+    SMTP_FROM_EMAIL: str
+
     # CORS
     NEXT_PUBLIC_URL: str = "http://localhost:3000"
 

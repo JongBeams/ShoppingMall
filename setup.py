@@ -142,6 +142,13 @@ class SetupWizard:
                 "REDIS_HOST": backend_env.get("REDIS_HOST", "redis"),
                 "REDIS_PORT": backend_env.get("REDIS_PORT", "6379"),
             },
+            "smtp": {
+                "SMTP_HOST": backend_env.get("SMTP_HOST", "smtp.gmail.com"),
+                "SMTP_PORT": backend_env.get("SMTP_PORT", "587"),
+                "SMTP_USER": backend_env.get("SMTP_USER", ""),
+                "SMTP_PASSWORD": backend_env.get("SMTP_PASSWORD", ""),
+                "SMTP_FROM_EMAIL": backend_env.get("SMTP_FROM_EMAIL", ""),
+            },
             "frontend": {
                 "NEXT_PUBLIC_SUPABASE_URL": frontend_env.get("NEXT_PUBLIC_SUPABASE_URL", ""),
                 "NEXT_PUBLIC_SUPABASE_ANON_KEY": frontend_env.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", ""),
@@ -157,7 +164,7 @@ class SetupWizard:
             else:
                 self.env_vars[key] = value
 
-        self.total_steps = 5
+        self.total_steps = 6
 
     def run(self):
         print_banner()
@@ -166,8 +173,9 @@ class SetupWizard:
         try:
             self.run_step(1, self.choose_setup_method)
             self.run_step(2, self.collect_supabase_info)
-            self.run_step(3, self.generate_backend_secrets)
-            self.run_step(4, self.configure_env_files)
+            self.run_step(3, self.collect_smtp_info)
+            self.run_step(4, self.generate_backend_secrets)
+            self.run_step(5, self.configure_env_files)
             # Always run final_instructions (Docker build/start)
             self.final_instructions()
 
@@ -264,8 +272,40 @@ class SetupWizard:
         )
         print_success("Supabase 정보가 저장되었습니다.")
 
+    def collect_smtp_info(self):
+        print_step(3, self.total_steps, "SMTP 설정 (이메일 발송)")
+
+        has_existing = any(self.env_vars["smtp"].values())
+        if has_existing:
+            print_info("기존 SMTP 설정을 찾았습니다. Enter를 눌러 유지하거나 새 값을 입력하세요.")
+        else:
+            print_info("Gmail SMTP를 사용하여 이메일 인증번호를 발송합니다.")
+            print_info("Gmail 앱 비밀번호 생성 방법:")
+            print_info("  1. Google 계정 관리 → 보안 → 2단계 인증 활성화")
+            print_info("  2. 앱 비밀번호 생성 (16자리)")
+            input("준비되면 Enter를 누르세요...")
+
+        self.env_vars["smtp"]["SMTP_USER"] = self._get_input(
+            "Gmail 주소를 입력하세요: ",
+            lambda x, allow_empty=False: "@gmail.com" in x or allow_empty,
+            "Gmail 주소 형식이 올바르지 않습니다.",
+            default_value=self.env_vars["smtp"]["SMTP_USER"],
+        )
+
+        self.env_vars["smtp"]["SMTP_PASSWORD"] = self._get_input(
+            "Gmail 앱 비밀번호를 입력하세요 (16자리, 공백 제외): ",
+            lambda x, allow_empty=False: len(x.replace(" ", "")) >= 16 or allow_empty,
+            "앱 비밀번호는 16자리입니다.",
+            default_value=self.env_vars["smtp"]["SMTP_PASSWORD"],
+        )
+
+        # FROM 이메일은 SMTP_USER와 동일하게 설정
+        self.env_vars["smtp"]["SMTP_FROM_EMAIL"] = self.env_vars["smtp"]["SMTP_USER"]
+
+        print_success("SMTP 정보가 저장되었습니다.")
+
     def generate_backend_secrets(self):
-        print_step(3, self.total_steps, "백엔드 시크릿 생성")
+        print_step(4, self.total_steps, "백엔드 시크릿 생성")
 
         if not self.env_vars["backend"]["SECRET_KEY"]:
             print_info("안전한 SECRET_KEY를 생성하는 중...")
@@ -283,7 +323,7 @@ class SetupWizard:
         print_success("백엔드 설정이 완료되었습니다.")
 
     def configure_env_files(self):
-        print_step(4, self.total_steps, "환경 설정 파일 생성")
+        print_step(5, self.total_steps, "환경 설정 파일 생성")
 
         # Backend .env
         backend_env_content = f"""# Backend Environment Configuration
@@ -302,6 +342,13 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 # Redis Configuration
 REDIS_HOST={self.env_vars['backend']['REDIS_HOST']}
 REDIS_PORT={self.env_vars['backend']['REDIS_PORT']}
+
+# SMTP Configuration (Email)
+SMTP_HOST={self.env_vars['smtp']['SMTP_HOST']}
+SMTP_PORT={self.env_vars['smtp']['SMTP_PORT']}
+SMTP_USER={self.env_vars['smtp']['SMTP_USER']}
+SMTP_PASSWORD={self.env_vars['smtp']['SMTP_PASSWORD']}
+SMTP_FROM_EMAIL={self.env_vars['smtp']['SMTP_FROM_EMAIL']}
 
 # CORS Configuration
 NEXT_PUBLIC_URL=http://localhost:3000
@@ -334,7 +381,7 @@ NEXT_PUBLIC_BACKEND_URL={self.env_vars['frontend']['NEXT_PUBLIC_BACKEND_URL']}
         print_success("모든 환경 설정 파일이 생성되었습니다.")
 
     def final_instructions(self):
-        print_step(5, self.total_steps, "설치 완료")
+        print_step(6, self.total_steps, "설치 완료")
 
         print_success("쇼핑몰 프로젝트 설정이 완료되었습니다!")
 
