@@ -1,16 +1,14 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr
 from app.services.supabase import get_supabase_admin_client
 from app.services.email import send_otp_email
 from app.services.otp_store import get_otp_store
-from passlib.context import CryptContext
+from app.services.auth_middleware import get_current_admin
+import bcrypt
 from typing import Optional
 from datetime import datetime
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
-
-# 비밀번호 해싱
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class AdminSendOTPRequest(BaseModel):
@@ -142,7 +140,9 @@ async def register_admin(admin_data: AdminRegisterRequest):
             )
 
         # 비밀번호 해싱
-        hashed_password = pwd_context.hash(admin_data.password)
+        password_bytes = admin_data.password.encode('utf-8')
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
 
         # admin_users 테이블에 삽입
         admin_insert_data = {
@@ -194,7 +194,9 @@ async def login_admin(credentials: AdminLoginRequest):
         admin_user = response.data[0]
 
         # 비밀번호 검증
-        if not pwd_context.verify(credentials.password, admin_user["password_hash"]):
+        password_bytes = credentials.password.encode('utf-8')
+        stored_hash = admin_user["password_hash"].encode('utf-8')
+        if not bcrypt.checkpw(password_bytes, stored_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="이메일 또는 비밀번호가 올바르지 않습니다."
@@ -212,9 +214,20 @@ async def login_admin(credentials: AdminLoginRequest):
             "last_login_at": datetime.utcnow().isoformat()
         }).eq("id", admin_user["id"]).execute()
 
-        # JWT 토큰 생성 (간단한 예시 - 실제로는 JWT 라이브러리 사용 권장)
-        import secrets
-        access_token = secrets.token_urlsafe(32)
+        # JWT 토큰 생성
+        from app.services.jwt_auth import create_access_token
+        from datetime import timedelta
+
+        token_data = {
+            "sub": admin_user["id"],
+            "email": admin_user["email"],
+            "role": admin_user["role"],
+            "type": "admin"
+        }
+        access_token = create_access_token(
+            data=token_data,
+            expires_delta=timedelta(hours=8)
+        )
 
         admin_response = AdminResponse(
             id=admin_user["id"],
@@ -241,3 +254,17 @@ async def login_admin(credentials: AdminLoginRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"로그인 중 오류가 발생했습니다: {str(e)}"
         )
+
+
+@router.get("/me", response_model=AdminResponse)
+async def get_current_admin_info(current_admin: dict = Depends(get_current_admin)):
+    """현재 로그인한 관리자 정보 조회"""
+    return AdminResponse(
+        id=current_admin["id"],
+        email=current_admin["email"],
+        full_name=current_admin["full_name"],
+        phone=current_admin.get("phone"),
+        role=current_admin["role"],
+        is_active=current_admin["is_active"],
+        created_at=current_admin["created_at"],
+    )

@@ -1,0 +1,18 @@
+{
+  "name": "shopping-mall",
+  "version": "1.0.0",
+  "description": "Shopping Mall Project - Frontend & Backend",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "cd backend && python3 -m uvicorn app.main:app --reload --port 8000",
+    "build": "npm run build --prefix frontend",
+    "start": "npm run start --prefix frontend",
+    "install:frontend": "cd frontend && npm install",
+    "install:backend": "pip3 install -r backend/requirements.txt",
+    "install:all": "npm run install:backend && npm run install:frontend"
+  },
+  "keywords": ["shopping", "mall", "ecommerce"],
+  "author": "",
+  "license": "MIT"
+}

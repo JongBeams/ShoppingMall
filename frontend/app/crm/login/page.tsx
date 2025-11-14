@@ -18,24 +18,31 @@ export default function CRMLoginPage() {
     setIsLoading(true);
 
     try {
-      // TODO: 실제 API 연결
-      // 임시로 하드코딩된 관리자 계정
-      if (formData.email === 'admin@example.com' && formData.password === 'admin123!') {
-        // 임시 토큰 및 사용자 정보 저장
-        localStorage.setItem('admin_token', 'temp_admin_token');
-        localStorage.setItem('admin_user', JSON.stringify({
-          id: '1',
-          email: formData.email,
-          full_name: '관리자',
-          role: 'super_admin',
-        }));
+      const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
-        router.push('/crm');
-      } else {
-        setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      const response = await fetch(`${API_BASE_URL}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || '로그인에 실패했습니다.');
       }
-    } catch (err) {
-      setError('로그인 중 오류가 발생했습니다.');
+
+      const data = await response.json();
+
+      // JWT 토큰 및 사용자 정보 저장
+      localStorage.setItem('admin_token', data.access_token);
+      localStorage.setItem('admin_user', JSON.stringify(data.user));
+
+      router.push('/crm');
+    } catch (err: any) {
+      setError(err.message || '로그인 중 오류가 발생했습니다.');
     } finally {
       setIsLoading(false);
     }

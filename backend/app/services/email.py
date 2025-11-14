@@ -99,6 +99,7 @@ async def send_otp_email(to_email: str, otp_code: str):
             username=settings.SMTP_USER,
             password=settings.SMTP_PASSWORD,
             start_tls=True,
+            validate_certs=False,  # SSL 인증서 검증 비활성화 -- 개발 환경용
         )
         print(f"[EMAIL] OTP 이메일 전송 성공: {to_email}")
         return True

@@ -3,7 +3,33 @@
 ### 설치 스크립트 실행
 
 ```bash
+# macOS/Linux
+python3 setup.py
+
+# Windows
 python setup.py
+```
+
+### 수동 설치 (setup.py 대신)
+
+#### macOS/Linux:
+```bash
+# 백엔드 의존성 설치
+pip3 install -r requirements.txt
+
+# 프론트엔드 의존성 설치
+cd frontend
+npm install
+```
+
+#### Windows:
+```bash
+# 백엔드 의존성 설치
+pip install -r requirements.txt
+
+# 프론트엔드 의존성 설치
+cd frontend
+npm install
 ```
 
 
