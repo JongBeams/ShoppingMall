@@ -8,6 +8,7 @@ import Profile from '../components/mypage/Profile';
 import Orders from '../components/mypage/Orders';
 import Sales from '../components/mypage/Sales';
 import Wishlist from '../components/mypage/Wishlist';
+import Inquiry from '../components/mypage/Inquiry';
 
 // 임시 더미 데이터(주문 내역)
 const dummyOrders: CartItemType[] = [
@@ -121,6 +122,7 @@ export default function MyPage() {
             {activeTab === 'orders' && <Orders user={user} dummyOrders={dummyOrders} />}
             {activeTab === 'sales' && user?.user_type === 'seller' && <Sales />}
             {activeTab === 'wishlist' && <Wishlist dummyWishList={dummyWishList} />}
+            {activeTab === 'inquiry' && <Inquiry />}
           </div>
         </div>
       </div>

@@ -296,6 +296,9 @@ async def login(credentials: UserLoginRequest):
     """로그인"""
     supabase = get_supabase_client()
 
+    # Supabase 클라이언트 예외 처리
+    from gotrue.errors import AuthApiError
+
     try:
         # 1. Supabase Auth로 로그인
         auth_response = supabase.auth.sign_in_with_password({
@@ -303,6 +306,7 @@ async def login(credentials: UserLoginRequest):
             "password": credentials.password,
         })
 
+        # Supabase 응답 확인 - user와 session이 없으면 인증 실패
         if not auth_response.user or not auth_response.session:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -371,13 +375,22 @@ async def login(credentials: UserLoginRequest):
 
     except HTTPException:
         raise
+    except AuthApiError as e:
+        # Supabase 인증 에러 처리
+        print(f"[ERROR] Supabase 인증 오류: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="이메일 또는 비밀번호가 올바르지 않습니다."
+        )
     except Exception as e:
         import traceback
         print(f"[ERROR] 로그인 오류: {str(e)}")
         print(f"[ERROR] Traceback: {traceback.format_exc()}")
+
+        # 일반적인 서버 오류
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"로그인 중 오류가 발생했습니다: {str(e)}"
+            detail="로그인 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
         )
 
 

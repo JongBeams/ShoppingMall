@@ -2,11 +2,9 @@
 
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { authAPI } from '@/app/lib/api';
 
 export default function LoginForm() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -33,7 +31,13 @@ export default function LoginForm() {
       // 페이지 이동 후 새로고침하여 헤더 업데이트
       window.location.href = '/';
     } catch (err: any) {
-      setError(err.message || '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
+      console.log('Login error:', err);
+      console.log('Error response:', err.response);
+      console.log('Error message:', err.message);
+
+      // API 에러 메시지 추출
+      const errorMessage = err.response?.data?.detail || err.message || '이메일 또는 비밀번호가 올바르지 않습니다.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -31,8 +31,12 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'An error occurred' }));
-    throw new Error(error.message || `API Error: ${response.status}`);
+    const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
+    // FastAPI는 detail 필드를 사용
+    const errorMessage = error.detail || error.message || `API Error: ${response.status}`;
+    const errorObj = new Error(errorMessage);
+    (errorObj as any).response = { data: error };
+    throw errorObj;
   }
 
   return response.json();
