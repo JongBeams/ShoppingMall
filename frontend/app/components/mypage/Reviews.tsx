@@ -123,7 +123,10 @@ export default function Reviews() {
                         구매일: {item.purchaseDate}
                       </p>
                     </div>
-                    <button className="mt-2 self-start border border-gray-900 bg-gray-900 px-4 py-1.5 text-xs font-medium text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
+                    <button
+                      onClick={() => window.location.href = `/reviews/write?productId=${item.productId}`}
+                      className="mt-2 self-start border border-gray-900 bg-gray-900 px-4 py-1.5 text-xs font-medium text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                    >
                       리뷰 작성
                     </button>
                   </div>

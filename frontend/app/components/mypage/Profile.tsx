@@ -22,11 +22,29 @@ export default function Profile({ user, vendor }: ProfileProps) {
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">전화번호</span>
             <span className="text-sm text-gray-900 dark:text-white">{user.phone || '미등록'}</span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between border-b border-gray-100 pb-4 dark:border-gray-700">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">회원 유형</span>
             <span className="text-sm text-gray-900 dark:text-white">
               {user.user_type === 'seller' ? '판매자' : '일반 회원'}
             </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">추천 ID</span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
+                {user.referral_code || `REF${Math.random().toString(36).substr(2, 8).toUpperCase()}`}
+              </span>
+              <button
+                onClick={() => {
+                  const code = user.referral_code || `REF${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+                  navigator.clipboard.writeText(code);
+                  alert('추천 ID가 복사되었습니다!');
+                }}
+                className="text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              >
+                복사
+              </button>
+            </div>
           </div>
         </div>
       </div>

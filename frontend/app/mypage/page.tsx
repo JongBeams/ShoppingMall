@@ -14,6 +14,11 @@ import RecentProducts from '../components/mypage/RecentProducts';
 import Coupons from '../components/mypage/Coupons';
 import Reviews from '../components/mypage/Reviews';
 import StoreManagement from '../components/mypage/StoreManagement';
+import ProductManagement from '../components/mypage/ProductManagement';
+import DeliveryManagement from '../components/mypage/DeliveryManagement';
+import InquiryManagement from '../components/mypage/InquiryManagement';
+import SellerCoupons from '../components/mypage/SellerCoupons';
+import Promotions from '../components/mypage/Promotions';
 
 // 임시 더미 데이터(주문 내역)
 const dummyOrders: CartItemType[] = [
@@ -28,6 +33,20 @@ const dummyOrders: CartItemType[] = [
       stock: 50,
     },
     quantity: 50,
+    status: 'shipping', // 배송 중
+  },
+  {
+    product: {
+      id: '2',
+      name: '스마트워치',
+      description: '다양한 기능을 갖춘 스마트워치',
+      price: 250000,
+      category: '전자제품',
+      imageUrl: '/placeholder-product.jpg',
+      stock: 30,
+    },
+    quantity: 1,
+    status: 'delivered', // 배송 완료
   },
   {
     product: {
@@ -40,6 +59,7 @@ const dummyOrders: CartItemType[] = [
       stock: 20,
     },
     quantity: 2,
+    status: 'shipping', // 배송 중
   },
 ];
 
@@ -127,6 +147,11 @@ export default function MyPage() {
             {activeTab === 'orders' && <Orders user={user} dummyOrders={dummyOrders} />}
             {activeTab === 'sales' && user?.user_type === 'seller' && <Sales />}
             {activeTab === 'store' && user?.user_type === 'seller' && <StoreManagement />}
+            {activeTab === 'products' && user?.user_type === 'seller' && <ProductManagement />}
+            {activeTab === 'delivery' && user?.user_type === 'seller' && <DeliveryManagement />}
+            {activeTab === 'inquiries' && user?.user_type === 'seller' && <InquiryManagement />}
+            {activeTab === 'seller-coupons' && user?.user_type === 'seller' && <SellerCoupons />}
+            {activeTab === 'promotions' && user?.user_type === 'seller' && <Promotions />}
             {activeTab === 'wishlist' && <Wishlist dummyWishList={dummyWishList} />}
             {activeTab === 'recent' && <RecentProducts />}
             {activeTab === 'inquiry' && <Inquiry />}

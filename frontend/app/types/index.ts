@@ -14,6 +14,7 @@ export interface Product {
 export interface CartItem {
   product: Product;
   quantity: number;
+  status?: 'pending' | 'shipping' | 'delivered' | 'cancelled';
 }
 
 // User Types

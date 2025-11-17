@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import { CartItem as CartItemType } from '@/app/types';
 
 interface OrdersProps {
@@ -6,6 +9,17 @@ interface OrdersProps {
 }
 
 export default function Orders({ user, dummyOrders }: OrdersProps) {
+  const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
+
+  const toggleDeliveryInfo = (orderId: number) => {
+    const newExpanded = new Set(expandedOrders);
+    if (newExpanded.has(orderId)) {
+      newExpanded.delete(orderId);
+    } else {
+      newExpanded.add(orderId);
+    }
+    setExpandedOrders(newExpanded);
+  };
   return (
     <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
       <h3 className="mb-6 text-lg font-bold text-gray-900 dark:text-white">
@@ -139,9 +153,22 @@ export default function Orders({ user, dummyOrders }: OrdersProps) {
                 {/* 상품 정보 */}
                 <div className="flex flex-1 flex-col justify-between">
                   <div>
-                    <h4 className="text-base font-semibold text-gray-900 dark:text-white">
-                      {item.product.name}
-                    </h4>
+                    <div className="mb-2 flex items-center gap-2">
+                      <h4 className="text-base font-semibold text-gray-900 dark:text-white">
+                        {item.product.name}
+                      </h4>
+                      <span className={`px-2 py-0.5 text-xs font-medium ${
+                        item.status === 'delivered'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                          : item.status === 'shipping'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+                          : item.status === 'cancelled'
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                      }`}>
+                        {item.status === 'delivered' ? '배송완료' : item.status === 'shipping' ? '배송중' : item.status === 'cancelled' ? '취소됨' : '준비중'}
+                      </span>
+                    </div>
                     <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                       {item.product.description}
                     </p>
@@ -150,27 +177,117 @@ export default function Orders({ user, dummyOrders }: OrdersProps) {
                     </p>
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        수량: {item.quantity}개
-                      </span>
-                      <span className="text-base font-bold text-gray-900 dark:text-white">
-                        {(item.product.price * item.quantity).toLocaleString()}원
-                      </span>
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          수량: {item.quantity}개
+                        </span>
+                        <span className="text-base font-bold text-gray-900 dark:text-white">
+                          {(item.product.price * item.quantity).toLocaleString()}원
+                        </span>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => toggleDeliveryInfo(item.product.id)}
+                          className="border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                        >
+                          배송 조회
+                        </button>
+                        {item.status === 'delivered' && (
+                          <button
+                            onClick={() => window.location.href = `/reviews/write?productId=${item.product.id}`}
+                            className="border border-gray-900 bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                          >
+                            리뷰 작성
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <button className="border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
-                        배송 조회
-                      </button>
-                      <button
-                        onClick={() => window.location.href = '/mypage?tab=reviews'}
-                        className="border border-gray-900 bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
-                      >
-                        리뷰 작성
-                      </button>
-                    </div>
+                    {/* 배송 조회 정보 */}
+                    {expandedOrders.has(item.product.id) && (
+                      <div className="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+                        <h5 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+                          배송 정보
+                        </h5>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">주문번호</span>
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              ORD-2025-{String(item.product.id).padStart(6, '0')}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">배송 상태</span>
+                            <span className="font-medium text-blue-600 dark:text-blue-400">
+                              배송 중
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">택배사</span>
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              CJ대한통운
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">송장번호</span>
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {Math.floor(100000000000 + Math.random() * 900000000000)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-400">예상 도착일</span>
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toLocaleDateString('ko-KR')}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 배송 추적 단계 */}
+                        <div className="mt-4">
+                          <h6 className="mb-3 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                            배송 추적
+                          </h6>
+                          <div className="space-y-3">
+                            <div className="flex items-start gap-3">
+                              <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-blue-600"></div>
+                              <div className="flex-1">
+                                <p className="text-xs font-medium text-gray-900 dark:text-white">
+                                  배송 중
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  상품이 배송 중입니다. ({new Date(Date.now() - 3 * 60 * 60 * 1000).toLocaleString('ko-KR')})
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                              <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-gray-400 dark:bg-gray-600"></div>
+                              <div className="flex-1">
+                                <p className="text-xs font-medium text-gray-900 dark:text-white">
+                                  상품 발송
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  상품이 발송되었습니다. ({new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleString('ko-KR')})
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                              <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-gray-400 dark:bg-gray-600"></div>
+                              <div className="flex-1">
+                                <p className="text-xs font-medium text-gray-900 dark:text-white">
+                                  상품 준비 중
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  판매자가 상품을 준비하고 있습니다. ({new Date(Date.now() - 48 * 60 * 60 * 1000).toLocaleString('ko-KR')})
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
