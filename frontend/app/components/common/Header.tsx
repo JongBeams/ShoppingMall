@@ -13,6 +13,8 @@ export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
   const [userType, setUserType] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // 로그인 상태 확인
   useEffect(() => {
@@ -40,6 +42,42 @@ export default function Header() {
     setUserName('');
     router.push('/');
   };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
+      setSearchQuery('');
+    }
+  };
+
+  // 더미 알림 데이터
+  const notifications = [
+    {
+      id: 1,
+      type: '주문',
+      title: '주문이 완료되었습니다',
+      message: 'AirPods Pro 주문이 완료되었습니다.',
+      time: '5분 전',
+      read: false
+    },
+    {
+      id: 2,
+      type: '배송',
+      title: '배송이 시작되었습니다',
+      message: 'Smart Watch Ultra 배송이 시작되었습니다.',
+      time: '1시간 전',
+      read: false
+    },
+    {
+      id: 3,
+      type: '쿠폰',
+      title: '새로운 쿠폰이 도착했습니다',
+      message: '신규 회원 10% 할인 쿠폰',
+      time: '2시간 전',
+      read: true
+    },
+  ];
 
   const handleMenuEnter = (menuName: string) => {
     const menu = menuItems.find(item => item.name === menuName);
@@ -186,8 +224,100 @@ export default function Header() {
             ))}
           </div>
 
+          {/* Search Bar */}
+          <div className="hidden lg:flex lg:flex-1 lg:justify-center lg:px-8">
+            <form onSubmit={handleSearch} className="w-full max-w-md">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="상품 검색..."
+                  className="w-full border border-gray-300 bg-white px-4 py-2 pr-10 text-sm text-gray-900 placeholder-gray-500 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-white"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-900 dark:hover:text-white"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                  </svg>
+                </button>
+              </div>
+            </form>
+          </div>
+
           {/* Auth & Cart/Product-Management Links */}
           <div className="hidden lg:flex lg:flex-1 lg:items-center lg:justify-end lg:gap-x-6">
+            {/* Notification Bell */}
+            {isLoggedIn && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative flex items-center text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                  </svg>
+                  {notifications.filter(n => !n.read).length > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white">
+                      {notifications.filter(n => !n.read).length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notification Dropdown */}
+                {showNotifications && (
+                  <>
+                    {/* Overlay to close dropdown */}
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowNotifications(false)}
+                    ></div>
+                    <div className="absolute right-0 top-full z-50 mt-4 w-80 border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                      <div className="border-b border-gray-200 p-4 dark:border-gray-700">
+                        <h3 className="text-sm font-bold text-gray-900 dark:text-white">알림</h3>
+                      </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.map((notification) => (
+                        <Link
+                          key={notification.id}
+                          href={`/notifications/${notification.id}`}
+                          className={`block border-b border-gray-100 p-4 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800 ${
+                            !notification.read ? 'bg-blue-50 dark:bg-blue-950/20' : ''
+                          }`}
+                          onClick={() => setShowNotifications(false)}
+                        >
+                          <div className="mb-1 flex items-start justify-between">
+                            <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                              {notification.type}
+                            </span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
+                              {notification.time}
+                            </span>
+                          </div>
+                          <h4 className="mb-1 text-sm font-medium text-gray-900 dark:text-white">
+                            {notification.title}
+                          </h4>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {notification.message}
+                          </p>
+                        </Link>
+                      ))}
+                    </div>
+                      <Link
+                        href="/notifications"
+                        className="block border-t border-gray-200 p-3 text-center text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                        onClick={() => setShowNotifications(false)}
+                      >
+                        전체 보기
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             <Link
               href={isLoggedIn && userType === 'seller' ? '/product-management' : '/cart'}
               className="flex items-center text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"

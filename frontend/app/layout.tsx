@@ -31,17 +31,15 @@ export default function RootLayout({
         <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-gray-950`}
       >
         <Header />
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-          <main className="flex flex-col">
-            <div className="mx-auto max-w-7xl w-full p-8 flex-1">
-              {children}
-            </div>
-            <Footer />
-          </main>
-        </div>
+        <main className="flex flex-col">
+          <div className="mx-auto max-w-7xl w-full p-8 flex-1">
+            {children}
+          </div>
+          <Footer />
+        </main>
         <AIChatButton />
       </body>
     </html>
