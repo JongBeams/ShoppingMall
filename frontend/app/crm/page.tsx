@@ -3,10 +3,26 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  phone: string | null;
+  user_type: 'buyer' | 'seller';
+  is_active: boolean;
+  created_at: string;
+  vendor_status?: string | null;
+}
+
 export default function CRMPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [adminUser, setAdminUser] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
 
   useEffect(() => {
     // 관리자 로그인 체크
@@ -34,6 +50,35 @@ export default function CRMPage() {
     localStorage.removeItem('admin_user');
     router.push('/crm/login');
   };
+
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/admin/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users);
+      } else {
+        console.error('Failed to fetch users');
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'users' && !isLoading) {
+      fetchUsers();
+    }
+  }, [activeTab, isLoading]);
 
   if (isLoading) {
     return (
@@ -69,20 +114,28 @@ export default function CRMPage() {
           <nav className="p-4">
             <ul className="space-y-2">
               <li>
-                <a
-                  href="#dashboard"
-                  className="block border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-medium text-white dark:border-white dark:bg-white dark:text-gray-900"
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`block w-full text-left border px-4 py-2 text-sm font-medium ${
+                    activeTab === 'dashboard'
+                      ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                  }`}
                 >
                   대시보드
-                </a>
+                </button>
               </li>
               <li>
-                <a
-                  href="#users"
-                  className="block border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className={`block w-full text-left border px-4 py-2 text-sm font-medium ${
+                    activeTab === 'users'
+                      ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                  }`}
                 >
                   회원 관리
-                </a>
+                </button>
               </li>
               <li>
                 <a
@@ -122,8 +175,10 @@ export default function CRMPage() {
 
         {/* Main Content */}
         <main className="flex-1 p-8">
-          {/* Stats Cards */}
-          <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {activeTab === 'dashboard' && (
+            <>
+              {/* Stats Cards */}
+              <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
               <div className="flex items-center justify-between">
                 <div>
@@ -218,6 +273,87 @@ export default function CRMPage() {
               </div>
             </div>
           </div>
+            </>
+          )}
+
+          {/* 회원 관리 탭 */}
+          {activeTab === 'users' && (
+            <div>
+              <h2 className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">회원 관리</h2>
+
+              {usersLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-gray-600 dark:text-gray-400">로딩 중...</div>
+                </div>
+              ) : (
+                <div className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">이메일</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">이름</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">전화번호</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">유형</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">상태</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">가입일</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {users.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                              등록된 회원이 없습니다.
+                            </td>
+                          </tr>
+                        ) : (
+                          users.map((user) => (
+                            <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                              <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-white">{user.email}</td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-white">{user.full_name}</td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{user.phone || '-'}</td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm">
+                                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                                  user.user_type === 'seller'
+                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                }`}>
+                                  {user.user_type === 'seller' ? '판매자' : '구매자'}
+                                </span>
+                                {user.user_type === 'seller' && user.vendor_status && (
+                                  <span className={`ml-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                                    user.vendor_status === 'approved'
+                                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                      : user.vendor_status === 'pending'
+                                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                      : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                  }`}>
+                                    {user.vendor_status === 'approved' ? '승인됨' : user.vendor_status === 'pending' ? '대기중' : '거부됨'}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm">
+                                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                                  user.is_active
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                                }`}>
+                                  {user.is_active ? '활성' : '비활성'}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                {new Date(user.created_at).toLocaleDateString('ko-KR')}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
     </div>

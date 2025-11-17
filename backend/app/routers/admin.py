@@ -277,3 +277,53 @@ async def get_current_admin_info(current_admin: dict = Depends(get_current_admin
         is_active=current_admin["is_active"],
         created_at=current_admin["created_at"],
     )
+
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    full_name: str
+    phone: Optional[str]
+    user_type: str  # "buyer" or "seller"
+    is_active: bool
+    created_at: str
+    vendor_status: Optional[str] = None  # "pending", "approved", "rejected"
+
+
+class UsersListResponse(BaseModel):
+    users: list[UserResponse]
+    total: int
+
+
+@router.get("/users", response_model=UsersListResponse)
+async def get_users_list(current_admin: dict = Depends(get_current_admin)):
+    """사용자 조회"""
+    supabase_admin = get_supabase_admin_client()
+
+    try:
+        response = supabase_admin.table("profiles").select("*").order("created_at", desc=True).execute()
+
+        if not response.data:
+            return UsersListResponse(users=[], total=0)
+
+        users_list = []
+        for user in response.data:
+            users_list.append(UserResponse(
+                id=user["id"],
+                email=user["email"],
+                full_name=user["full_name"],
+                phone=user.get("phone"),
+                user_type=user["user_type"],
+                is_active=user.get("is_active", True),
+                created_at=user["created_at"],
+                vendor_status=user.get("vendor_status") if user["user_type"] == "seller" else None
+            ))
+
+        return UsersListResponse(users=users_list, total=len(users_list))
+
+    except Exception as e:
+        import traceback
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"사용자 목록 조회 중 오류가 발생했습니다: {str(e)}"
+        )
