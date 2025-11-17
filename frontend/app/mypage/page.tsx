@@ -13,6 +13,7 @@ import Subscription from '../components/mypage/Subscription';
 import RecentProducts from '../components/mypage/RecentProducts';
 import Coupons from '../components/mypage/Coupons';
 import Reviews from '../components/mypage/Reviews';
+import StoreManagement from '../components/mypage/StoreManagement';
 
 // 임시 더미 데이터(주문 내역)
 const dummyOrders: CartItemType[] = [
@@ -125,6 +126,7 @@ export default function MyPage() {
             {activeTab === 'profile' && <Profile user={user} vendor={vendor} />}
             {activeTab === 'orders' && <Orders user={user} dummyOrders={dummyOrders} />}
             {activeTab === 'sales' && user?.user_type === 'seller' && <Sales />}
+            {activeTab === 'store' && user?.user_type === 'seller' && <StoreManagement />}
             {activeTab === 'wishlist' && <Wishlist dummyWishList={dummyWishList} />}
             {activeTab === 'recent' && <RecentProducts />}
             {activeTab === 'inquiry' && <Inquiry />}

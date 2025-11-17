@@ -3,22 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
+load_dotenv()
+
 # Routers
 from app.routers import auth, admin
 
-load_dotenv()
-
 app = FastAPI(title="ShoppingMall API", version="1.0.0")
 
-# CORS 설정
+# CORS 설정 - 개발 환경
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        os.getenv("NEXT_PUBLIC_URL", "http://localhost:3000")
-    ],
-    allow_credentials=True,
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # 프론트엔드 URL
+    allow_credentials=True,  # 쿠키 사용
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -35,3 +31,14 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+# OPTIONS 요청 처리 (CORS preflight)
+@app.options("/{rest_of_path:path}")
+async def preflight_handler(rest_of_path: str, request: Request, response: Response):
+    origin = request.headers.get("origin", "")
+    if origin in ["http://localhost:3000", "http://localhost:3001"]:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return {"message": "OK"}

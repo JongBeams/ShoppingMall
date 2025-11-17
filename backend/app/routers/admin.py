@@ -250,9 +250,18 @@ async def login_admin(credentials: AdminLoginRequest):
         import traceback
         print(f"[ERROR] 관리자 로그인 오류: {str(e)}")
         print(f"[ERROR] Traceback: {traceback.format_exc()}")
+
+        # bcrypt 에러 처리
+        error_message = str(e).lower()
+        if "invalid" in error_message or "password" in error_message or "hash" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="이메일 또는 비밀번호가 올바르지 않습니다."
+            )
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"로그인 중 오류가 발생했습니다: {str(e)}"
+            detail="로그인 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
         )
 
 

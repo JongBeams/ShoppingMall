@@ -161,10 +161,13 @@ export default function Orders({ user, dummyOrders }: OrdersProps) {
                     </div>
 
                     <div className="flex gap-2">
-                      <button className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
+                      <button className="border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
                         배송 조회
                       </button>
-                      <button className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                      <button
+                        onClick={() => window.location.href = '/mypage?tab=reviews'}
+                        className="border border-gray-900 bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                      >
                         리뷰 작성
                       </button>
                     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import Image from 'next/image';
 import Button from '@/app/components/common/Button';
 
@@ -9,11 +9,50 @@ const dummyProduct = {
   id: '1',
   name: '무선 이어폰',
   description: '고음질 블루투스 무선 이어폰입니다. 노이즈 캔슬링 기능과 긴 배터리 수명을 자랑합니다.',
+  detailImages: [
+    'https://images.unsplash.com/photo-1590658165737-15a047b7a1c4?w=800&q=80',
+    'https://images.unsplash.com/photo-1606841837239-c5a1a4a07af7?w=800&q=80',
+    'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=800&q=80',
+    'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=800&q=80',
+  ],
   price: 89000,
   category: '전자제품',
   imageUrl: '/placeholder-product.jpg',
   stock: 50,
 };
+
+const dummyReviews = [
+  {
+    id: 1,
+    userName: '김철수',
+    rating: 5,
+    content: '정말 좋아요! 노이즈 캔슬링이 훌륭하고 배터리도 오래가요.',
+    photos: [],
+    date: '2025.01.15',
+    likes: 24
+  },
+  {
+    id: 2,
+    userName: '박영희',
+    rating: 4,
+    content: '가성비 좋습니다. 다만 케이스가 조금 크네요.',
+    photos: [
+      'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=200&q=80',
+      'https://images.unsplash.com/photo-1606841837239-c5a1a4a07af7?w=200&q=80',
+    ],
+    date: '2025.01.12',
+    likes: 18
+  },
+  {
+    id: 3,
+    userName: '이민수',
+    rating: 5,
+    content: '음질이 정말 좋아요. 강력 추천합니다!',
+    photos: [],
+    date: '2025.01.10',
+    likes: 31
+  },
+];
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -79,6 +118,134 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <li>• 30일 무료 반품/교환</li>
             </ul>
           </div>
+        </div>
+      </div>
+
+      {/* Product Detail Description */}
+      <div className="mt-12 border-t border-gray-200 pt-12 dark:border-gray-700">
+        <h2 className="mb-6 text-base font-bold text-gray-900 dark:text-white">상품 상세 정보</h2>
+        <div className="space-y-3">
+          {dummyProduct.detailImages.map((imgUrl, index) => (
+            <div key={index} className="relative aspect-[16/9] overflow-hidden border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
+              <Image
+                src={imgUrl}
+                alt={`Product detail ${index + 1}`}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 1200px"
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+          <h3 className="mb-3 text-sm font-bold text-gray-900 dark:text-white">주요 특징</h3>
+          <ul className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+            <li>• 액티브 노이즈 캔슬링 (ANC) 기술</li>
+            <li>• 최대 24시간 배터리 수명</li>
+            <li>• IPX4 방수 등급</li>
+            <li>• 고품질 AAC/SBC 코덱 지원</li>
+            <li>• 터치 컨트롤 기능</li>
+          </ul>
+          <h3 className="mb-3 mt-6 text-sm font-bold text-gray-900 dark:text-white">제품 사양</h3>
+          <ul className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+            <li>• 블루투스 버전: 5.2</li>
+            <li>• 드라이버: 10mm 다이나믹 드라이버</li>
+            <li>• 충전 시간: 약 1.5시간</li>
+            <li>• 무게: 이어폰 5g, 충전 케이스 45g</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Review Stats */}
+      <div className="mt-12 border-t border-gray-200 pt-12 dark:border-gray-700">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-base font-bold text-gray-900 dark:text-white">
+            상품 리뷰 <span className="text-xs font-normal text-gray-500 dark:text-gray-400">({dummyReviews.length})</span>
+          </h2>
+          <div className="flex gap-1">
+            <button className="border border-gray-900 bg-gray-900 px-3 py-1 text-xs font-bold text-white dark:border-white dark:bg-white dark:text-gray-900">
+              최신순
+            </button>
+            <button className="border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800">
+              별점순
+            </button>
+          </div>
+        </div>
+
+        {/* Rating Summary */}
+        <div className="mb-6 border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+          <div className="flex gap-8">
+            <div className="flex flex-col items-center justify-center border-r border-gray-200 pr-8 dark:border-gray-700">
+              <div className="mb-1 text-3xl font-bold text-gray-900 dark:text-white">4.7</div>
+              <div className="mb-2 flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <svg key={star} className="h-3.5 w-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                  </svg>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{dummyReviews.length}개 리뷰</p>
+            </div>
+            <div className="flex-1 space-y-1.5">
+              {[5, 4, 3, 2, 1].map((rating) => (
+                <div key={rating} className="flex items-center gap-2">
+                  <span className="w-8 text-xs text-gray-600 dark:text-gray-400">{rating}점</span>
+                  <div className="h-1.5 flex-1 bg-gray-200 dark:bg-gray-700">
+                    <div
+                      className="h-1.5 bg-gray-900 dark:bg-white"
+                      style={{ width: `${rating === 5 ? 70 : rating === 4 ? 20 : 10}%` }}
+                    />
+                  </div>
+                  <span className="w-10 text-right text-xs text-gray-500 dark:text-gray-400">
+                    {rating === 5 ? 70 : rating === 4 ? 20 : 10}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+
+        {/* Review List */}
+        <div className="space-y-3">
+          {dummyReviews.map((review) => (
+            <div key={review.id} className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+              <div className="mb-3 flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{review.userName}</span>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <svg
+                        key={star}
+                        className={`h-3 w-3 ${star <= review.rating ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600'}`}
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                      </svg>
+                    ))}
+                  </div>
+                </div>
+                <span className="text-xs text-gray-400 dark:text-gray-500">{review.date}</span>
+              </div>
+              <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">{review.content}</p>
+              {review.photos.length > 0 && (
+                <div className="mb-3 flex gap-2">
+                  {review.photos.map((photo, index) => (
+                    <div key={index} className="relative h-16 w-16 border border-gray-200 dark:border-gray-700">
+                      <Image src={photo} alt={`Review ${index + 1}`} fill className="object-cover" sizes="64px" />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75A2.25 2.25 0 0116.5 4.5c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904M14.25 9h2.25M5.904 18.75c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 10.203 4.167 9.75 5 9.75h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z" />
+                </svg>
+                도움돼요 {review.likes}
+              </button>
+            </div>
+          ))}
         </div>
       </div>
     </div>
