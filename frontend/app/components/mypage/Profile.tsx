@@ -62,6 +62,124 @@ export default function Profile({ user, vendor }: ProfileProps) {
         </div>
       )}
 
+      {/* Payment & Delivery Management */}
+      {user.user_type !== 'seller' && (
+        <>
+          {/* Payment Methods */}
+          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">결제 수단</h3>
+              <button className="text-sm text-blue-600 transition hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                + 추가
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border border-gray-200 p-4 dark:border-gray-700">
+                <div className="flex items-center gap-3">
+                  <svg className="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">신한카드</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">**** **** **** 1234</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button className="text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                    수정
+                  </button>
+                  <button className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                    삭제
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">등록된 카드가 없습니다. 결제 수단을 추가해주세요.</p>
+            </div>
+          </div>
+
+          {/* Refund Account */}
+          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">환불 계좌</h3>
+              <button className="text-sm text-blue-600 transition hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                + 추가
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border border-gray-200 p-4 dark:border-gray-700">
+                <div className="flex items-center gap-3">
+                  <svg className="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">신한은행</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">110-123-456789 (홍길동)</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button className="text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                    수정
+                  </button>
+                  <button className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                    삭제
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Delivery Addresses */}
+          <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">배송지 관리</h3>
+              <button className="text-sm text-blue-600 transition hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                + 추가
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="border border-gray-200 p-4 dark:border-gray-700">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">자택</span>
+                    <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                      기본 배송지
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                      수정
+                    </button>
+                    <button className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                      삭제
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-300">서울시 강남구 테헤란로 123</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">이은지 · 010-1234-5678</p>
+              </div>
+              <div className="border border-gray-200 p-4 dark:border-gray-700">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">회사</span>
+                  <div className="flex gap-2">
+                    <button className="text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                      기본 배송지로 설정
+                    </button>
+                    <button className="text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                      수정
+                    </button>
+                    <button className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                      삭제
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-300">서울시 서초구 서초대로 78길 22</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">이은지 · 010-1234-5678</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Quick Stats */}
       <div className="grid gap-6 sm:grid-cols-3">
         <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">

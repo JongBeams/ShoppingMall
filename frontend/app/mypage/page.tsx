@@ -9,6 +9,10 @@ import Orders from '../components/mypage/Orders';
 import Sales from '../components/mypage/Sales';
 import Wishlist from '../components/mypage/Wishlist';
 import Inquiry from '../components/mypage/Inquiry';
+import Subscription from '../components/mypage/Subscription';
+import RecentProducts from '../components/mypage/RecentProducts';
+import Coupons from '../components/mypage/Coupons';
+import Reviews from '../components/mypage/Reviews';
 
 // 임시 더미 데이터(주문 내역)
 const dummyOrders: CartItemType[] = [
@@ -122,7 +126,11 @@ export default function MyPage() {
             {activeTab === 'orders' && <Orders user={user} dummyOrders={dummyOrders} />}
             {activeTab === 'sales' && user?.user_type === 'seller' && <Sales />}
             {activeTab === 'wishlist' && <Wishlist dummyWishList={dummyWishList} />}
+            {activeTab === 'recent' && <RecentProducts />}
             {activeTab === 'inquiry' && <Inquiry />}
+            {activeTab === 'subscription' && <Subscription />}
+            {activeTab === 'coupons' && <Coupons />}
+            {activeTab === 'reviews' && <Reviews />}
           </div>
         </div>
       </div>
