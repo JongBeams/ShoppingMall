@@ -1,9 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter} from 'next/navigation';
+
 
 export default function ProductManagement() {
   const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'options'>('products');
+
+  const router = useRouter();
+  const handleAddProduct = () => {
+    router.push('/product-management/-1');
+  };
+  const handleEdit = (productId: string) => {
+    router.push(`/product-management/${productId}`);
+  };
+
 
   return (
     <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
@@ -48,7 +59,8 @@ export default function ProductManagement() {
         <div>
           <div className="mb-6 flex items-center justify-between">
             <p className="text-sm text-gray-600 dark:text-gray-400">총 3개의 상품</p>
-            <button className="border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
+            <button onClick={handleAddProduct}
+            className="border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
               + 상품 등록
             </button>
           </div>
@@ -69,7 +81,8 @@ export default function ProductManagement() {
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">카테고리: 농산물</p>
                 </div>
                 <div className="flex gap-2">
-                  <button className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">수정</button>
+                  <button onClick={() => handleEdit('1')}
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">수정</button>
                   <button className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">삭제</button>
                 </div>
               </div>

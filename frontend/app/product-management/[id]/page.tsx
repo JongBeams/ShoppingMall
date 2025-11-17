@@ -4,15 +4,17 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { CartItem, Product } from '../../types';
 
+
+
 // 임시 더미 데이터 (동일한 데이터 사용)
 const dummySaleProducts: CartItem[] = [
   {
     product: {
       id: '1',
-      name: '무선 이어폰',
-      description: '고음질 블루투스 블루투스 무선 이어폰',
-      price: 89000,
-      category: '전자제품',
+      name: '프리미엄 유기농 토마토 1kg',
+      description: '뒷 밭에서 기른 프리미엄 유기농 토마토 1kg',
+      price: 15000,
+      category: '농산물',
       imageUrl: '/placeholder-product.jpg',
       stock: 50,
       createdAt: '2025-11-10T09:00:00Z',
@@ -154,7 +156,7 @@ export default function ProductEditPage() {
   };
 
   const handleCancel = () => {
-    router.push('/product-management');
+    router.push('/mypage#products');
   };
 
   if (loading) {
@@ -224,14 +226,14 @@ export default function ProductEditPage() {
                 className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
               >
                 <option value="">카테고리를 선택하세요</option>
-                <option value="전자제품">전자제품</option>
-                <option value="패션">패션</option>
-                <option value="뷰티">뷰티</option>
-                <option value="생활">생활</option>
-                <option value="식품">식품</option>
-                <option value="스포츠">스포츠</option>
-                <option value="도서">도서</option>
-                <option value="완구">완구</option>
+                <option value="electronics">가전/디지털</option> 
+                <option value="fashion">패션</option> 
+                <option value="beauty">뷰티</option> 
+                <option value="living">생활/건강</option>
+                <option value="food">식품</option> 
+                <option value="sports">스포츠</option> 
+                <option value="books">도서</option> 
+                <option value="baby">완구</option>
               </select>
             </div>
 
@@ -270,22 +272,6 @@ export default function ProductEditPage() {
               </div>
             </div>
 
-            {/* 등록 수량 */}
-            <div>
-              <label htmlFor="quantity" className="block text-sm font-medium text-gray-900 dark:text-white">
-                등록 수량 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                id="quantity"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                required
-                min="0"
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-                placeholder="0"
-              />
-            </div>
 
             {/* 이미지 파일 */}
             <div>
