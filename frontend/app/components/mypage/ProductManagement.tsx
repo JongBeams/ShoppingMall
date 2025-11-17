@@ -5,7 +5,7 @@ import { useRouter} from 'next/navigation';
 
 
 export default function ProductManagement() {
-  const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'options'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'options'>('products');
 
   const router = useRouter();
   const handleAddProduct = () => {
@@ -31,16 +31,6 @@ export default function ProductManagement() {
           }`}
         >
           상품 목록
-        </button>
-        <button
-          onClick={() => setActiveTab('categories')}
-          className={`px-4 py-2 text-sm font-medium ${
-            activeTab === 'categories'
-              ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-        >
-          카테고리 관리
         </button>
         <button
           onClick={() => setActiveTab('options')}
@@ -84,42 +74,6 @@ export default function ProductManagement() {
                   <button onClick={() => handleEdit('1')}
                   className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">수정</button>
                   <button className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">삭제</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Categories Tab */}
-      {activeTab === 'categories' && (
-        <div>
-          <div className="mb-6 flex items-center justify-between">
-            <p className="text-sm text-gray-600 dark:text-gray-400">카테고리 목록</p>
-            <button className="border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
-              + 카테고리 추가
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {[
-              { name: '농산물', count: 12, subcategories: ['채소', '과일', '곡물'] },
-              { name: '축산물', count: 8, subcategories: ['육류', '계란', '유제품'] },
-              { name: '수산물', count: 6, subcategories: ['생선', '건어물', '해조류'] },
-              { name: '가공식품', count: 15, subcategories: ['장류', '김치', '젓갈'] },
-            ].map((category, i) => (
-              <div key={i} className="border border-gray-200 p-4 dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h5 className="font-medium text-gray-900 dark:text-white">{category.name}</h5>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                      {category.count}개 상품 · 하위 카테고리: {category.subcategories.join(', ')}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">수정</button>
-                    <button className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">삭제</button>
-                  </div>
                 </div>
               </div>
             ))}
