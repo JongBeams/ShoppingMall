@@ -51,12 +51,11 @@ export default function CRMPage() {
           className="object-cover"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/85 to-cyan-700/85"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/70 to-cyan-700/70"></div>
 
         <div className="absolute inset-0 flex items-center justify-center text-center text-white">
           <div>
             <p className="mb-2 text-xs font-medium tracking-wider uppercase">Admin Dashboard</p>
-            <h1 className="mb-3 text-4xl font-bold">CRM 관리자</h1>
             <p className="mb-5 text-base">쇼핑몰 통합 관리 시스템</p>
             <div className="flex items-center justify-center gap-4 text-sm">
               <div className="flex items-center gap-2">
