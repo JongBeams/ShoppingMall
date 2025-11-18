@@ -127,31 +127,31 @@ export const productManagementAPI = {
       token,
     }),
 
-  // 상품 등록 (판매자 전용)
+  // 상품 등록/수정 (판매자 전용)
   create: (data: CreateProductRequest, token: string) => {
-    // File 객체 제거하고 나머지 데이터만 전송
-    const { ...productData } = data;
+    // image 필드를 image_url로 변환
+    const { image, ...productData } = data;
 
-    return fetchAPI('/products/management/-1', {
+    return fetchAPI(`/products/management/${data.id}`, {
       method: 'POST',
       body: JSON.stringify({
         ...productData,
-        // image_url은 별도 이미지 업로드 후 받은 URL을 사용
-        image_url: null, // 또는 이미지 업로드 후 받은 URL
+        image_url: image || null, // image는 URL string
       }),
       token,
     });
   },
 
-  // 상품 수정 (판매자 전용)
+  // 상품 수정 (create와 동일하게 동작)
   update: (id: string, data: Partial<CreateProductRequest>, token: string) => {
-    const { ...productData } = data;
+    const { image, ...productData } = data;
 
     return fetchAPI(`/products/management/${id}`, {
-      method: 'PUT',
+      method: 'POST',
       body: JSON.stringify({
         ...productData,
-        image_url: null, // 또는 이미지 업로드 후 받은 URL
+        id,
+        image_url: image || null,
       }),
       token,
     });
@@ -169,7 +169,7 @@ export const productManagementAPI = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/product-image/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/products/product-image/${id}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

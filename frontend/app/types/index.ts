@@ -22,7 +22,7 @@ export interface CreateProductRequest {
   low_stock_threshold?: number;
   is_active?: boolean;
   is_featured?: boolean;
-  // image?: File;
+  image?: string; // 이미지 URL
 }
 
 // Vendor Product Response (판매자 상품 목록 조회용)
@@ -35,6 +35,7 @@ export interface GetVendorProductRequest {
   stock_quantity: number;
   low_stock_threshold: number;
   images?: any;
+  thumbnail_url?: string;
   is_active: boolean;
   view_count: number;
   sale_count: number;

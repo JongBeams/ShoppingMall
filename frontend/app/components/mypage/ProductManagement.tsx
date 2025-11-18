@@ -133,14 +133,26 @@ export default function ProductManagement() {
                 등록된 상품이 없습니다.
               </div>
             ) : (
-              products.map((product, index) => (
-                <div key={index} className="flex items-center gap-4 border border-gray-200 p-4 dark:border-gray-700">
+              products.map((product, index) => {
+                const imageSrc =
+                  product.thumbnail_url ||
+                  (typeof product.images === 'string' ? product.images : undefined);
+                return (
+                  <div key={index} className="flex items-center gap-4 border border-gray-200 p-4 dark:border-gray-700">
                   <div className="h-20 w-20 flex-shrink-0 overflow-hidden border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-700">
-                    <div className="flex h-full items-center justify-center text-gray-400">
-                      <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
-                      </svg>
-                    </div>
+                    {imageSrc ? (
+                      <img
+                        src={imageSrc}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-gray-400">
+                        <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                        </svg>
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1">
                     <h5 className="font-medium text-gray-900 dark:text-white">{product.name}</h5>
@@ -158,7 +170,8 @@ export default function ProductManagement() {
                     className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">삭제</button>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
