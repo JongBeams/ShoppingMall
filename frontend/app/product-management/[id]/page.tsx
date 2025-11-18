@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { CartItem, Product } from '../../types';
+import { CartItem, Product, CreateProductRequest } from '../../types';
+import { productManagementAPI } from '../../lib/api';
 
 
 
@@ -61,7 +62,7 @@ export default function ProductEditPage() {
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
   const [stock, setStock] = useState('');
-  const [quantity, setQuantity] = useState('');
+  const [lowStock, setlowStock] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
 
@@ -92,7 +93,7 @@ export default function ProductEditPage() {
         setPrice(dummyProduct.product.price.toString());
         setCategory(dummyProduct.product.category);
         setStock(dummyProduct.product.stock.toString());
-        setQuantity(dummyProduct.quantity.toString());
+        setlowStock(dummyProduct.quantity.toString());
         setImagePreview(dummyProduct.product.imageUrl || '');
       }
     } catch (e) {
@@ -124,35 +125,53 @@ export default function ProductEditPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // TODO: API 호출로 상품 등록/수정
-    const formData = new FormData();
-    formData.append('id', productId);
-    formData.append('name', name);
-    formData.append('description', description);
-    formData.append('price', price);
-    formData.append('category', category);
-    formData.append('stock', stock);
-    formData.append('quantity', quantity);
-    if (imageFile) {
-      formData.append('image', imageFile);
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert('로그인이 필요합니다.');
+      router.push('/login');
+      return;
     }
 
-    console.log('Submit product:', {
-      id: productId,
+    if (description.trim().length < 20) {
+      alert('상품 설명은 최소 20자 이상 입력해주세요.');
+      return;
+    }
+
+    // CreateProductRequest 인터페이스에 맞춰 데이터 구성
+    const productData: CreateProductRequest = {
       name,
       description,
       price: Number(price),
       category,
-      stock: Number(stock),
-      quantity: Number(quantity),
-      imageFile: imageFile?.name,
-    });
+      stock_quantity: Number(stock),
+      low_stock_threshold: Number(lowStock),
+    };
 
-    alert(isNewProduct ? '상품이 등록되었습니다.' : '상품이 수정되었습니다.');
-    router.push('/product-management');
+    // 이미지 파일이 있으면 추가
+    // if (imageFile) {
+    //   productData.image = imageFile;
+    // }
+
+    try {
+      if (isNewProduct) {
+        // 상품 등록
+        const response = await productManagementAPI.create(productData, token);
+        console.log('Product created:', response);
+        alert('상품이 등록되었습니다.');
+      } else {
+        // 상품 수정
+        const response = await productManagementAPI.update(productId, productData, token);
+        console.log('Product updated:', response);
+        alert('상품이 수정되었습니다.');
+      }
+      router.push('/mypage#products');
+    } catch (error: any) {
+      console.error('Error submitting product:', error);
+      alert(error.message || '상품 등록/수정 중 오류가 발생했습니다.');
+    }
   };
 
   const handleCancel = () => {
@@ -208,8 +227,9 @@ export default function ProductEditPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 required
                 rows={4}
+                minLength={20}
                 className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-                placeholder="상품 설명을 입력하세요"
+                placeholder="상품 설명을 20자 이상 입력하세요"
               />
             </div>
 
@@ -238,7 +258,7 @@ export default function ProductEditPage() {
             </div>
 
             {/* 가격 & 재고 */}
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-6">
               <div>
                 <label htmlFor="price" className="block text-sm font-medium text-gray-900 dark:text-white">
                   가격 (₩) <span className="text-red-500">*</span>
@@ -254,7 +274,10 @@ export default function ProductEditPage() {
                   placeholder="0"
                 />
               </div>
+            </div>
 
+
+            <div className="grid gap-6 sm:grid-cols-2">
               <div>
                 <label htmlFor="stock" className="block text-sm font-medium text-gray-900 dark:text-white">
                   재고 <span className="text-red-500">*</span>
@@ -270,6 +293,22 @@ export default function ProductEditPage() {
                   placeholder="0"
                 />
               </div>
+              <div>
+                <label htmlFor="stock" className="block text-sm font-medium text-gray-900 dark:text-white">
+                  재고 부족 알림 수량 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="low_stock_threshold"
+                  value={lowStock}
+                  onChange={(e) => setlowStock(e.target.value)}
+                  required
+                  min="10"
+                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+                  placeholder="10"
+                />
+              </div>
+              
             </div>
 
 

@@ -10,6 +10,20 @@ export interface Product {
   createdAt?: string;
 }
 
+// Product Creation/Update Request
+export interface CreateProductRequest {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  stock_quantity: number;
+  sku?: string;
+  low_stock_threshold?: number;
+  is_active?: boolean;
+  is_featured?: boolean;
+  // image?: File;
+}
+
 // Cart Types
 export interface CartItem {
   product: Product;

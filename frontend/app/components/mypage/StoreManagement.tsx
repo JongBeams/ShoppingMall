@@ -55,7 +55,8 @@ export default function StoreManagement() {
           >
             스토어 정보
           </button>
-          <button
+          {/* 중복되는 내용 이라 주석 처리(추후 수정 필요)*/}
+          {/* <button
             onClick={() => setActiveTab('products')}
             className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition ${
               activeTab === 'products'
@@ -64,7 +65,7 @@ export default function StoreManagement() {
             }`}
           >
             상품 관리
-          </button>
+          </button> */}
           <button
             onClick={() => setActiveTab('delivery')}
             className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition ${
@@ -252,17 +253,17 @@ export default function StoreManagement() {
         )}
 
         {/* 상품 관리 탭 */}
-        {activeTab === 'products' && (
+        {/* {activeTab === 'products' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="text-base font-semibold text-gray-900 dark:text-white">등록 상품 목록</h4>
               <button className="border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
                 + 상품 등록
               </button>
-            </div>
+            </div> */}
 
             {/* 상품 목록 */}
-            <div className="space-y-3">
+            {/* <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center gap-4 border border-gray-200 p-4 dark:border-gray-700">
                   <div className="h-20 w-20 flex-shrink-0 overflow-hidden border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-700">
@@ -285,7 +286,7 @@ export default function StoreManagement() {
               ))}
             </div>
           </div>
-        )}
+        )} */}
 
         {/* 배송 관리 탭 */}
         {activeTab === 'delivery' && (

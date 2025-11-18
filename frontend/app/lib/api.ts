@@ -1,5 +1,7 @@
 // FastAPI 백엔드 연동을 위한 API 유틸리티
 
+import { CreateProductRequest } from "../types";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 interface FetchOptions extends RequestInit {
@@ -105,4 +107,81 @@ export const cartAPI = {
       method: 'DELETE',
       token,
     }),
+};
+
+
+
+// Product Management API (판매자 전용)
+export const productManagementAPI = {
+  // 판매자의 상품 목록 조회
+  getMyProducts: (token: string) =>
+    fetchAPI('/products/management', {
+      method: 'GET',
+      token,
+    }),
+
+  // 상품 상세 조회
+  getById: (id: string, token: string) =>
+    fetchAPI(`/products/management/${id}`, {
+      method: 'GET',
+      token,
+    }),
+
+  // 상품 등록 (판매자 전용)
+  create: (data: CreateProductRequest, token: string) => {
+    // File 객체 제거하고 나머지 데이터만 전송
+    const { ...productData } = data;
+
+    return fetchAPI('/products/management/-1', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...productData,
+        // image_url은 별도 이미지 업로드 후 받은 URL을 사용
+        image_url: null, // 또는 이미지 업로드 후 받은 URL
+      }),
+      token,
+    });
+  },
+
+  // 상품 수정 (판매자 전용)
+  update: (id: string, data: Partial<CreateProductRequest>, token: string) => {
+    const { ...productData } = data;
+
+    return fetchAPI(`/products/management/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        ...productData,
+        image_url: null, // 또는 이미지 업로드 후 받은 URL
+      }),
+      token,
+    });
+  },
+
+  // 상품 삭제 (판매자 전용)
+  delete: (id: string, token: string) =>
+    fetchAPI(`/products/management/${id}`, {
+      method: 'DELETE',
+      token,
+    }),
+
+  // 이미지 업로드 (별도 엔드포인트)
+  uploadImage: async (id: string,file: File, token: string): Promise<{ image_url: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/product-image/${id}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(error.detail || 'Image upload failed');
+    }
+
+    return response.json();
+  },
 };
