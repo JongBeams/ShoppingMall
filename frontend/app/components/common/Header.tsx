@@ -404,7 +404,7 @@ export default function Header() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={isCRMPage ? '회원, 상품, 주문 검색...' : (userType === 'seller' ? '상품+주문+문의 통합검색' : '상품 검색...')}
+                  placeholder={isCRMPage ? '판매스토어, 회원 검색' : (userType === 'seller' ? '상품+주문+문의 통합검색' : '상품 검색...')}
                   className="w-full border border-gray-300 bg-white px-4 py-2 pr-10 text-sm text-gray-900 placeholder-gray-500 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-white"
                 />
                 <button
