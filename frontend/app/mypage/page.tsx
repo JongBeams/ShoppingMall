@@ -18,7 +18,6 @@ import ProductManagement from '../components/mypage/ProductManagement';
 import DeliveryManagement from '../components/mypage/DeliveryManagement';
 import InquiryManagement from '../components/mypage/InquiryManagement';
 import SellerCoupons from '../components/mypage/SellerCoupons';
-import Promotions from '../components/mypage/Promotions';
 
 // 임시 더미 데이터(주문 내역)
 const dummyOrders: CartItemType[] = [
@@ -151,7 +150,6 @@ export default function MyPage() {
             {activeTab === 'delivery' && user?.user_type === 'seller' && <DeliveryManagement />}
             {activeTab === 'inquiries' && user?.user_type === 'seller' && <InquiryManagement />}
             {activeTab === 'seller-coupons' && user?.user_type === 'seller' && <SellerCoupons />}
-            {activeTab === 'promotions' && user?.user_type === 'seller' && <Promotions />}
             {activeTab === 'wishlist' && <Wishlist dummyWishList={dummyWishList} />}
             {activeTab === 'recent' && <RecentProducts />}
             {activeTab === 'inquiry' && <Inquiry />}

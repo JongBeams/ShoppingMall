@@ -6,7 +6,7 @@ import os
 load_dotenv()
 
 # Routers
-from app.routers import auth, admin, product
+from app.routers import auth, admin, product, vendor
 
 app = FastAPI(title="ShoppingMall API", version="1.0.0")
 
@@ -24,6 +24,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(product.router)
+app.include_router(vendor.router)
 
 @app.get("/")
 async def root():

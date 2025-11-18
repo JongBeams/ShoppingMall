@@ -1,18 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
 export default function StoreManagement() {
-  const [activeTab, setActiveTab] = useState<'info' | 'products' | 'delivery' | 'inquiries' | 'coupons'>('info');
-  const [storeName, setStoreName] = useState('프리미엄 농산물 직거래');
-  const [storeDescription, setStoreDescription] = useState('신선하고 건강한 유기농 농산물을 직접 재배하여 판매합니다.');
+  const [storeName, setStoreName] = useState('');
+  const [storeDescription, setStoreDescription] = useState('');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [initialData, setInitialData] = useState({ storeName: '', storeDescription: '', logoUrl: null as string | null, bannerUrl: null as string | null });
+
+  // 로그인 시 저장된 vendor 정보 불러오기
+  useEffect(() => {
+    const vendorData = localStorage.getItem('vendor');
+    if (vendorData) {
+      try {
+        const vendor = JSON.parse(vendorData);
+        setStoreName(vendor.store_name || '');
+        setStoreDescription(vendor.store_description || '');
+        setLogoPreview(vendor.store_logo_url);
+        setBannerPreview(vendor.store_banner_url);
+        setInitialData({
+          storeName: vendor.store_name || '',
+          storeDescription: vendor.store_description || '',
+          logoUrl: vendor.store_logo_url,
+          bannerUrl: vendor.store_banner_url,
+        });
+      } catch (e) {
+        console.error('Failed to parse vendor data:', e);
+      }
+    }
+  }, []);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setLogoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoPreview(reader.result as string);
@@ -24,6 +52,7 @@ export default function StoreManagement() {
   const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setBannerFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setBannerPreview(reader.result as string);
@@ -32,8 +61,89 @@ export default function StoreManagement() {
     }
   };
 
-  const handleSave = () => {
-    alert('스토어 정보가 저장되었습니다.');
+  const handleSave = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // 1. 스토어 정보 업데이트
+      const updateResponse = await fetch(`${API_BASE_URL}/vendors/me?token=${token}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          store_name: storeName,
+          store_description: storeDescription,
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error('스토어 정보 업데이트에 실패했습니다.');
+      }
+
+      // 2. 로고 업로드 (파일이 있는 경우)
+      if (logoFile) {
+        const logoFormData = new FormData();
+        logoFormData.append('file', logoFile);
+
+        const logoResponse = await fetch(`${API_BASE_URL}/vendors/me/upload-logo?token=${token}`, {
+          method: 'POST',
+          body: logoFormData,
+        });
+
+        if (!logoResponse.ok) {
+          throw new Error('로고 업로드에 실패했습니다.');
+        }
+      }
+
+      // 3. 배너 업로드 (파일이 있는 경우)
+      if (bannerFile) {
+        const bannerFormData = new FormData();
+        bannerFormData.append('file', bannerFile);
+
+        const bannerResponse = await fetch(`${API_BASE_URL}/vendors/me/upload-banner?token=${token}`, {
+          method: 'POST',
+          body: bannerFormData,
+        });
+
+        if (!bannerResponse.ok) {
+          throw new Error('배너 업로드에 실패했습니다.');
+        }
+      }
+
+      // localStorage의 vendor 정보 업데이트
+      const vendorData = localStorage.getItem('vendor');
+      if (vendorData) {
+        const vendor = JSON.parse(vendorData);
+        vendor.store_name = storeName;
+        vendor.store_description = storeDescription;
+        localStorage.setItem('vendor', JSON.stringify(vendor));
+      }
+
+      alert('스토어 정보가 저장되었습니다.');
+      setLogoFile(null);
+      setBannerFile(null);
+
+    } catch (err: any) {
+      alert(err.message || '저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setStoreName(initialData.storeName);
+    setStoreDescription(initialData.storeDescription);
+    setLogoPreview(initialData.logoUrl);
+    setBannerPreview(initialData.bannerUrl);
+    setLogoFile(null);
+    setBannerFile(null);
   };
 
   return (
@@ -42,67 +152,8 @@ export default function StoreManagement() {
         <h3 className="text-lg font-bold text-gray-900 dark:text-white">스토어 관리</h3>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 px-6 dark:border-gray-700">
-        <div className="flex gap-1 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('info')}
-            className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition ${
-              activeTab === 'info'
-                ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
-                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-            }`}
-          >
-            스토어 정보
-          </button>
-          {/* 중복되는 내용 이라 주석 처리(추후 수정 필요)*/}
-          {/* <button
-            onClick={() => setActiveTab('products')}
-            className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition ${
-              activeTab === 'products'
-                ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
-                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-            }`}
-          >
-            상품 관리
-          </button> */}
-          <button
-            onClick={() => setActiveTab('delivery')}
-            className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition ${
-              activeTab === 'delivery'
-                ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
-                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-            }`}
-          >
-            배송 관리
-          </button>
-          <button
-            onClick={() => setActiveTab('inquiries')}
-            className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition ${
-              activeTab === 'inquiries'
-                ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
-                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-            }`}
-          >
-            문의 관리
-          </button>
-          <button
-            onClick={() => setActiveTab('coupons')}
-            className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition ${
-              activeTab === 'coupons'
-                ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
-                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-            }`}
-          >
-            쿠폰 발행
-          </button>
-        </div>
-      </div>
-
-      {/* Tab Content */}
+      {/* Content */}
       <div className="p-6">
-        {/* 스토어 정보 탭 */}
-        {activeTab === 'info' && (
           <div className="space-y-6">
             {/* Store Name */}
             <div>
@@ -232,25 +283,21 @@ export default function StoreManagement() {
             {/* Action Buttons */}
             <div className="flex justify-end gap-2 border-t border-gray-200 pt-6 dark:border-gray-700">
               <button
-                onClick={() => {
-                  setStoreName('프리미엄 농산물 직거래');
-                  setStoreDescription('신선하고 건강한 유기농 농산물을 직접 재배하여 판매합니다.');
-                  setLogoPreview(null);
-                  setBannerPreview(null);
-                }}
-                className="border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                onClick={handleReset}
+                disabled={isLoading}
+                className="border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
               >
                 취소
               </button>
               <button
                 onClick={handleSave}
-                className="border border-gray-900 bg-gray-900 px-6 py-2 text-sm font-bold text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                disabled={isLoading}
+                className="border border-gray-900 bg-gray-900 px-6 py-2 text-sm font-bold text-white hover:bg-gray-800 disabled:opacity-50 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
               >
-                저장
+                {isLoading ? '저장 중...' : '저장'}
               </button>
             </div>
           </div>
-        )}
 
         {/* 상품 관리 탭 */}
         {/* {activeTab === 'products' && (
@@ -288,8 +335,8 @@ export default function StoreManagement() {
           </div>
         )} */}
 
-        {/* 배송 관리 탭 */}
-        {activeTab === 'delivery' && (
+        {/* 기존 UI 모두 삭제 */}
+        {false && (
           <div className="space-y-4">
             <h4 className="text-base font-semibold text-gray-900 dark:text-white">배송 관리</h4>
 
@@ -332,7 +379,7 @@ export default function StoreManagement() {
         )}
 
         {/* 문의 관리 탭 */}
-        {activeTab === 'inquiries' && (
+        {false && (
           <div className="space-y-4">
             <h4 className="text-base font-semibold text-gray-900 dark:text-white">상품 문의 관리</h4>
 
@@ -369,7 +416,7 @@ export default function StoreManagement() {
         )}
 
         {/* 쿠폰 발행 탭 */}
-        {activeTab === 'coupons' && (
+        {false && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="text-base font-semibold text-gray-900 dark:text-white">발행한 쿠폰 목록</h4>
