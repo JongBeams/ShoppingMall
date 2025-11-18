@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Header, status, UploadFile, File
+from fastapi import APIRouter, Header, status, UploadFile, File, HTTPException
 
 from app.models.product import CreateProductRequset
 from app.services.product_management import CreateProduct, DeleteProduct, UploadProductImage, get_profile_from_token, GetVendorProducts
+from app.services.supabase import get_supabase_client
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -10,7 +11,65 @@ router = APIRouter(prefix="/products", tags=["products"])
 # 공개 API (인증 불필요)
 # ============================================
 
-#상품 조회
+@router.get("/", summary="전체 상품 목록 조회")
+async def get_all_products():
+    """
+    활성화된 전체 상품 목록을 조회합니다 (공개 API)
+    """
+    supabase = get_supabase_client()
+
+    try:
+        products_response = (
+            supabase.table("products")
+            .select("id, name, description, price, stock_quantity, category_id, thumbnail_url, is_active, created_at")
+            .eq("is_active", True)
+            .order("created_at", desc=True)
+            .execute()
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"상품 목록을 조회하는 중 오류가 발생했습니다: {str(e)}"
+        )
+
+    products = products_response.data or []
+    category_ids = {product["category_id"] for product in products if product.get("category_id")}
+    category_map = {}
+
+    if category_ids:
+        try:
+            categories_response = (
+                supabase.table("categories")
+                .select("id, slug, name")
+                .in_("id", list(category_ids))
+                .execute()
+            )
+            for category in categories_response.data or []:
+                category_map[category["id"]] = {
+                    "slug": category.get("slug"),
+                    "name": category.get("name"),
+                }
+        except Exception:
+            category_map = {}
+
+    product_list = []
+    for product in products:
+        category_info = category_map.get(product.get("category_id"), {})
+        product_list.append({
+            "id": product["id"],
+            "name": product["name"],
+            "description": product.get("description"),
+            "price": product["price"],
+            "stock_quantity": product.get("stock_quantity", 0),
+            "thumbnail_url": product.get("thumbnail_url"),
+            "category_slug": category_info.get("slug"),
+            "category_name": category_info.get("name"),
+        })
+
+    return {"products": product_list}
+@router.get("", include_in_schema=False)
+async def get_all_products_no_slash():
+    return await get_all_products()
 
 #판매자 상품 조회
 @router.get("/management", summary="내 상품 목록 조회")
