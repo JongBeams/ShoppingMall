@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [menuHeight, setMenuHeight] = useState(0);
@@ -16,37 +17,71 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // CRM 경로 확인
+  const isCRMPage = pathname?.startsWith('/crm');
+
   // 로그인 상태 확인
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    const user = localStorage.getItem('user');
+    if (isCRMPage) {
+      // CRM 페이지: 관리자 인증 확인
+      const adminToken = localStorage.getItem('admin_token');
+      const adminData = localStorage.getItem('admin_user');
 
-    if (token && user) {
-      setIsLoggedIn(true);
-      try {
-        const userData = JSON.parse(user);
-        setUserName(userData.full_name || '사용자');
-        setUserType(userData.user_type || '');
-      } catch (e) {
-        console.error('Failed to parse user data:', e);
+      if (adminToken && adminData) {
+        setIsLoggedIn(true);
+        try {
+          const admin = JSON.parse(adminData);
+          setUserName(admin.full_name || '관리자');
+          setUserType('admin');
+        } catch (e) {
+          console.error('Failed to parse admin data:', e);
+        }
+      }
+    } else {
+      // 일반 페이지: 일반 사용자 인증 확인
+      const token = localStorage.getItem('access_token');
+      const user = localStorage.getItem('user');
+
+      if (token && user) {
+        setIsLoggedIn(true);
+        try {
+          const userData = JSON.parse(user);
+          setUserName(userData.full_name || '사용자');
+          setUserType(userData.user_type || '');
+        } catch (e) {
+          console.error('Failed to parse user data:', e);
+        }
       }
     }
-  }, []);
+  }, [isCRMPage]);
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('vendor');
-    setIsLoggedIn(false);
-    setUserName('');
-    router.push('/');
+    if (isCRMPage) {
+      // CRM 로그아웃
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+      setIsLoggedIn(false);
+      setUserName('');
+      router.push('/crm/login');
+    } else {
+      // 일반 사용자 로그아웃
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('vendor');
+      setIsLoggedIn(false);
+      setUserName('');
+      router.push('/');
+    }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      if (userType === 'seller') {
+      if (isCRMPage) {
+        // 관리자: CRM 통합 검색
+        router.push(`/crm?search=${encodeURIComponent(searchQuery)}`);
+      } else if (userType === 'seller') {
         // 판매자: 마이페이지 통합 검색
         router.push(`/mypage?search=${encodeURIComponent(searchQuery)}`);
       } else {
@@ -57,8 +92,43 @@ export default function Header() {
     }
   };
 
-  // 더미 알림 데이터
-  const notifications = [
+  // 더미 알림 데이터 - CRM vs 일반 사용자
+  const adminNotifications = [
+    {
+      id: 1,
+      type: '판매자 승인',
+      title: '새로운 판매자 승인 요청',
+      message: 'OO농장에서 판매자 승인을 요청했습니다.',
+      time: '5분 전',
+      read: false
+    },
+    {
+      id: 2,
+      type: '문의',
+      title: '신규 고객 문의',
+      message: '결제 관련 문의가 접수되었습니다.',
+      time: '30분 전',
+      read: false
+    },
+    {
+      id: 3,
+      type: '구독',
+      title: '프리미엄 구독 활성화',
+      message: '김철수님이 프리미엄 구독을 시작했습니다.',
+      time: '1시간 전',
+      read: true
+    },
+    {
+      id: 4,
+      type: '시스템',
+      title: '일일 리포트',
+      message: '오늘의 판매 통계가 생성되었습니다.',
+      time: '2시간 전',
+      read: true
+    },
+  ];
+
+  const userNotifications = [
     {
       id: 1,
       type: '주문',
@@ -84,6 +154,8 @@ export default function Header() {
       read: true
     },
   ];
+
+  const notifications = isCRMPage ? adminNotifications : userNotifications;
 
   const handleMenuEnter = (menuName: string) => {
     const menu = menuItems.find(item => item.name === menuName);
@@ -211,8 +283,45 @@ export default function Header() {
     },
   ];
 
-  // 현재 사용자 타입에 따라 메뉴 선택
-  const menuItems = userType === 'seller' ? sellerMenuItems : buyerMenuItems;
+  const adminMenuItems = [
+    {
+      name: '대시보드',
+      href: '/crm',
+      submenu: [],
+      rightLinks: []
+    },
+    {
+      name: '회원 관리',
+      href: '/crm/users',
+      submenu: [
+        { name: '전체 회원', href: '/crm/users', image: 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?w=200&q=80' },
+        { name: '구매자 관리', href: '/crm/users?type=buyer', image: 'https://images.unsplash.com/photo-1556745753-b2904692b3cd?w=200&q=80' },
+        { name: '판매자 관리', href: '/crm/users?type=seller', image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&q=80' },
+        { name: '휴면 회원', href: '/crm/users?status=inactive', image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=200&q=80' },
+      ],
+      rightLinks: [
+        { name: '회원 통계', href: '/crm/users/stats' },
+        { name: '회원 등급', href: '/crm/users/grades' },
+      ]
+    },
+    {
+      name: '시스템',
+      href: '/crm/settings',
+      submenu: [
+        { name: '공지사항', href: '/crm/notices', image: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=200&q=80' },
+        { name: 'FAQ 관리', href: '/crm/faq', image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=200&q=80' },
+        { name: '배너 관리', href: '/crm/banners', image: 'https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?w=200&q=80' },
+        { name: '설정', href: '/crm/settings', image: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=200&q=80' },
+      ],
+      rightLinks: [
+        { name: '관리자 계정', href: '/crm/admins' },
+        { name: '로그 관리', href: '/crm/logs' },
+      ]
+    },
+  ];
+
+  // 현재 사용자 타입 또는 페이지에 따라 메뉴 선택
+  const menuItems = isCRMPage ? adminMenuItems : (userType === 'seller' ? sellerMenuItems : buyerMenuItems);
 
   return (
     <>
@@ -231,8 +340,8 @@ export default function Header() {
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
           {/* Logo */}
           <div className="flex lg:flex-1">
-            <Link href="/" className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-              SHOP
+            <Link href={isCRMPage ? '/crm' : '/'} className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+              {isCRMPage ? 'CRM ADMIN' : 'SHOP'}
             </Link>
           </div>
 
@@ -295,7 +404,7 @@ export default function Header() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={userType === 'seller' ? '상품+주문+문의 통합검색' : '상품 검색...'}
+                  placeholder={isCRMPage ? '회원, 상품, 주문 검색...' : (userType === 'seller' ? '상품+주문+문의 통합검색' : '상품 검색...')}
                   className="w-full border border-gray-300 bg-white px-4 py-2 pr-10 text-sm text-gray-900 placeholder-gray-500 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-white"
                 />
                 <button
@@ -381,7 +490,7 @@ export default function Header() {
               </div>
             )}
 
-            {!(isLoggedIn && userType === 'seller') && (
+            {!(isLoggedIn && userType === 'seller') && !isCRMPage && (
               <Link
                 href="/cart"
                 className="flex items-center text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"

@@ -90,24 +90,6 @@ export default function CRMPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-800">
-        <div className="flex items-center justify-between px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">CRM</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {adminUser?.full_name || '관리자'}님
-            </span>
-            <button
-              onClick={handleLogout}
-              className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-            >
-              로그아웃
-            </button>
-          </div>
-        </div>
-      </header>
-
       <div className="flex">
         {/* Sidebar */}
         <aside className="w-64 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-800" style={{ minHeight: 'calc(100vh - 73px)' }}>
