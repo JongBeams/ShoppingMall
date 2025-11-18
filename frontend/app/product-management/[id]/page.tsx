@@ -2,53 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { CartItem, Product, CreateProductRequest } from '../../types';
+import { CreateProductRequest } from '../../types';
 import { productManagementAPI } from '../../lib/api';
 
-
-
-// 임시 더미 데이터 (동일한 데이터 사용)
-const dummySaleProducts: CartItem[] = [
-  {
-    product: {
-      id: '1',
-      name: '프리미엄 유기농 토마토 1kg',
-      description: '뒷 밭에서 기른 프리미엄 유기농 토마토 1kg',
-      price: 15000,
-      category: '농산물',
-      imageUrl: '/placeholder-product.jpg',
-      stock: 50,
-      createdAt: '2025-11-10T09:00:00Z',
-    },
-    quantity: 100,
-  },
-  {
-    product: {
-      id: '2',
-      name: '백팩',
-      description: '심플한 디자인의 데일리 백팩 (노트북 수납 가능)',
-      price: 65000,
-      category: '패션',
-      imageUrl: '/placeholder-product.jpg',
-      stock: 20,
-      createdAt: '2025-11-11T12:30:00Z',
-    },
-    quantity: 200,
-  },
-  {
-    product: {
-      id: '3',
-      name: '프로그래머를 위한 자바스크립트 입문서',
-      description: '기초 문법부터 실전 예제까지 다루는 자바스크립트 입문 도서',
-      price: 32000,
-      category: '도서',
-      imageUrl: '/placeholder-product.jpg',
-      stock: 30,
-      createdAt: '2025-11-12T15:00:00Z',
-    },
-    quantity: 300,
-  },
-];
 
 export default function ProductEditPage() {
   const router = useRouter();
@@ -62,7 +18,7 @@ export default function ProductEditPage() {
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
   const [stock, setStock] = useState('');
-  const [lowStock, setlowStock] = useState('');
+  const [lowStock, setlowStock] = useState('10');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
 
@@ -85,16 +41,38 @@ export default function ProductEditPage() {
         return;
       }
 
-      // 신규 상품이 아니면 더미 데이터에서 첫 번째 상품 정보 로드
+      // 신규 상품이 아니면 상품 정보 로드
       if (!isNewProduct) {
-        const dummyProduct = dummySaleProducts[0]; // 임시로 첫 번째 상품 사용
-        setName(dummyProduct.product.name);
-        setDescription(dummyProduct.product.description);
-        setPrice(dummyProduct.product.price.toString());
-        setCategory(dummyProduct.product.category);
-        setStock(dummyProduct.product.stock.toString());
-        setlowStock(dummyProduct.quantity.toString());
-        setImagePreview(dummyProduct.product.imageUrl || '');
+        const fetchProduct = async () => {
+          try {
+            // 모든 상품 목록 가져오기
+            const response = await productManagementAPI.getMyProducts(token);
+
+            // productId로 해당 상품 찾기
+            const product = response.products.find(p => p.id === productId);
+
+            if (!product) {
+              alert('상품을 찾을 수 없습니다.');
+              router.push('/mypage#products');
+              return;
+            }
+
+            // 폼 필드에 상품 정보 설정
+            setName(product.name);
+            setDescription(product.description || '');
+            setPrice(product.price.toString());
+            // category_slug 값을 그대로 사용
+            setCategory(product.category_slug);
+            setStock(product.stock_quantity.toString());
+            setlowStock(product.low_stock_threshold.toString());
+            // setImagePreview(product.images || '');
+          } catch (error) {
+            console.error('Failed to fetch product:', error);
+            alert('상품 정보를 불러오지 못했습니다.');
+            router.push('/mypage#products');
+          }
+        };
+        fetchProduct();
       }
     } catch (e) {
       console.error('Failed to parse user data:', e);
@@ -102,7 +80,7 @@ export default function ProductEditPage() {
     } finally {
       setLoading(false);
     }
-  }, [router, isNewProduct]);
+  }, [router, isNewProduct, productId]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -142,6 +120,7 @@ export default function ProductEditPage() {
 
     // CreateProductRequest 인터페이스에 맞춰 데이터 구성
     const productData: CreateProductRequest = {
+      id: productId,  // -1 (신규) 또는 실제 상품 ID
       name,
       description,
       price: Number(price),

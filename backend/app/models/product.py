@@ -1,7 +1,5 @@
 from decimal import Decimal
-import string
 from typing import Optional
-from xmlrpc.client import boolean
 from datetime import datetime
 from uuid import UUID
 
@@ -15,6 +13,8 @@ from pydantic import BaseModel, Field
 
 class CreateProductRequset(BaseModel):
     """상품정보 요청 모델"""
+    #상품 ID값 -1일땐 신규 나머지 값은 조회 후 수정으로 진행
+    id: Optional[str] = None
 
     #상품명
     name: str = Field(..., min_length=1)
@@ -92,8 +92,9 @@ class ProductResponse(BaseModel):
 
 class VendorProductResponse(BaseModel):
     """판매자 상품 조회 응답 모델"""
+    id: UUID
     name: str
-    category_name: str
+    category_slug: str
     description: Optional[str] = None
     price: Decimal
     stock_quantity: int
