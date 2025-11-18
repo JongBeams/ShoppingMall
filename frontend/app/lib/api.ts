@@ -1,6 +1,6 @@
 // FastAPI 백엔드 연동을 위한 API 유틸리티
 
-import { CreateProductRequest } from "../types";
+import { CreateProductRequest, GetVendorProductRequest } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -114,7 +114,7 @@ export const cartAPI = {
 // Product Management API (판매자 전용)
 export const productManagementAPI = {
   // 판매자의 상품 목록 조회
-  getMyProducts: (token: string) =>
+  getMyProducts: (token: string): Promise<{ message: string; products: GetVendorProductRequest[] }> =>
     fetchAPI('/products/management', {
       method: 'GET',
       token,

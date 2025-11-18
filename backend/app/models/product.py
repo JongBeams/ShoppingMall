@@ -56,3 +56,56 @@ class CategoryResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ProductResponse(BaseModel):
+    """상품 응답 모델"""
+    id: UUID
+    vendor_id: UUID
+    category_id: UUID
+    name: str
+    slug: str
+    description: Optional[str] = None
+    price: Decimal
+    compare_at_price: Optional[Decimal] = None
+    cost_price: Optional[Decimal] = None
+    sku: Optional[str] = None
+    stock_quantity: int
+    low_stock_threshold: int
+    images: Optional[dict] = None
+    thumbnail_url: Optional[str] = None
+    is_active: bool
+    is_featured: bool
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+    view_count: int
+    sale_count: int
+    rating: Decimal
+    review_count: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+
+class VendorProductResponse(BaseModel):
+    """판매자 상품 조회 응답 모델"""
+    name: str
+    category_name: str
+    description: Optional[str] = None
+    price: Decimal
+    stock_quantity: int
+    low_stock_threshold: int
+    images: Optional[dict] = None
+    is_active: bool
+    view_count: int
+    sale_count: int
+    rating: Decimal
+    review_count: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

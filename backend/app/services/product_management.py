@@ -3,11 +3,55 @@ from supabase import create_client
 
 from app.services.supabase import get_supabase_client
 from fastapi import HTTPException, status
-from app.models.product import CreateProductRequset
+from app.models.product import CreateProductRequset, VendorProductResponse
 from app.models.user import ProfileResponse
 from app.config import get_settings
 
 
+#======================================================
+#공용 사용 (추후 분리)
+#======================================================
+
+# 사용자 정보 확인
+def _get_current_profile():
+    """
+    Supabase에서 현재 로그인한 사용자의 프로필 정보를 조회합니다.
+    """
+    supabase = get_supabase_client()
+
+    try:
+        user = supabase.auth.get_user()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="인증되지 않은 사용자입니다."
+            )
+
+        profile_response = (
+            supabase.table("profiles")
+            .select("*")
+            .eq("id", user.user.id)
+            .single()
+            .execute()
+        )
+
+        profile = profile_response.data
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="사용자 정보를 찾을 수 없습니다."
+            )
+
+        return profile
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"사용자 정보 조회 중 오류가 발생했습니다: {str(e)}"
+        )
 
 
 
@@ -134,6 +178,115 @@ def get_profile_from_token(authorization_header: str) -> tuple[ProfileResponse, 
         updated_at=profile["updated_at"],
     )
     return profile_obj, access_token
+
+
+
+#======================================================
+#판매자 상품 관리
+#======================================================
+
+
+#판매자 상품 조회
+def GetVendorProducts():
+    """
+    현재 로그인한 판매자의 상품 목록을 조회합니다.
+    """
+    try:
+        #현재 사용자 정보 호출
+        profile = _get_current_profile()
+        supabase = get_supabase_client()
+
+        #유저 프로필 정보에 판매자 아이디가 없어 판매자 테이블에서 유저 id 대조로 판매자 id 값 가져오기
+        try:
+            vendor_response = (
+                supabase.table("vendors")
+                .select("id, user_id")
+                .eq("user_id", profile["id"])
+                .single()
+                .execute()
+            )
+            vendor = vendor_response.data
+            if not vendor:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="판매자 정보를 찾을 수 없습니다."
+                )
+            vendor_id = vendor["id"]
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"판매자 정보 조회 중 오류가 발생했습니다: {str(e)}"
+            )
+
+        #판매자 id로 상품 목록 조회
+        try:
+            product_response = (
+                supabase.table("products")
+                .select("name, category_id, description, price, stock_quantity, low_stock_threshold, images, is_active, view_count, sale_count, rating, review_count, created_at, updated_at")
+                .eq("vendor_id", vendor_id)
+                .execute()
+            )
+
+            products_data = product_response.data
+            if not products_data:
+                return []
+
+            # 각 상품의 카테고리 이름을 조회하여 VendorProductResponse 배열로 변환
+            vendor_products = []
+            for product in products_data:
+                # 카테고리 ID로 카테고리 이름 조회
+                try:
+                    category_response = (
+                        supabase.table("categories")
+                        .select("name")
+                        .eq("id", product["category_id"])
+                        .single()
+                        .execute()
+                    )
+                    category_name = category_response.data["name"] if category_response.data else "알 수 없음"
+                except Exception:
+                    category_name = "알 수 없음"
+
+                # VendorProductResponse 객체 생성
+                vendor_product = VendorProductResponse(
+                    name=product["name"],
+                    category_name=category_name,
+                    description=product.get("description"),
+                    price=product["price"],
+                    stock_quantity=product["stock_quantity"],
+                    low_stock_threshold=product["low_stock_threshold"],
+                    images=product.get("images"),
+                    is_active=product["is_active"],
+                    view_count=product["view_count"],
+                    sale_count=product["sale_count"],
+                    rating=product["rating"],
+                    review_count=product["review_count"],
+                    created_at=product["created_at"],
+                    updated_at=product["updated_at"]
+                )
+                vendor_products.append(vendor_product)
+
+            return vendor_products
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"상품 목록 조회 중 오류가 발생했습니다: {str(e)}"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"상품 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
 
 
 #상품 등록

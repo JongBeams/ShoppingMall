@@ -1,18 +1,40 @@
 from fastapi import APIRouter, Header, status
 
 from app.models.product import CreateProductRequset
-from app.services.product_management import CreateProduct, get_profile_from_token
+from app.services.product_management import CreateProduct, get_profile_from_token, GetVendorProducts
 
 router = APIRouter(prefix="/products", tags=["products"])
 
 
+# ============================================
+# 공개 API (인증 불필요)
+# ============================================
+
+#상품 조회
+
+#판매자 상품 조회
+@router.get("/management", summary="내 상품 목록 조회")
+async def get_management_products():
+    """
+    로그인한 판매자의 상품 목록을 조회합니다
+    """
+    # GetVendorProducts 서비스 함수 사용
+    products = GetVendorProducts()
+
+    return {
+        "message": "내 상품 목록 조회",
+        "products": products
+    }
+
+# ============================================
+# 판매자 전용 API (인증 필요)
+# ============================================
 
 
-
+# 상품 등록
 @router.post("/management/-1", status_code=status.HTTP_201_CREATED, summary="상품 등록")
 async def create_product(
-    product_data: CreateProductRequset,
-    authorization: str = Header(None)
+    product_data: CreateProductRequset, authorization: str = Header(None)
 ):
     """
     새 상품을 등록합니다 (판매자 전용)
@@ -32,9 +54,8 @@ async def create_product(
     service = CreateProduct(product_data, current_user, access_token)
     product = service.execute()
 
-    return {
-        "message": "상품이 등록되었습니다",
-        "product": product
-    }
+    return {"message": "상품이 등록되었습니다", "product": product}
 
+    # 상품 수정
 
+    # 상품 삭제

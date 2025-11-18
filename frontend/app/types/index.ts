@@ -24,6 +24,24 @@ export interface CreateProductRequest {
   // image?: File;
 }
 
+// Vendor Product Response (판매자 상품 목록 조회용)
+export interface GetVendorProductRequest {
+  name: string;
+  category_name: string;
+  description?: string;
+  price: number;
+  stock_quantity: number;
+  low_stock_threshold: number;
+  images?: any;
+  is_active: boolean;
+  view_count: number;
+  sale_count: number;
+  rating: number;
+  review_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Cart Types
 export interface CartItem {
   product: Product;
