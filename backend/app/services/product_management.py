@@ -224,7 +224,7 @@ def GetVendorProducts():
         try:
             product_response = (
                 supabase.table("products")
-                .select("name, category_id, description, price, stock_quantity, low_stock_threshold, images, is_active, view_count, sale_count, rating, review_count, created_at, updated_at")
+                .select("id, name, category_id, description, price, stock_quantity, low_stock_threshold, images, is_active, view_count, sale_count, rating, review_count, created_at, updated_at")
                 .eq("vendor_id", vendor_id)
                 .execute()
             )
@@ -251,6 +251,7 @@ def GetVendorProducts():
 
                 # VendorProductResponse 객체 생성
                 vendor_product = VendorProductResponse(
+                    id=product["id"],
                     name=product["name"],
                     category_slug=category_slug,
                     description=product.get("description"),
@@ -393,3 +394,91 @@ class CreateProduct:
         product["category_id"] = category_id
         product["vendor_id"] = vendor_id
         return product
+
+
+#상품 삭제
+class DeleteProduct:
+    """
+    상품 삭제 비즈니스 로직
+    """
+
+    def __init__(self, product_id: str, profile: ProfileResponse, access_token: str):
+        self.product_id = product_id
+        self.profile = profile
+        settings = get_settings()
+        self.supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+        self.supabase.postgrest.auth(access_token)
+
+    def execute(self):
+        """
+        상품을 삭제합니다. 판매자 본인의 상품만 삭제 가능합니다.
+        """
+        # 판매자 확인 검증
+        if self.profile.user_type != "seller":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="판매자만 상품을 삭제할 수 있습니다."
+            )
+
+        # 유저 프로필 정보에 판매자 아이디가 없어 판매자 테이블에서 유저 id 대조로 판매자 id 값 가져오기
+        vendor_response = (
+            self.supabase.table("vendors")
+            .select("id, user_id")
+            .eq("user_id", self.profile.id)
+            .single()
+            .execute()
+        )
+        vendor = vendor_response.data
+        if not vendor:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="판매자 정보를 찾을 수 없습니다."
+            )
+
+        vendor_id = vendor["id"]
+
+        # 상품 존재 여부 및 소유권 확인
+        try:
+            product_response = (
+                self.supabase.table("products")
+                .select("id, vendor_id")
+                .eq("id", self.product_id)
+                .single()
+                .execute()
+            )
+            product = product_response.data
+            if not product:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="상품을 찾을 수 없습니다."
+                )
+
+            # 상품의 소유자가 현재 판매자인지 확인
+            if product["vendor_id"] != vendor_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="본인의 상품만 삭제할 수 있습니다."
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"상품 조회 중 오류가 발생했습니다: {str(e)}"
+            )
+
+        # 상품 삭제
+        try:
+            (
+                self.supabase.table("products")
+                .delete()
+                .eq("id", self.product_id)
+                .execute()
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"상품 삭제 중 오류가 발생했습니다: {str(e)}"
+            )
+
+        return {"message": "상품이 삭제되었습니다.", "product_id": self.product_id}

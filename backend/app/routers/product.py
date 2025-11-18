@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Header, status
 
 from app.models.product import CreateProductRequset
-from app.services.product_management import CreateProduct, get_profile_from_token, GetVendorProducts
+from app.services.product_management import CreateProduct, DeleteProduct, get_profile_from_token, GetVendorProducts
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -56,6 +56,25 @@ async def create_product(
 
     return {"message": "상품이 등록되었습니다", "product": product}
 
-    # 상품 수정
 
-    # 상품 삭제
+# 상품 수정
+
+
+# 상품 삭제
+@router.delete("/management/{product_id}", summary="상품 삭제")
+async def delete_product(
+    product_id: str, authorization: str = Header(None)
+):
+    """
+    상품을 삭제합니다 (판매자 전용, 본인 상품만 삭제 가능)
+
+    - **product_id**: 삭제할 상품의 ID (필수)
+    """
+
+    current_user, access_token = get_profile_from_token(authorization)
+
+    # DeleteProduct 서비스 클래스 사용
+    service = DeleteProduct(product_id, current_user, access_token)
+    result = service.execute()
+
+    return result

@@ -50,9 +50,36 @@ export default function ProductManagement() {
   const handleAddProduct = () => {
     router.push('/product-management/-1');
   };
+
   const handleEdit = (productId: string) => {
     router.push(`/product-management/${productId}`);
   };
+
+  const handleDelete = async (productId: string) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    // 삭제 확인
+    if (!confirm('정말로 이 상품을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      await productManagementAPI.delete(productId, token);
+      alert('상품이 삭제되었습니다.');
+
+      // 상품 목록 다시 불러오기
+      const response = await productManagementAPI.getMyProducts(token);
+      setProducts(response.products);
+    } catch (error: any) {
+      console.error('Failed to delete product:', error);
+      alert(error.message || '상품 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
 
 
   return (
@@ -125,9 +152,10 @@ export default function ProductManagement() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => handleEdit(index.toString())}
+                    <button onClick={() => handleEdit(product.id)}
                     className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">수정</button>
-                    <button className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">삭제</button>
+                    <button onClick={() => handleDelete(product.id)}
+                    className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">삭제</button>
                   </div>
                 </div>
               ))

@@ -92,6 +92,7 @@ class ProductResponse(BaseModel):
 
 class VendorProductResponse(BaseModel):
     """판매자 상품 조회 응답 모델"""
+    id: UUID
     name: str
     category_slug: str
     description: Optional[str] = None

@@ -48,9 +48,8 @@ export default function ProductEditPage() {
             // 모든 상품 목록 가져오기
             const response = await productManagementAPI.getMyProducts(token);
 
-            // productId를 숫자 인덱스로 변환하여 해당 상품 찾기
-            const productIndex = parseInt(productId);
-            const product = response.products[productIndex];
+            // productId로 해당 상품 찾기
+            const product = response.products.find(p => p.id === productId);
 
             if (!product) {
               alert('상품을 찾을 수 없습니다.');

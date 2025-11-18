@@ -27,6 +27,7 @@ export interface CreateProductRequest {
 
 // Vendor Product Response (판매자 상품 목록 조회용)
 export interface GetVendorProductRequest {
+  id: string;
   name: string;
   category_slug: string;
   description?: string;
