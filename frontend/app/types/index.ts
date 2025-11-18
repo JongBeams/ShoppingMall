@@ -12,6 +12,7 @@ export interface Product {
 
 // Product Creation/Update Request
 export interface CreateProductRequest {
+  id:string;
   name: string;
   description: string;
   price: number;
@@ -27,7 +28,7 @@ export interface CreateProductRequest {
 // Vendor Product Response (판매자 상품 목록 조회용)
 export interface GetVendorProductRequest {
   name: string;
-  category_name: string;
+  category_slug: string;
   description?: string;
   price: number;
   stock_quantity: number;

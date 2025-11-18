@@ -240,19 +240,19 @@ def GetVendorProducts():
                 try:
                     category_response = (
                         supabase.table("categories")
-                        .select("name")
+                        .select("slug")
                         .eq("id", product["category_id"])
                         .single()
                         .execute()
                     )
-                    category_name = category_response.data["name"] if category_response.data else "알 수 없음"
+                    category_slug = category_response.data["slug"] if category_response.data else "알 수 없음"
                 except Exception:
-                    category_name = "알 수 없음"
+                    category_slug = "알 수 없음"
 
                 # VendorProductResponse 객체 생성
                 vendor_product = VendorProductResponse(
                     name=product["name"],
-                    category_name=category_name,
+                    category_slug=category_slug,
                     description=product.get("description"),
                     price=product["price"],
                     stock_quantity=product["stock_quantity"],

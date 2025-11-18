@@ -120,7 +120,7 @@ export const productManagementAPI = {
       token,
     }),
 
-  // 상품 상세 조회
+  // 수정 시 기존 상품 정보 조회
   getById: (id: string, token: string) =>
     fetchAPI(`/products/management/${id}`, {
       method: 'GET',

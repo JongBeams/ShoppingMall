@@ -5,6 +5,17 @@ import { useRouter} from 'next/navigation';
 import { productManagementAPI } from '../../lib/api';
 import { GetVendorProductRequest } from '../../types';
 
+// 카테고리 slug -> 한글 이름 매핑
+const categoryMap: Record<string, string> = {
+  electronics: '가전/디지털',
+  fashion: '패션',
+  beauty: '뷰티',
+  living: '생활/건강',
+  food: '식품',
+  sports: '스포츠',
+  books: '도서',
+  baby: '완구',
+};
 
 export default function ProductManagement() {
   const [activeTab, setActiveTab] = useState<'products' | 'options'>('products');
@@ -110,7 +121,7 @@ export default function ProductManagement() {
                       재고: {product.stock_quantity}개 · 가격: ₩{product.price.toLocaleString()}
                     </p>
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
-                      카테고리: {product.category_name}
+                      카테고리: {categoryMap[product.category_slug] || product.category_slug}
                     </p>
                   </div>
                   <div className="flex gap-2">
