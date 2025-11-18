@@ -118,23 +118,72 @@ export default function ProductEditPage() {
       return;
     }
 
-    // CreateProductRequest 인터페이스에 맞춰 데이터 구성
-    const productData: CreateProductRequest = {
-      id: productId,  // -1 (신규) 또는 실제 상품 ID
-      name,
-      description,
-      price: Number(price),
-      category,
-      stock_quantity: Number(stock),
-      low_stock_threshold: Number(lowStock),
-    };
+    // 가격 검증 (최대 99,999,999.99)
+    const priceValue = Number(price);
+    if (priceValue <= 0) {
+      alert('가격은 0보다 커야 합니다.');
+      return;
+    }
+    if (priceValue > 99999999.99) {
+      alert('가격은 99,999,999.99원을 초과할 수 없습니다.');
+      return;
+    }
 
-    // 이미지 파일이 있으면 추가
-    // if (imageFile) {
-    //   productData.image = imageFile;
-    // }
+    // 재고 검증 (최대 999,999)
+    const stockValue = Number(stock);
+    if (stockValue < 0) {
+      alert('재고는 0 이상이어야 합니다.');
+      return;
+    }
+    if (stockValue > 999999) {
+      alert('재고는 999,999개를 초과할 수 없습니다.');
+      return;
+    }
+
+    // 재고 부족 알림 수량 검증
+    const lowStockValue = Number(lowStock);
+    if (lowStockValue < 0) {
+      alert('재고 부족 알림 수량은 0 이상이어야 합니다.');
+      return;
+    }
+    if (lowStockValue > stockValue) {
+      alert('재고 부족 알림 수량은 재고보다 클 수 없습니다.');
+      return;
+    }
 
     try {
+      let imageUrl: string | undefined;
+
+      // 이미지 파일이 있으면 먼저 업로드
+      if (imageFile) {
+        try {
+          // 상품 ID가 필요하므로, 신규 상품의 경우 임시 ID 사용
+          const uploadId = isNewProduct ? 'temp' : productId;
+          const imageResponse = await productManagementAPI.uploadImage(uploadId, imageFile, token);
+          imageUrl = imageResponse.image_url;
+        } catch (error: any) {
+          console.error('Image upload failed:', error);
+          alert('이미지 업로드에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+          return;
+        }
+      }
+
+      // CreateProductRequest 인터페이스에 맞춰 데이터 구성
+      const productData: CreateProductRequest = {
+        id: productId,  // -1 (신규) 또는 실제 상품 ID
+        name,
+        description,
+        price: Number(price),
+        category,
+        stock_quantity: Number(stock),
+        low_stock_threshold: Number(lowStock),
+      };
+
+      // 이미지 URL이 있으면 추가
+      if (imageUrl) {
+        productData.image = imageUrl as any; // URL string으로 사용
+      }
+
       if (isNewProduct) {
         // 상품 등록
         const response = await productManagementAPI.create(productData, token);
@@ -249,6 +298,8 @@ export default function ProductEditPage() {
                   onChange={(e) => setPrice(e.target.value)}
                   required
                   min="0"
+                  max="99999999.99"
+                  step="0.01"
                   className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
                   placeholder="0"
                 />
@@ -268,6 +319,7 @@ export default function ProductEditPage() {
                   onChange={(e) => setStock(e.target.value)}
                   required
                   min="0"
+                  max="999999"
                   className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
                   placeholder="0"
                 />
@@ -282,7 +334,7 @@ export default function ProductEditPage() {
                   value={lowStock}
                   onChange={(e) => setlowStock(e.target.value)}
                   required
-                  min="10"
+                  min="0"
                   className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
                   placeholder="10"
                 />

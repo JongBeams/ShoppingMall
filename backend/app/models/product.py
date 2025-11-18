@@ -33,7 +33,7 @@ class CreateProductRequset(BaseModel):
     low_stock_threshold: int = Field(10, ge=0)
 
     #이미지 URL
-    # image_url: Optional[str] = None
+    image_url: Optional[str] = None
 
 
 
@@ -99,7 +99,8 @@ class VendorProductResponse(BaseModel):
     price: Decimal
     stock_quantity: int
     low_stock_threshold: int
-    images: Optional[dict] = None
+    images: Optional[str] = None
+    thumbnail_url: Optional[str] = None
     is_active: bool
     view_count: int
     sale_count: int
