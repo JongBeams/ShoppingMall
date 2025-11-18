@@ -105,7 +105,7 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
       ),
     },
     {
-      name: '설정',
+      name: '시스템설정',
       href: '/crm/settings',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
