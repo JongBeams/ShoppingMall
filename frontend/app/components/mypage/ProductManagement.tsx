@@ -18,7 +18,6 @@ const categoryMap: Record<string, string> = {
 };
 
 export default function ProductManagement() {
-  const [activeTab, setActiveTab] = useState<'products' | 'options'>('products');
   const [products, setProducts] = useState<GetVendorProductRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,10 +41,8 @@ export default function ProductManagement() {
       }
     };
 
-    if (activeTab === 'products') {
-      fetchProducts();
-    }
-  }, [activeTab]);
+    fetchProducts();
+  }, []);
 
   const handleAddProduct = () => {
     router.push('/product-management/-1');
@@ -86,33 +83,8 @@ export default function ProductManagement() {
     <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
       <h3 className="mb-6 text-lg font-bold text-gray-900 dark:text-white">상품 관리</h3>
 
-      {/* Tabs */}
-      <div className="mb-6 flex gap-1 border-b border-gray-200 dark:border-gray-700">
-        <button
-          onClick={() => setActiveTab('products')}
-          className={`px-4 py-2 text-sm font-medium ${
-            activeTab === 'products'
-              ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-        >
-          상품 목록
-        </button>
-        <button
-          onClick={() => setActiveTab('options')}
-          className={`px-4 py-2 text-sm font-medium ${
-            activeTab === 'options'
-              ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
-              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-        >
-          옵션 관리
-        </button>
-      </div>
-
-      {/* Products Tab */}
-      {activeTab === 'products' && (
-        <div>
+      {/* Products List */}
+      <div>
           <div className="mb-6 flex items-center justify-between">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               {loading ? '로딩 중...' : `총 ${products.length}개의 상품`}
@@ -175,46 +147,6 @@ export default function ProductManagement() {
             )}
           </div>
         </div>
-      )}
-
-      {/* Options Tab */}
-      {activeTab === 'options' && (
-        <div>
-          <div className="mb-6 flex items-center justify-between">
-            <p className="text-sm text-gray-600 dark:text-gray-400">옵션 목록</p>
-            <button className="border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
-              + 옵션 추가
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {[
-              { name: '용량', values: ['500g', '1kg', '2kg', '5kg'], usedBy: 18 },
-              { name: '색상', values: ['빨강', '초록', '노랑'], usedBy: 5 },
-              { name: '등급', values: ['특', '상', '중'], usedBy: 12 },
-              { name: '포장 방법', values: ['박스', '비닐', '친환경 포장'], usedBy: 8 },
-            ].map((option, i) => (
-              <div key={i} className="border border-gray-200 p-4 dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h5 className="font-medium text-gray-900 dark:text-white">{option.name}</h5>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                      옵션값: {option.values.join(', ')}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
-                      {option.usedBy}개 상품에서 사용 중
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">수정</button>
-                    <button className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">삭제</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
