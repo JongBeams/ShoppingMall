@@ -1,59 +1,59 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import ProductGrid from '../components/product/ProductGrid';
 import ProductFilter from '../components/product/ProductFilter';
 import { Product } from '../types';
-
-// 임시 더미 데이터
-const dummyProducts: Product[] = [
-  {
-    id: '1',
-    name: '무선 이어폰',
-    description: '고음질 블루투스 무선 이어폰',
-    price: 89000,
-    category: '전자제품',
-    imageUrl: '/placeholder-product.jpg',
-    stock: 50,
-  },
-  {
-    id: '2',
-    name: '스마트워치',
-    description: '다양한 기능을 갖춘 스마트워치',
-    price: 250000,
-    category: '전자제품',
-    imageUrl: '/placeholder-product.jpg',
-    stock: 30,
-  },
-  {
-    id: '3',
-    name: '백팩',
-    description: '심플한 디자인의 데일리 백팩',
-    price: 65000,
-    category: '패션',
-    imageUrl: '/placeholder-product.jpg',
-    stock: 20,
-  },
-  {
-    id: '4',
-    name: '머그컵 세트',
-    description: '모던한 디자인의 머그컵 4개 세트',
-    price: 32000,
-    category: '생활용품',
-    imageUrl: '/placeholder-product.jpg',
-    stock: 100,
-  },
-];
-
-const categories = ['전자제품', '패션', '생활용품'];
+import { productAPI } from '../lib/api';
 
 export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await productAPI.getAll();
+        setProducts(response.products || []);
+      } catch (err: any) {
+        console.error('Failed to load products:', err);
+        setError(err.message || '상품 정보를 불러오지 못했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  const categories = useMemo(() => {
+    const categorySet = new Set<string>();
+    products.forEach((product) => {
+      const categoryLabel =
+        product.category ||
+        product.category_name ||
+        product.category_slug ||
+        '기타';
+      categorySet.add(categoryLabel);
+    });
+    return Array.from(categorySet);
+  }, [products]);
 
   const filteredProducts =
     selectedCategory === 'all'
-      ? dummyProducts
-      : dummyProducts.filter((p) => p.category === selectedCategory);
+      ? products
+      : products.filter((product) => {
+          const categoryLabel =
+            product.category ||
+            product.category_name ||
+            product.category_slug ||
+            '기타';
+          return categoryLabel === selectedCategory;
+        });
 
   return (
     <div>
@@ -67,7 +67,19 @@ export default function ProductsPage() {
         onCategoryChange={setSelectedCategory}
       />
 
-      <ProductGrid products={filteredProducts} />
+      {error && (
+        <div className="mb-4 rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-600 dark:bg-red-950/40 dark:text-red-200">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex min-h-[300px] items-center justify-center text-gray-500 dark:text-gray-400">
+          상품을 불러오는 중입니다...
+        </div>
+      ) : (
+        <ProductGrid products={filteredProducts} />
+      )}
     </div>
   );
 }
