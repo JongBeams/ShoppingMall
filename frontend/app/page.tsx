@@ -2,9 +2,23 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Home() {
+  const [userType, setUserType] = useState<string>('');
+
+  // 로그인 상태 확인
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      try {
+        const userData = JSON.parse(user);
+        setUserType(userData.user_type || '');
+      } catch (e) {
+        console.error('Failed to parse user data:', e);
+      }
+    }
+  }, []);
   const bestProducts = [
     {
       id: '1',
@@ -75,6 +89,409 @@ export default function Home() {
   const totalDealPages = Math.ceil(bestProducts.length / dealsPerPage);
   const totalBestPages = Math.ceil(bestProducts.length / dealsPerPage);
 
+  // 판매자용 홈 화면
+  if (userType === 'seller') {
+    return (
+      <div>
+        {/* Main Banner - 판매자 대시보드 */}
+        <section className="relative -mt-8 h-[350px] overflow-hidden bg-white dark:bg-gray-900">
+          <Image
+            src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1600&q=80"
+            alt="Seller Dashboard Banner"
+            fill
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-black/40"></div>
+
+          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2">
+            {[1, 2, 3].map((i) => (
+              <button
+                key={i}
+                className={`h-1.5 transition-all ${i === 1 ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`}
+              />
+            ))}
+          </div>
+
+          <div className="absolute inset-0 flex items-center justify-center text-center text-white">
+            <div>
+              <p className="mb-2 text-xs font-medium tracking-wider">SELLER DASHBOARD</p>
+              <h1 className="mb-3 text-4xl font-bold">판매자 센터</h1>
+              <p className="mb-5 text-base">오늘도 성공적인 판매를 응원합니다</p>
+              <Link
+                href="/mypage#products"
+                className="inline-block bg-white px-6 py-2 text-sm font-bold text-gray-900 transition hover:bg-gray-100"
+              >
+                상품 등록하기
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Quick Menu - App Icon Style */}
+        <section className="mt-10 bg-white py-8 dark:bg-gray-900">
+          <div className="mx-auto max-w-6xl">
+            <div className="grid grid-cols-4 gap-6 md:grid-cols-8">
+              {[
+                {
+                  name: '상품등록',
+                  href: '/mypage#products',
+                  icon: (
+                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                    </svg>
+                  ),
+                  gradient: 'from-blue-400 to-cyan-400'
+                },
+                {
+                  name: '상품관리',
+                  href: '/mypage#products',
+                  icon: (
+                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                  ),
+                  gradient: 'from-pink-400 to-rose-400'
+                },
+                {
+                  name: '주문관리',
+                  href: '/mypage#delivery',
+                  icon: (
+                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                  ),
+                  gradient: 'from-purple-400 to-pink-400'
+                },
+                {
+                  name: '배송관리',
+                  href: '/mypage#delivery',
+                  icon: (
+                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                    </svg>
+                  ),
+                  gradient: 'from-orange-400 to-amber-400'
+                },
+                {
+                  name: '매출통계',
+                  href: '/mypage#sales',
+                  icon: (
+                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  ),
+                  gradient: 'from-green-400 to-emerald-400'
+                },
+                {
+                  name: '정산관리',
+                  href: '/mypage#settlement',
+                  icon: (
+                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ),
+                  gradient: 'from-red-400 to-orange-400'
+                },
+                {
+                  name: '고객문의',
+                  href: '/mypage#inquiries',
+                  icon: (
+                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                  ),
+                  gradient: 'from-indigo-400 to-blue-400'
+                },
+                {
+                  name: '쿠폰관리',
+                  href: '/mypage#seller-coupons',
+                  icon: (
+                    <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                    </svg>
+                  ),
+                  gradient: 'from-yellow-400 to-orange-400'
+                },
+              ].map((cat) => (
+                <Link
+                  key={cat.name}
+                  href={cat.href}
+                  className="group flex flex-col items-center gap-2"
+                >
+                  {/* App Icon */}
+                  <div className={`relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${cat.gradient} shadow-lg transition-transform duration-200 active:scale-95`}>
+                    {/* Glossy effect */}
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/20 to-transparent"></div>
+
+                    {/* Icon */}
+                    <div className="relative z-10 text-white drop-shadow-md">
+                      {cat.icon}
+                    </div>
+                  </div>
+
+                  {/* Label */}
+                  <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300">
+                    {cat.name}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Products & Info Grid */}
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* 오늘의 주문 */}
+          <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">오늘의 주문</h2>
+                <div className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400">
+                  <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-xs font-bold">24건</span>
+                </div>
+              </div>
+              <Link href="/mypage#delivery" className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400">
+                +
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {bestProducts.slice(0, 2).map((product, idx) => (
+                <Link
+                  key={product.id}
+                  href="/mypage#delivery"
+                  className="group flex gap-3"
+                >
+                  <div className="relative h-24 w-24 flex-shrink-0 border border-gray-200 dark:border-gray-700">
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-cover transition group-hover:scale-105"
+                      sizes="96px"
+                    />
+                    <div className="absolute left-0 top-0 bg-blue-600 px-1.5 py-0.5 text-xs font-bold text-white">
+                      주문
+                    </div>
+                  </div>
+                  <div className="flex flex-1 flex-col justify-center">
+                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">고객명</p>
+                    <h3 className="mb-1.5 line-clamp-2 text-sm font-medium text-gray-900 dark:text-white">
+                      {product.name}
+                    </h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">
+                        {product.price.toLocaleString()}원
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            {/* Pagination */}
+            <div className="mt-4 flex items-center justify-center gap-1">
+              <button
+                className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
+              >
+                ‹
+              </button>
+              <button className="h-6 w-6 border border-gray-900 bg-gray-900 text-xs font-bold text-white dark:border-white dark:bg-white dark:text-gray-900">
+                1
+              </button>
+              <button className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800">
+                2
+              </button>
+              <button className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800">
+                3
+              </button>
+              <button
+                className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+
+          {/* 인기 상품 */}
+          <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-bold text-gray-900 dark:text-white">인기 상품</h2>
+              <Link href="/mypage#products" className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400">
+                +
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {bestProducts.slice(2, 4).map((product, idx) => (
+                <Link
+                  key={product.id}
+                  href="/mypage#products"
+                  className="group flex gap-3"
+                >
+                  <div className="relative h-24 w-24 flex-shrink-0 border border-gray-200 dark:border-gray-700">
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      className="object-cover transition group-hover:scale-105"
+                      sizes="96px"
+                    />
+                    <div className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center bg-gray-900 text-xs font-bold text-white dark:bg-white dark:text-gray-900">
+                      {idx + 1}
+                    </div>
+                  </div>
+                  <div className="flex flex-1 flex-col justify-center">
+                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{product.brand}</p>
+                    <h3 className="mb-1.5 line-clamp-2 text-sm font-medium text-gray-900 dark:text-white">
+                      {product.name}
+                    </h3>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                      {product.price.toLocaleString()}원
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            {/* Pagination */}
+            <div className="mt-4 flex items-center justify-center gap-1">
+              <button
+                className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
+              >
+                ‹
+              </button>
+              <button className="h-6 w-6 border border-gray-900 bg-gray-900 text-xs font-bold text-white dark:border-white dark:bg-white dark:text-gray-900">
+                1
+              </button>
+              <button className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800">
+                2
+              </button>
+              <button className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800">
+                3
+              </button>
+              <button
+                className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+
+          {/* 공지사항 */}
+          <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-bold text-gray-900 dark:text-white">공지사항</h2>
+              <Link href="/notice" className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400">
+                +
+              </Link>
+            </div>
+            <div className="space-y-2.5">
+              {[
+                { id: 1, title: '설 연휴 배송 안내', date: '01.20' },
+                { id: 2, title: '신규 회원 할인 이벤트', date: '01.18' },
+                { id: 3, title: '개인정보처리방침 개정 안내', date: '01.15' },
+                { id: 4, title: '시스템 점검 안내', date: '01.10' },
+              ].map((notice) => (
+                <Link
+                  key={notice.id}
+                  href={`/notice/${notice.id}`}
+                  className="flex items-start justify-between border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
+                >
+                  <span className="line-clamp-1 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                    {notice.title}
+                  </span>
+                  <span className="ml-2 whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
+                    {notice.date}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* FAQ */}
+          <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-bold text-gray-900 dark:text-white">FAQ</h2>
+              <Link href="/faq" className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400">
+                +
+              </Link>
+            </div>
+            <div className="space-y-2.5">
+              {[
+                { id: 1, title: '배송은 얼마나 걸리나요?' },
+                { id: 2, title: '교환/환불 절차는?' },
+                { id: 3, title: '회원가입 혜택은?' },
+                { id: 4, title: '결제 수단은?' },
+              ].map((faq) => (
+                <Link
+                  key={faq.id}
+                  href={`/faq/${faq.id}`}
+                  className="flex items-start gap-2 border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
+                >
+                  <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
+                    Q.
+                  </span>
+                  <span className="line-clamp-1 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                    {faq.title}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Benefits Bar */}
+        <section className="border-y border-gray-200 bg-gray-50 py-6 dark:border-gray-700 dark:bg-gray-800">
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
+            {[
+              { icon: '📦', title: '배송대행', desc: '전국 당일배송' },
+              { icon: '💳', title: '안전결제', desc: '구매안전서비스' },
+              { icon: '📊', title: '실시간 통계', desc: '매출 분석' },
+              { icon: '🎯', title: '마케팅 지원', desc: '광고 무료 지원' }
+            ].map((benefit) => (
+              <div key={benefit.title} className="flex items-center gap-2.5">
+                <div className="text-2xl">{benefit.icon}</div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{benefit.title}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{benefit.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Brand List */}
+        <section className="mt-5">
+          <h2 className="mb-6 text-center text-base font-bold text-gray-900 dark:text-white">
+            자주 사용하는 기능
+          </h2>
+          <div className="grid grid-cols-4 gap-3 md:grid-cols-8">
+            {['상품등록', '재고관리', '주문조회', '배송관리', '정산내역', '통계분석', '고객문의', '리뷰관리'].map((func) => (
+              <Link
+                key={func}
+                href={
+                  func === '상품등록' ? '/mypage#products' :
+                  func === '재고관리' ? '/mypage#products' :
+                  func === '주문조회' ? '/mypage#delivery' :
+                  func === '배송관리' ? '/mypage#delivery' :
+                  func === '정산내역' ? '/mypage#settlement' :
+                  func === '통계분석' ? '/mypage#sales' :
+                  func === '고객문의' ? '/mypage#inquiries' :
+                  '/mypage#reviews'
+                }
+                className="flex aspect-square items-center justify-center border border-gray-200 bg-white text-center text-xs font-medium text-gray-700 transition hover:border-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-white"
+              >
+                {func}
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // 구매자용 홈 화면 (기본)
   return (
     <div>
       {/* Main Banner - 작게 */}

@@ -46,7 +46,13 @@ export default function Header() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
+      if (userType === 'seller') {
+        // 판매자: 마이페이지 통합 검색
+        router.push(`/mypage?search=${encodeURIComponent(searchQuery)}`);
+      } else {
+        // 구매자: 상품 검색
+        router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
+      }
       setSearchQuery('');
     }
   };
@@ -104,7 +110,8 @@ export default function Header() {
     setMenuHeight(0);
   };
 
-  const menuItems = [
+  // 역할별 메뉴 구성
+  const buyerMenuItems = [
     {
       name: '홈',
       href: '/',
@@ -150,6 +157,62 @@ export default function Header() {
       ]
     },
   ];
+
+  const sellerMenuItems = [
+    {
+      name: '홈',
+      href: '/',
+      submenu: [],
+      rightLinks: []
+    },
+    {
+      name: '상품 관리',
+      href: '/mypage#products',
+      submenu: [
+        { name: '상품 등록', href: '/mypage#products', image: 'https://images.unsplash.com/photo-1556740749-887f6717d7e4?w=200&q=80' },
+        { name: '상품 목록', href: '/mypage#products', image: 'https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=200&q=80' },
+        { name: '재고 관리', href: '/mypage#products', image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=200&q=80' },
+        { name: '품절 상품', href: '/mypage#products', image: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=200&q=80' },
+      ],
+      rightLinks: [
+        { name: '대량 등록', href: '/mypage#products' },
+        { name: '엑셀 업로드', href: '/mypage#products' },
+        { name: '상품 통계', href: '/mypage#products', divider: true },
+      ]
+    },
+    {
+      name: '판매 관리',
+      href: '/mypage#sales',
+      submenu: [
+        { name: '판매 현황', href: '/mypage#sales', image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=200&q=80' },
+        { name: '주문 관리', href: '/mypage#delivery', image: 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?w=200&q=80' },
+        { name: '정산 관리', href: '/mypage#settlement', image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=200&q=80' },
+        { name: '고객 문의', href: '/mypage#inquiries', image: 'https://images.unsplash.com/photo-1423666639041-f56000c27a9a?w=200&q=80' },
+      ],
+      rightLinks: [
+        { name: '매출 통계', href: '/mypage#sales-stats' },
+        { name: '정산 내역', href: '/mypage#settlement-history' },
+        { name: '문의 답변', href: '/mypage#inquiries', divider: true },
+      ]
+    },
+    {
+      name: '스토어 관리',
+      href: '/mypage#store',
+      submenu: [
+        { name: '스토어 정보', href: '/mypage#store', image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=200&q=80' },
+        { name: '공지사항', href: '/notice', image: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=200&q=80' },
+        { name: '쿠폰/프로모션', href: '/mypage#seller-coupons', image: 'https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?w=200&q=80' },
+      ],
+      rightLinks: [
+        { name: '스토어 꾸미기', href: '/mypage#store-design' },
+        { name: '리뷰 관리', href: '/mypage#reviews' },
+        { name: '고객센터', href: '/support', divider: true },
+      ]
+    },
+  ];
+
+  // 현재 사용자 타입에 따라 메뉴 선택
+  const menuItems = userType === 'seller' ? sellerMenuItems : buyerMenuItems;
 
   return (
     <>
@@ -232,7 +295,7 @@ export default function Header() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="상품 검색..."
+                  placeholder={userType === 'seller' ? '상품+주문+문의 통합검색' : '상품 검색...'}
                   className="w-full border border-gray-300 bg-white px-4 py-2 pr-10 text-sm text-gray-900 placeholder-gray-500 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-white"
                 />
                 <button
