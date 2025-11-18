@@ -1,11 +1,11 @@
-from fastapi import APIRouter, HTTPException, status, File, UploadFile
+from fastapi import APIRouter, HTTPException, status, File, UploadFile, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
 from app.services.supabase import get_supabase_client
-from app.services.auth_middleware import get_current_user_from_token
-import base64
 
 router = APIRouter(prefix="/vendors", tags=["Vendors"])
+security = HTTPBearer()
 
 
 class VendorUpdateRequest(BaseModel):
@@ -34,14 +34,22 @@ class VendorResponse(BaseModel):
 
 
 @router.get("/me", response_model=VendorResponse)
-async def get_my_vendor_info(token: str):
+async def get_my_vendor_info(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """현재 로그인한 판매자 정보 조회"""
     supabase = get_supabase_client()
 
     try:
-        # 토큰에서 사용자 정보 추출
-        user = get_current_user_from_token(token)
-        user_id = user["id"]
+        # Supabase 토큰으로 사용자 정보 가져오기
+        token = credentials.credentials
+        user_response = supabase.auth.get_user(token)
+
+        if not user_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="유효하지 않은 토큰입니다."
+            )
+
+        user_id = user_response.user.id
 
         # vendors 테이블에서 판매자 정보 조회
         response = supabase.table("vendors").select("*").eq("user_id", user_id).single().execute()
@@ -85,14 +93,25 @@ async def get_my_vendor_info(token: str):
 
 
 @router.put("/me", response_model=VendorResponse)
-async def update_my_vendor_info(vendor_data: VendorUpdateRequest, token: str):
+async def update_my_vendor_info(
+    vendor_data: VendorUpdateRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
     """현재 로그인한 판매자 정보 업데이트"""
     supabase = get_supabase_client()
 
     try:
-        # 토큰에서 사용자 정보 추출
-        user = get_current_user_from_token(token)
-        user_id = user["id"]
+        # Supabase 토큰으로 사용자 정보 가져오기
+        token = credentials.credentials
+        user_response = supabase.auth.get_user(token)
+
+        if not user_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="유효하지 않은 토큰입니다."
+            )
+
+        user_id = user_response.user.id
 
         # 업데이트할 데이터 준비
         update_data = {}
@@ -149,14 +168,25 @@ async def update_my_vendor_info(vendor_data: VendorUpdateRequest, token: str):
 
 
 @router.post("/me/upload-logo")
-async def upload_store_logo(file: UploadFile, token: str):
+async def upload_store_logo(
+    file: UploadFile,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
     """스토어 로고 업로드"""
     supabase = get_supabase_client()
 
     try:
-        # 토큰에서 사용자 정보 추출
-        user = get_current_user_from_token(token)
-        user_id = user["id"]
+        # Supabase 토큰으로 사용자 정보 가져오기
+        token = credentials.credentials
+        user_response = supabase.auth.get_user(token)
+
+        if not user_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="유효하지 않은 토큰입니다."
+            )
+
+        user_id = user_response.user.id
 
         # 파일 읽기
         contents = await file.read()
@@ -190,14 +220,25 @@ async def upload_store_logo(file: UploadFile, token: str):
 
 
 @router.post("/me/upload-banner")
-async def upload_store_banner(file: UploadFile, token: str):
+async def upload_store_banner(
+    file: UploadFile,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
     """스토어 배너 업로드"""
     supabase = get_supabase_client()
 
     try:
-        # 토큰에서 사용자 정보 추출
-        user = get_current_user_from_token(token)
-        user_id = user["id"]
+        # Supabase 토큰으로 사용자 정보 가져오기
+        token = credentials.credentials
+        user_response = supabase.auth.get_user(token)
+
+        if not user_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="유효하지 않은 토큰입니다."
+            )
+
+        user_id = user_response.user.id
 
         # 파일 읽기
         contents = await file.read()

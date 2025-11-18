@@ -504,7 +504,7 @@ export default function Header() {
             {isLoggedIn ? (
               <>
                 <Link
-                  href="/mypage"
+                  href={isCRMPage ? '/crm/mypage' : '/mypage'}
                   className="text-sm font-medium text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
                 >
                   {userName}님
