@@ -65,7 +65,12 @@ export default function ProductEditPage() {
             setCategory(product.category_slug);
             setStock(product.stock_quantity.toString());
             setlowStock(product.low_stock_threshold.toString());
-            // setImagePreview(product.images || '');
+            // 기존 이미지 URL 설정 (thumbnail_url 우선, 없으면 images)
+            if (product.thumbnail_url) {
+              setImagePreview(product.thumbnail_url);
+            } else if (product.images) {
+              setImagePreview(product.images);
+            }
           } catch (error) {
             console.error('Failed to fetch product:', error);
             alert('상품 정보를 불러오지 못했습니다.');

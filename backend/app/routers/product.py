@@ -67,9 +67,6 @@ async def get_all_products():
         })
 
     return {"products": product_list}
-@router.get("", include_in_schema=False)
-async def get_all_products_no_slash():
-    return await get_all_products()
 
 #판매자 상품 조회
 @router.get("/management", summary="내 상품 목록 조회")
