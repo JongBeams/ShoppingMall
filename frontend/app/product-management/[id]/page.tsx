@@ -24,15 +24,21 @@ export default function ProductEditPage() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   // 옵션 상태
+  interface ProductOptionValue {
+    value: string;  // 옵션 값 (예: "빨강", "파랑")
+    price: string;  // 가격
+    stock: string;  // 재고
+  }
+
   interface ProductOption {
-    type: string;  // 'color' | 'weight' | 'capacity' | 'other'
-    values: string[];  // 옵션 내용 배열 (최대 5개)
-    customType?: string;  // '기타' 선택 시 사용자 정의 옵션 타입
+    customType: string;  // 사용자 정의 옵션 타입 이름
+    values: ProductOptionValue[];  // 옵션 내용 배열 (최대 5개)
   }
   const [options, setOptions] = useState<ProductOption[]>([]);
 
   const isNewProduct = productId === '-1';
 
+  //ProductAccessGuard
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     const user = localStorage.getItem('user');
@@ -96,6 +102,7 @@ export default function ProductEditPage() {
     }
   }, [router, isNewProduct, productId]);
 
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
@@ -136,19 +143,12 @@ export default function ProductEditPage() {
       alert('옵션은 최대 5개까지 추가할 수 있습니다.');
       return;
     }
-    setOptions([...options, { type: 'color', values: [] }]);
+    setOptions([...options, { customType: '', values: [] }]);
   };
 
   // 옵션 삭제
   const removeOption = (index: number) => {
     setOptions(options.filter((_, i) => i !== index));
-  };
-
-  // 옵션 타입 변경
-  const updateOptionType = (index: number, type: string) => {
-    const newOptions = [...options];
-    newOptions[index].type = type;
-    setOptions(newOptions);
   };
 
   // 옵션 내용 추가
@@ -158,7 +158,7 @@ export default function ProductEditPage() {
       alert('옵션 내용은 최대 5개까지 추가할 수 있습니다.');
       return;
     }
-    newOptions[optionIndex].values.push('');
+    newOptions[optionIndex].values.push({ value: '', price: '', stock: '' });
     setOptions(newOptions);
   };
 
@@ -170,9 +170,9 @@ export default function ProductEditPage() {
   };
 
   // 옵션 값 변경
-  const updateOptionValue = (optionIndex: number, valueIndex: number, value: string) => {
+  const updateOptionValue = (optionIndex: number, valueIndex: number, field: 'value' | 'price' | 'stock', newValue: string) => {
     const newOptions = [...options];
-    newOptions[optionIndex].values[valueIndex] = value;
+    newOptions[optionIndex].values[valueIndex][field] = newValue;
     setOptions(newOptions);
   };
 
@@ -181,6 +181,19 @@ export default function ProductEditPage() {
     const newOptions = [...options];
     newOptions[index].customType = customType;
     setOptions(newOptions);
+  };
+
+  // 옵션 재고 합계 계산
+  const calculateTotalStock = (): number => {
+    if (options.length === 0) return 0;
+
+    return options.reduce((total, option) => {
+      const optionTotal = option.values.reduce((sum, value) => {
+        const stockNum = parseInt(value.stock) || 0;
+        return sum + stockNum;
+      }, 0);
+      return total + optionTotal;
+    }, 0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -425,19 +438,32 @@ export default function ProductEditPage() {
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
                 <label htmlFor="stock" className="block text-sm font-medium text-gray-900 dark:text-white">
-                  재고 <span className="text-red-500">*</span>
+                  총 재고 <span className="text-red-500">*</span>
+                  {options.length > 0 && (
+                    <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+                      (옵션 재고 합계)
+                    </span>
+                  )}
                 </label>
                 <input
                   type="number"
                   id="stock"
-                  value={stock}
+                  value={options.length > 0 ? calculateTotalStock() : stock}
                   onChange={(e) => setStock(e.target.value)}
                   required
                   min="0"
                   max="999999"
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+                  disabled={options.length > 0}
+                  className={`mt-2 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400 ${
+                    options.length > 0 ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : 'bg-white'
+                  }`}
                   placeholder="0"
                 />
+                {options.length > 0 && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    옵션이 설정되어 있어 직접 수정할 수 없습니다. 옵션별 재고를 수정하세요.
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="stock" className="block text-sm font-medium text-gray-900 dark:text-white">
@@ -525,9 +551,8 @@ export default function ProductEditPage() {
                 type="button"
                 onClick={addOption}
                 disabled={options.length >= 5}
-                className={`inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 ${
-                  options.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
-                }`}
+                className={`inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 ${options.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
+                  }`}
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -542,54 +567,55 @@ export default function ProductEditPage() {
                 {options.map((option, index) => (
                   <div key={index} className="flex gap-3 items-start p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                     <div className="flex-1 space-y-3">
-                      {/* 옵션 타입 선택 */}
-                      <div className="flex gap-3 items-start">
-                        <div className="flex-shrink-0 w-32">
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            옵션 타입
+                      {/* 옵션 타입 이름 입력 */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          옵션 타입 이름 <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={option.customType}
+                          onChange={(e) => updateCustomType(index, e.target.value)}
+                          placeholder="예: 색상, 무게, 용량, 향, 재질, 사이즈 등"
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        />
+                      </div>
+
+                      {/* 옵션 내용 추가 버튼 */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                            옵션 내용
                           </label>
-                          <select
-                            value={option.type}
-                            onChange={(e) => updateOptionType(index, e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                          <button
+                            type="button"
+                            onClick={() => addOptionValue(index)}
+                            disabled={option.values.length >= 5}
+                            className={`inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 ${
+                              option.values.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
+                            }`}
                           >
-                            <option value="color">색상</option>
-                            <option value="weight">무게</option>
-                            <option value="capacity">용량</option>
-                            <option value="other">기타</option>
-                          </select>
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            옵션 내용 추가 ({option.values.length}/5)
+                          </button>
                         </div>
 
-                        {/* 옵션 내용 추가 버튼 */}
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                              옵션 내용
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => addOptionValue(index)}
-                              disabled={option.values.length >= 5}
-                              className={`inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 ${
-                                option.values.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
-                              }`}
-                            >
-                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                              </svg>
-                              옵션 내용 추가 ({option.values.length}/5)
-                            </button>
-                          </div>
-
-                          {/* 옵션 값 입력 리스트 */}
-                          {option.values.length > 0 ? (
-                            <div className="space-y-2">
-                              {option.values.map((value, valueIndex) => (
-                                <div key={valueIndex} className="flex gap-2 items-center">
+                        {/* 옵션 값 입력 리스트 */}
+                        {option.values.length > 0 ? (
+                          <div className="space-y-3">
+                            {option.values.map((optionValue, valueIndex) => (
+                              <div key={valueIndex} className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 space-y-2">
+                                {/* 옵션 값 입력 */}
+                                <div className="flex gap-2 items-center">
+                                  <label className="flex-shrink-0 text-xs font-medium text-gray-700 dark:text-gray-300 w-16">
+                                    옵션 값
+                                  </label>
                                   <input
                                     type="text"
-                                    value={value}
-                                    onChange={(e) => updateOptionValue(index, valueIndex, e.target.value)}
+                                    value={optionValue.value}
+                                    onChange={(e) => updateOptionValue(index, valueIndex, 'value', e.target.value)}
                                     placeholder={`옵션 ${valueIndex + 1}`}
                                     className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                   />
@@ -603,31 +629,44 @@ export default function ProductEditPage() {
                                     </svg>
                                   </button>
                                 </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              "옵션 내용 추가" 버튼을 눌러 옵션을 추가하세요.
-                            </p>
-                          )}
-                        </div>
-                      </div>
 
-                      {/* 기타 선택 시 커스텀 옵션 타입 입력 */}
-                      {option.type === 'other' && (
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            옵션 타입 이름
-                          </label>
-                          <textarea
-                            value={option.customType || ''}
-                            onChange={(e) => updateCustomType(index, e.target.value)}
-                            rows={1}
-                            placeholder="예: 향, 재질, 사이즈 등"
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white resize-none"
-                          />
-                        </div>
-                      )}
+                                {/* 가격과 재고 입력 */}
+                                <div className="flex gap-2 items-center">
+                                  <label className="flex-shrink-0 text-xs font-medium text-gray-700 dark:text-gray-300 w-16">
+                                    가격 (₩)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={optionValue.price}
+                                    onChange={(e) => updateOptionValue(index, valueIndex, 'price', e.target.value)}
+                                    min="0"
+                                    max="99999999.99"
+                                    step="0.01"
+                                    placeholder="0"
+                                    className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                  />
+                                  <label className="flex-shrink-0 text-xs font-medium text-gray-700 dark:text-gray-300 w-12">
+                                    재고
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={optionValue.stock}
+                                    onChange={(e) => updateOptionValue(index, valueIndex, 'stock', e.target.value)}
+                                    min="0"
+                                    max="999999"
+                                    placeholder="0"
+                                    className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            "옵션 내용 추가" 버튼을 눌러 옵션을 추가하세요.
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     {/* 삭제 버튼 */}
@@ -651,8 +690,6 @@ export default function ProductEditPage() {
               </p>
             )}
           </div>
-
-
 
           {/* 버튼 */}
           <div className="mt-8 flex gap-4">
