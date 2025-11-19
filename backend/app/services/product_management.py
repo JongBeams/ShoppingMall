@@ -1,66 +1,20 @@
-import httpx
-from supabase import create_client
 from uuid import uuid4
 from pathlib import Path
 
-from app.services.supabase import get_supabase_client
+from app.services.supabase import get_supabase_admin_client
 from fastapi import HTTPException, status, UploadFile
 from app.models.product import CreateProductRequset, VendorProductResponse
-from app.models.user import ProfileResponse
-from app.config import get_settings
 
 
 #======================================================
 #공용 사용 (추후 분리)
 #======================================================
 
-# 사용자 정보 확인
-def _get_current_profile():
-    """
-    Supabase에서 현재 로그인한 사용자의 프로필 정보를 조회합니다.
-    """
-    supabase = get_supabase_client()
-
-    try:
-        user = supabase.auth.get_user()
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="인증되지 않은 사용자입니다."
-            )
-
-        profile_response = (
-            supabase.table("profiles")
-            .select("*")
-            .eq("id", user.user.id)
-            .single()
-            .execute()
-        )
-
-        profile = profile_response.data
-        if not profile:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="사용자 정보를 찾을 수 없습니다."
-            )
-
-        return profile
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"사용자 정보 조회 중 오류가 발생했습니다: {str(e)}"
-        )
-
-
-
 # 카테고리 slug를 category_id로 변환
-def getCategoryIdToSlug(category_slug: str, supabase_client=None):
+def getCategoryIdToSlug(category_slug: str):
     """
-    현재 로그인한 사용자가 요청한 카테고리 slug를 category_id로 변환합니다.
+    카테고리 slug를 category_id로 변환합니다.
+    Service Role Key로 RLS를 우회하여 조회합니다.
     """
     if not category_slug:
         raise HTTPException(
@@ -69,9 +23,9 @@ def getCategoryIdToSlug(category_slug: str, supabase_client=None):
         )
 
     try:
-        supabase = supabase_client or get_supabase_client()
+        supabase_admin = get_supabase_admin_client()
         response = (
-            supabase.table("categories")
+            supabase_admin.table("categories")
             .select("id, slug")
             .eq("slug", category_slug)
             .single()
@@ -96,92 +50,6 @@ def getCategoryIdToSlug(category_slug: str, supabase_client=None):
         )
 
 
-#프론트에서 토큰으로 사용자 검증
-#(유저정보를 로컬 스토리지에서 바로 받아와 사용가능하지만 로컬 수정이 가능하기에 검증 구간 추가)
-#프론트에서 받아온 토큰으로 사용자 정보, 토큰 반환
-def get_profile_from_token(authorization_header: str) -> tuple[ProfileResponse, str]:
-    """
-    Authorization 헤더의 access token을 검증하고 사용자 프로필을 반환합니다.
-    """
-    if not authorization_header:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="인증 토큰이 필요합니다."
-        )
-
-    #토큰 종류 확인 jwt는 bearer로 시작함
-    parts = authorization_header.split()
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효한 Authorization 헤더가 필요합니다."
-        )
-
-    access_token = parts[1]
-    settings = get_settings()
-
-    #anon 키와 토큰을 전달하여 현재 유저 정보를 get
-    #로컬 스토리지가 가지고있는 유저정보를 그대로 읽어오면 데이터 보안상 문제가 될 수 있다.
-    try:
-        response = httpx.get(
-            f"{settings.SUPABASE_URL}/auth/v1/user",
-            headers={
-                "apikey": settings.SUPABASE_ANON_KEY,
-                "Authorization": f"Bearer {access_token}",
-            },
-            timeout=10.0,
-        )
-    except httpx.HTTPError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"인증 서버에 연결할 수 없습니다: {str(exc)}"
-        )
-
-    if response.status_code != 200:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않은 인증 토큰입니다."
-        )
-
-    #현재 유저 정보에서 유저id를 받아옴
-    user_data = response.json()
-    user_id = user_data.get("id") or user_data.get("user", {}).get("id")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="사용자 정보를 확인할 수 없습니다."
-        )
-
-    # 받아온 유저 id로 get_supabase_client로 db에 접근해 profiles에서 유저 정보를 읽어옴
-    supabase = get_supabase_client()
-    profile_response = (
-        supabase.table("profiles")
-        .select("*")
-        .eq("id", user_id)
-        .single()
-        .execute()
-    )
-
-    profile = profile_response.data
-    if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="사용자 프로필을 찾을 수 없습니다."
-        )
-
-    profile_obj = ProfileResponse(
-        id=profile["id"],
-        email=profile["email"],
-        full_name=profile["full_name"],
-        phone=profile.get("phone"),
-        avatar_url=profile.get("avatar_url"),
-        user_type=profile["user_type"],
-        created_at=profile["created_at"],
-        updated_at=profile["updated_at"],
-    )
-    return profile_obj, access_token
-
-
 
 #======================================================
 #판매자 상품 관리
@@ -189,21 +57,28 @@ def get_profile_from_token(authorization_header: str) -> tuple[ProfileResponse, 
 
 
 #판매자 상품 조회
-def GetVendorProducts():
+def GetVendorProducts(current_user: dict):
     """
     현재 로그인한 판매자의 상품 목록을 조회합니다.
+    Service Role Key로 RLS를 우회하고, 애플리케이션 레벨에서 권한을 확인합니다.
     """
     try:
-        #현재 사용자 정보 호출
-        profile = _get_current_profile()
-        supabase = get_supabase_client()
+        # 판매자 권한 확인
+        if current_user.get("user_type") != "seller":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="판매자만 상품 목록을 조회할 수 있습니다."
+            )
+
+        # Service Role Key 사용 (RLS 우회)
+        supabase_admin = get_supabase_admin_client()
 
         #유저 프로필 정보에 판매자 아이디가 없어 판매자 테이블에서 유저 id 대조로 판매자 id 값 가져오기
         try:
             vendor_response = (
-                supabase.table("vendors")
+                supabase_admin.table("vendors")
                 .select("id, user_id")
-                .eq("user_id", profile["id"])
+                .eq("user_id", current_user["id"])
                 .single()
                 .execute()
             )
@@ -225,7 +100,7 @@ def GetVendorProducts():
         #판매자 id로 상품 목록 조회
         try:
             product_response = (
-                supabase.table("products")
+                supabase_admin.table("products")
                 .select("id, name, category_id, description, price, stock_quantity, low_stock_threshold, images, thumbnail_url, is_active, view_count, sale_count, rating, review_count, created_at, updated_at")
                 .eq("vendor_id", vendor_id)
                 .execute()
@@ -241,7 +116,7 @@ def GetVendorProducts():
                 # 카테고리 ID로 카테고리 이름 조회
                 try:
                     category_response = (
-                        supabase.table("categories")
+                        supabase_admin.table("categories")
                         .select("slug")
                         .eq("id", product["category_id"])
                         .single()
@@ -297,15 +172,15 @@ def GetVendorProducts():
 class CreateProduct:
     """
     상품 생성 비즈니스 로직
+    Service Role Key로 RLS를 우회하고, 애플리케이션 레벨에서 권한을 확인합니다.
     """
 
-    # 상품정보, 토큰, 사용자 정보를 받아오는 단계
-    def __init__(self, product_data: CreateProductRequset, profile: ProfileResponse, access_token: str):
+    # 상품정보, 사용자 정보를 받아오는 단계
+    def __init__(self, product_data: CreateProductRequset, current_user: dict):
         self.product_data = product_data
-        self.profile = profile
-        settings = get_settings()
-        self.supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-        self.supabase.postgrest.auth(access_token)
+        self.current_user = current_user
+        # Service Role Key 사용 (RLS 우회)
+        self.supabase_admin = get_supabase_admin_client()
 
     #생성/수정 단계
     def execute(self):
@@ -314,23 +189,20 @@ class CreateProduct:
         product_data.id가 -1이면 신규 생성, 그 외에는 수정입니다.
         """
         #판매자 확인 검증
-        if self.profile.user_type != "seller":
+        if self.current_user.get("user_type") != "seller":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="판매자만 상품을 등록/수정할 수 있습니다."
             )
 
         #카테고리 슬러그로 카테고리 아이디 추출
-        category_id = getCategoryIdToSlug(
-            category_slug=self.product_data.category,
-            supabase_client=self.supabase
-        )
+        category_id = getCategoryIdToSlug(category_slug=self.product_data.category)
 
         #유저 프로필 정보에 판매자 아이디가 없어 판매자 테이블에서 유저 id 대조로 판매자 id 값 가져오기
         vendor_response = (
-            self.supabase.table("vendors")
+            self.supabase_admin.table("vendors")
             .select("id, user_id")
-            .eq("user_id", self.profile.id)
+            .eq("user_id", self.current_user["id"])
             .single()
             .execute()
         )
@@ -356,9 +228,14 @@ class CreateProduct:
             "low_stock_threshold": self.product_data.low_stock_threshold,
         }
 
-        # 이미지 URL이 있으면 thumbnail_url에 저장 (프론트에서 이미 업로드된 URL)
+        # 대표 이미지 URL이 있으면 thumbnail_url에 저장
         if hasattr(self.product_data, 'image_url') and self.product_data.image_url:
             payload["thumbnail_url"] = self.product_data.image_url
+
+        # 추가 이미지 URLs가 있으면 images JSONB에 배열로 저장
+        if hasattr(self.product_data, 'image_urls') and self.product_data.image_urls:
+            # JSONB 형식으로 저장 (PostgreSQL JSONB 타입)
+            payload["images"] = self.product_data.image_urls
 
         if is_new:
             # 신규 등록
@@ -370,7 +247,7 @@ class CreateProduct:
             # 상품 정보 insert
             try:
                 insert_response = (
-                    self.supabase.table("products")
+                    self.supabase_admin.table("products")
                     .insert(payload)
                     .execute()
                 )
@@ -391,7 +268,7 @@ class CreateProduct:
             slug = str(product["id"])
             try:
                 (
-                    self.supabase.table("products")
+                    self.supabase_admin.table("products")
                     .update({"slug": slug})
                     .eq("id", product["id"])
                     .execute()
@@ -414,7 +291,7 @@ class CreateProduct:
             # 상품 존재 여부 및 소유권 확인
             try:
                 existing_product = (
-                    self.supabase.table("products")
+                    self.supabase_admin.table("products")
                     .select("id, vendor_id")
                     .eq("id", product_id)
                     .single()
@@ -443,7 +320,7 @@ class CreateProduct:
             # 상품 정보 업데이트
             try:
                 update_response = (
-                    self.supabase.table("products")
+                    self.supabase_admin.table("products")
                     .update(payload)
                     .eq("id", product_id)
                     .execute()
@@ -468,21 +345,21 @@ class CreateProduct:
 class DeleteProduct:
     """
     상품 삭제 비즈니스 로직
+    Service Role Key로 RLS를 우회하고, 애플리케이션 레벨에서 권한을 확인합니다.
     """
 
-    def __init__(self, product_id: str, profile: ProfileResponse, access_token: str):
+    def __init__(self, product_id: str, current_user: dict):
         self.product_id = product_id
-        self.profile = profile
-        settings = get_settings()
-        self.supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-        self.supabase.postgrest.auth(access_token)
+        self.current_user = current_user
+        # Service Role Key 사용 (RLS 우회)
+        self.supabase_admin = get_supabase_admin_client()
 
     def execute(self):
         """
         상품을 삭제합니다. 판매자 본인의 상품만 삭제 가능합니다.
         """
         # 판매자 확인 검증
-        if self.profile.user_type != "seller":
+        if self.current_user.get("user_type") != "seller":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="판매자만 상품을 삭제할 수 있습니다."
@@ -490,9 +367,9 @@ class DeleteProduct:
 
         # 유저 프로필 정보에 판매자 아이디가 없어 판매자 테이블에서 유저 id 대조로 판매자 id 값 가져오기
         vendor_response = (
-            self.supabase.table("vendors")
+            self.supabase_admin.table("vendors")
             .select("id, user_id")
-            .eq("user_id", self.profile.id)
+            .eq("user_id", self.current_user["id"])
             .single()
             .execute()
         )
@@ -508,7 +385,7 @@ class DeleteProduct:
         # 상품 존재 여부 및 소유권 확인
         try:
             product_response = (
-                self.supabase.table("products")
+                self.supabase_admin.table("products")
                 .select("id, vendor_id")
                 .eq("id", self.product_id)
                 .single()
@@ -538,7 +415,7 @@ class DeleteProduct:
         # 상품 삭제
         try:
             (
-                self.supabase.table("products")
+                self.supabase_admin.table("products")
                 .delete()
                 .eq("id", self.product_id)
                 .execute()
@@ -556,14 +433,14 @@ class DeleteProduct:
 class UploadProductImage:
     """
     상품 이미지 Supabase Storage 업로드 비즈니스 로직
+    Service Role Key로 RLS를 우회하고, 애플리케이션 레벨에서 권한을 확인합니다.
     """
 
-    def __init__(self, file: UploadFile, profile: ProfileResponse):
+    def __init__(self, file: UploadFile, current_user: dict):
         self.file = file
-        self.profile = profile
-        settings = get_settings()
-        # Storage 업로드는 Service Role 키 사용 (RLS 우회, 판매자 권한은 코드에서 검증)
-        self.supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+        self.current_user = current_user
+        # Service Role Key 사용 (RLS 우회)
+        self.supabase_admin = get_supabase_admin_client()
         self.bucket_name = "ProductImage"  # Supabase Storage 버킷 이름
 
     async def execute(self):
@@ -571,7 +448,7 @@ class UploadProductImage:
         이미지를 Supabase Storage에 업로드하고 public URL을 반환합니다.
         """
         # 판매자 확인 검증
-        if self.profile.user_type != "seller":
+        if self.current_user.get("user_type") != "seller":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="판매자만 이미지를 업로드할 수 있습니다."
@@ -596,9 +473,9 @@ class UploadProductImage:
         # 유저 프로필 정보에 판매자 아이디가 없어 판매자 테이블에서 유저 id 대조로 판매자 id 값 가져오기
         try:
             vendor_response = (
-                self.supabase.table("vendors")
+                self.supabase_admin.table("vendors")
                 .select("id, user_id")
-                .eq("user_id", self.profile.id)
+                .eq("user_id", self.current_user["id"])
                 .single()
                 .execute()
             )
@@ -626,7 +503,7 @@ class UploadProductImage:
 
         # Supabase Storage에 업로드
         try:
-            upload_response = self.supabase.storage.from_(self.bucket_name).upload(
+            upload_response = self.supabase_admin.storage.from_(self.bucket_name).upload(
                 path=storage_path,
                 file=file_content,
                 file_options={"content-type": self.file.content_type}
@@ -649,7 +526,7 @@ class UploadProductImage:
 
         # Public URL 생성
         try:
-            public_url = self.supabase.storage.from_(self.bucket_name).get_public_url(storage_path)
+            public_url = self.supabase_admin.storage.from_(self.bucket_name).get_public_url(storage_path)
 
             return {
                 "image_url": public_url,

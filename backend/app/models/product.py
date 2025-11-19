@@ -32,8 +32,11 @@ class CreateProductRequset(BaseModel):
     stock_quantity: int = Field(0, ge=0)
     low_stock_threshold: int = Field(10, ge=0)
 
-    #이미지 URL
+    #이미지 URL (대표 이미지 - thumbnail_url에 저장됨)
     image_url: Optional[str] = None
+
+    #추가 이미지 URLs (images JSONB에 배열로 저장됨)
+    image_urls: Optional[list[str]] = None
 
 
 
@@ -99,7 +102,8 @@ class VendorProductResponse(BaseModel):
     price: Decimal
     stock_quantity: int
     low_stock_threshold: int
-    images: Optional[str] = None
+    # Supabase JSONB 필드는 문자열이나 배열 모두 들어올 수 있으므로 넓게 허용
+    images: Optional[list[str] | str] = None
     thumbnail_url: Optional[str] = None
     is_active: bool
     view_count: int

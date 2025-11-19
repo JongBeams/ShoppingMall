@@ -19,8 +19,8 @@ export default function ProductEditPage() {
   const [category, setCategory] = useState('');
   const [stock, setStock] = useState('');
   const [lowStock, setlowStock] = useState('10');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   const isNewProduct = productId === '-1';
 
@@ -67,9 +67,9 @@ export default function ProductEditPage() {
             setlowStock(product.low_stock_threshold.toString());
             // 기존 이미지 URL 설정 (thumbnail_url 우선, 없으면 images)
             if (product.thumbnail_url) {
-              setImagePreview(product.thumbnail_url);
+              setImagePreviews([product.thumbnail_url]);
             } else if (product.images) {
-              setImagePreview(product.images);
+              setImagePreviews([product.images]);
             }
           } catch (error) {
             console.error('Failed to fetch product:', error);
@@ -87,25 +87,38 @@ export default function ProductEditPage() {
     }
   }, [router, isNewProduct, productId]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // 이미지 파일만 허용
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newFiles = Array.from(files).slice(0, 5 - imageFiles.length);
+
+    // 이미지 파일만 허용
+    const validFiles = newFiles.filter(file => {
       if (!file.type.startsWith('image/')) {
         alert('이미지 파일만 업로드 가능합니다.');
-        e.target.value = '';
-        return;
+        return false;
       }
+      return true;
+    });
 
-      setImageFile(file);
+    if (validFiles.length === 0) return;
 
-      // 미리보기 생성
+    setImageFiles([...imageFiles, ...validFiles]);
+
+    // 이미지 미리보기 생성
+    validFiles.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreview(reader.result as string);
+        setImagePreviews((prev) => [...prev, reader.result as string]);
       };
       reader.readAsDataURL(file);
-    }
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setImageFiles(imageFiles.filter((_, i) => i !== index));
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -157,15 +170,20 @@ export default function ProductEditPage() {
     }
 
     try {
-      let imageUrl: string | undefined;
+      let thumbnailUrl: string | undefined;
+      let additionalImageUrls: string[] = [];
 
-      // 이미지 파일이 있으면 먼저 업로드
-      if (imageFile) {
+      // 이미지 파일들이 있으면 한 번에 업로드
+      if (imageFiles.length > 0) {
         try {
           // 상품 ID가 필요하므로, 신규 상품의 경우 임시 ID 사용
           const uploadId = isNewProduct ? 'temp' : productId;
-          const imageResponse = await productManagementAPI.uploadImage(uploadId, imageFile, token);
-          imageUrl = imageResponse.image_url;
+
+          // 모든 이미지를 한 번에 업로드
+          const imageResponse = await productManagementAPI.uploadImages(uploadId, imageFiles, token);
+
+          thumbnailUrl = imageResponse.thumbnail_url;
+          additionalImageUrls = imageResponse.image_urls;
         } catch (error: any) {
           console.error('Image upload failed:', error);
           alert('이미지 업로드에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
@@ -184,9 +202,15 @@ export default function ProductEditPage() {
         low_stock_threshold: Number(lowStock),
       };
 
-      // 이미지 URL이 있으면 추가
-      if (imageUrl) {
-        productData.image = imageUrl as any; // URL string으로 사용
+      // 대표 이미지(thumbnail)와 추가 이미지들을 설정
+      if (thumbnailUrl) {
+        productData.image = thumbnailUrl as any; // 첫 번째 이미지를 대표 이미지로 사용
+      }
+
+      // 추가 이미지 URLs 설정 (2번째 이미지부터)
+      if (additionalImageUrls.length > 1) {
+        // TypeScript 타입 에러를 피하기 위해 any로 캐스팅
+        (productData as any).image_urls = additionalImageUrls.slice(1);
       }
 
       if (isNewProduct) {
@@ -264,6 +288,9 @@ export default function ProductEditPage() {
                 className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
                 placeholder="상품 설명을 20자 이상 입력하세요"
               />
+              <div className="flex justify-end text-sm text-gray-600 dark:text-gray-400">
+                <span>{description.length}자 / 최소 10자</span>
+              </div>
             </div>
 
             {/* 카테고리 */}
@@ -279,13 +306,13 @@ export default function ProductEditPage() {
                 className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
               >
                 <option value="">카테고리를 선택하세요</option>
-                <option value="electronics">가전/디지털</option> 
-                <option value="fashion">패션</option> 
-                <option value="beauty">뷰티</option> 
+                <option value="electronics">가전/디지털</option>
+                <option value="fashion">패션</option>
+                <option value="beauty">뷰티</option>
                 <option value="living">생활/건강</option>
-                <option value="food">식품</option> 
-                <option value="sports">스포츠</option> 
-                <option value="books">도서</option> 
+                <option value="food">식품</option>
+                <option value="sports">스포츠</option>
+                <option value="books">도서</option>
                 <option value="baby">완구</option>
               </select>
             </div>
@@ -344,37 +371,62 @@ export default function ProductEditPage() {
                   placeholder="10"
                 />
               </div>
-              
+
             </div>
 
 
             {/* 이미지 파일 */}
             <div>
-              <label htmlFor="imageFile" className="block text-sm font-medium text-gray-900 dark:text-white">
-                상품 이미지
+              <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                상품 이미지 (선택)
               </label>
-              <input
-                type="file"
-                id="imageFile"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="mt-2 block w-full text-sm text-gray-900 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:text-gray-400 dark:file:bg-blue-900 dark:file:text-blue-300 dark:hover:file:bg-blue-800"
-              />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                선택사항: 이미지 파일만 업로드 가능합니다 (JPG, PNG, GIF 등)
+              <div className="mb-3 mt-2">
+                <input
+                  type="file"
+                  id="image-upload"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  disabled={imageFiles.length >= 5}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="image-upload"
+                  className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 ${
+                    imageFiles.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
+                  }`}
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                  </svg>
+                  사진 선택 ({imageFiles.length}/5)
+                </label>
+              </div>
+              <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                이미지 파일만 업로드 가능합니다 (JPG, PNG, GIF 등). 최대 5장까지 업로드 가능합니다.
               </p>
 
               {/* 이미지 미리보기 */}
-              {imagePreview && (
-                <div className="mt-4">
-                  <p className="mb-2 text-sm font-medium text-gray-900 dark:text-white">미리보기:</p>
-                  <div className="relative h-48 w-48 overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
-                    <img
-                      src={imagePreview}
-                      alt="상품 이미지 미리보기"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
+              {imagePreviews.length > 0 && (
+                <div className="flex flex-wrap gap-3">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative h-24 w-24">
+                      <img
+                        src={preview}
+                        alt={`미리보기 ${index + 1}`}
+                        className="h-full w-full rounded-lg border border-gray-200 object-cover dark:border-gray-700"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Header, status, UploadFile, File, HTTPException
+from fastapi import APIRouter, status, UploadFile, File, HTTPException, Depends
+import asyncio
 
 from app.models.product import CreateProductRequset
-from app.services.product_management import CreateProduct, DeleteProduct, UploadProductImage, get_profile_from_token, GetVendorProducts
+from app.services.product_management import CreateProduct, DeleteProduct, UploadProductImage, GetVendorProducts
 from app.services.supabase import get_supabase_client
+from app.services.auth_middleware import get_current_user
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -70,12 +72,12 @@ async def get_all_products():
 
 #판매자 상품 조회
 @router.get("/management", summary="내 상품 목록 조회")
-async def get_management_products():
+async def get_management_products(current_user: dict = Depends(get_current_user)):
     """
-    로그인한 판매자의 상품 목록을 조회합니다
+    로그인한 판매자의 상품 목록을 조회합니다 (JWT 인증 필요)
     """
     # GetVendorProducts 서비스 함수 사용
-    products = GetVendorProducts()
+    products = GetVendorProducts(current_user)
 
     return {
         "message": "내 상품 목록 조회",
@@ -92,10 +94,10 @@ async def get_management_products():
 async def create_or_update_product(
     product_id: str,
     product_data: CreateProductRequset,
-    authorization: str = Header(None)
+    current_user: dict = Depends(get_current_user)
 ):
     """
-    상품을 등록하거나 수정합니다 (판매자 전용)
+    상품을 등록하거나 수정합니다 (판매자 전용, JWT 인증 필요)
 
     - **product_id**: -1이면 신규 등록, 그 외에는 해당 ID의 상품 수정
     - **name**: 상품명 (필수)
@@ -107,13 +109,11 @@ async def create_or_update_product(
     - **image**: 상품 이미지 URL (선택)
     """
 
-    current_user, access_token = get_profile_from_token(authorization)
-
     # product_id를 product_data에 설정
     product_data.id = product_id
 
-    # CreateProduct 서비스 클래스 사용
-    service = CreateProduct(product_data, current_user, access_token)
+    # CreateProduct 서비스 클래스 사용 (current_user만 전달)
+    service = CreateProduct(product_data, current_user)
     product = service.execute()
 
     is_new = product_id == "-1"
@@ -122,48 +122,62 @@ async def create_or_update_product(
     return {"message": message, "product": product}
 
 
-# 이미지 업로드
+# 이미지 업로드 (여러 파일 지원)
 @router.post("/product-image/{product_id}", summary="상품 이미지 업로드")
 async def upload_product_image(
     product_id: str,
-    file: UploadFile = File(...),
-    authorization: str = Header(None)
+    files: list[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_user)
 ):
     """
-    상품 이미지를 Supabase Storage에 업로드합니다 (판매자 전용)
+    상품 이미지를 Supabase Storage에 업로드합니다 (판매자 전용, JWT 인증 필요)
+    최대 5개의 이미지를 업로드할 수 있습니다.
 
     - **product_id**: 상품 ID (temp는 임시 ID로 신규 상품용)
-    - **file**: 업로드할 이미지 파일 (필수)
+    - **files**: 업로드할 이미지 파일들 (최대 5개)
 
     Returns:
-        - **image_url**: 업로드된 이미지의 Public URL
-        - **storage_path**: Storage 내부 경로
+        - **thumbnail_url**: 첫 번째 이미지의 Public URL
+        - **image_urls**: 모든 이미지의 Public URL 배열
     """
 
-    current_user, _ = get_profile_from_token(authorization)
+    # 최대 5개까지만 허용
+    if len(files) > 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="최대 5개의 이미지만 업로드할 수 있습니다."
+        )
 
-    # UploadProductImage 서비스 클래스 사용 (Service Role 키 사용)
-    service = UploadProductImage(file, current_user)
-    result = await service.execute()
+    # 모든 파일을 병렬로 업로드
+    upload_tasks = []
+    for file in files:
+        service = UploadProductImage(file, current_user)
+        upload_tasks.append(service.execute())
 
-    return result
+    # asyncio.gather로 모든 업로드를 동시에 실행
+    results = await asyncio.gather(*upload_tasks)
+    image_urls = [result["image_url"] for result in results]
+
+    return {
+        "thumbnail_url": image_urls[0] if image_urls else None,
+        "image_urls": image_urls
+    }
 
 
 # 상품 삭제
 @router.delete("/management/{product_id}", summary="상품 삭제")
 async def delete_product(
-    product_id: str, authorization: str = Header(None)
+    product_id: str,
+    current_user: dict = Depends(get_current_user)
 ):
     """
-    상품을 삭제합니다 (판매자 전용, 본인 상품만 삭제 가능)
+    상품을 삭제합니다 (판매자 전용, 본인 상품만 삭제 가능, JWT 인증 필요)
 
     - **product_id**: 삭제할 상품의 ID (필수)
     """
 
-    current_user, access_token = get_profile_from_token(authorization)
-
     # DeleteProduct 서비스 클래스 사용
-    service = DeleteProduct(product_id, current_user, access_token)
+    service = DeleteProduct(product_id, current_user)
     result = service.execute()
 
     return result

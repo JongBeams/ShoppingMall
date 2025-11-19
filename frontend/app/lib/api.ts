@@ -164,10 +164,14 @@ export const productManagementAPI = {
       token,
     }),
 
-  // 이미지 업로드 (별도 엔드포인트)
-  uploadImage: async (id: string,file: File, token: string): Promise<{ image_url: string }> => {
+  // 이미지 업로드 (여러 파일 지원, 최대 5개)
+  uploadImages: async (id: string, files: File[], token: string): Promise<{ thumbnail_url: string; image_urls: string[] }> => {
     const formData = new FormData();
-    formData.append('file', file);
+
+    // 여러 파일을 'files' 필드로 추가
+    files.forEach(file => {
+      formData.append('files', file);
+    });
 
     const response = await fetch(`${API_BASE_URL}/products/product-image/${id}`, {
       method: 'POST',
