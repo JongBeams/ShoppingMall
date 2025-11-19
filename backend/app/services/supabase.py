@@ -15,3 +15,7 @@ def get_supabase_admin_client() -> Client:
     """Supabase admin client 인스턴스 반환 (Service Role Key 사용 - 관리자용)"""
     settings = get_settings()
     return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+
+
+# 기본 supabase 클라이언트 (기존 코드 호환성)
+supabase = get_supabase_client()

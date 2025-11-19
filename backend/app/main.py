@@ -6,15 +6,15 @@ import os
 load_dotenv()
 
 # Routers
-from app.routers import auth, admin, product, vendor, notice, faq, inquiry
+from app.routers import auth, admin, product, vendor, notice, faq, inquiry, chat
 
 app = FastAPI(title="ShoppingMall API", version="1.0.0")
 
-# CORS 설정 - 개발 환경
+# CORS 설정 - 개발 환경 (WebSocket 포함)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # 프론트엔드 URL
-    allow_credentials=True,  # 쿠키 사용
+    allow_origins=["*"],  # 개발 환경에서 모든 origin 허용
+    allow_credentials=False,  # allow_origins=["*"]일 때는 False여야 함
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -28,6 +28,7 @@ app.include_router(vendor.router)
 app.include_router(notice.router)
 app.include_router(faq.router)
 app.include_router(inquiry.router)
+app.include_router(chat.router)
 
 @app.get("/")
 async def root():
@@ -36,4 +37,14 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+# WebSocket 테스트 엔드포인트
+from fastapi import WebSocket
+@app.websocket("/test-ws")
+async def test_websocket(websocket: WebSocket):
+    print("🔌 테스트 WebSocket 연결 요청!")
+    await websocket.accept()
+    print("✅ 테스트 WebSocket 연결 성공!")
+    await websocket.send_text("Hello from WebSocket!")
+    await websocket.close()
 
