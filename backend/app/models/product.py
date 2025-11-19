@@ -19,6 +19,9 @@ class CreateProductRequset(BaseModel):
     #상품명
     name: str = Field(..., min_length=1)
 
+    #간단설명 (meta_description)
+    meta_description: str = Field(..., min_length=1, max_length=20)
+
     #설명
     description: Optional[str] = Field(..., min_length=20)
 

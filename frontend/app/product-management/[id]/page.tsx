@@ -14,6 +14,7 @@ export default function ProductEditPage() {
 
   // Form state
   const [name, setName] = useState('');
+  const [meta_description, setMeta_Description] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
@@ -21,6 +22,13 @@ export default function ProductEditPage() {
   const [lowStock, setlowStock] = useState('10');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+
+  // 옵션 상태
+  interface ProductOption {
+    type: string;  // 'color' | 'weight' | 'capacity'
+    value: string;
+  }
+  const [options, setOptions] = useState<ProductOption[]>([]);
 
   const isNewProduct = productId === '-1';
 
@@ -121,6 +129,34 @@ export default function ProductEditPage() {
     setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
 
+  // 옵션 추가
+  const addOption = () => {
+    if (options.length >= 5) {
+      alert('옵션은 최대 5개까지 추가할 수 있습니다.');
+      return;
+    }
+    setOptions([...options, { type: 'color', value: '' }]);
+  };
+
+  // 옵션 삭제
+  const removeOption = (index: number) => {
+    setOptions(options.filter((_, i) => i !== index));
+  };
+
+  // 옵션 타입 변경
+  const updateOptionType = (index: number, type: string) => {
+    const newOptions = [...options];
+    newOptions[index].type = type;
+    setOptions(newOptions);
+  };
+
+  // 옵션 값 변경
+  const updateOptionValue = (index: number, value: string) => {
+    const newOptions = [...options];
+    newOptions[index].value = value;
+    setOptions(newOptions);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -195,6 +231,7 @@ export default function ProductEditPage() {
       const productData: CreateProductRequest = {
         id: productId,  // -1 (신규) 또는 실제 상품 ID
         name,
+        meta_description,
         description,
         price: Number(price),
         category,
@@ -273,10 +310,30 @@ export default function ProductEditPage() {
               />
             </div>
 
-            {/* 상품 설명 */}
+            {/* 상품 간단 설명 */}
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-900 dark:text-white">
-                상품 설명 <span className="text-red-500">*</span>
+                상품 간단 설명 <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="meta_description"
+                value={meta_description}
+                onChange={(e) => setMeta_Description(e.target.value)}
+                required
+                rows={1}
+                maxLength={20}
+                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+                placeholder="상품 간단 설명을 20자 이하 입력하세요"
+              />
+              <div className="flex justify-end text-sm text-gray-600 dark:text-gray-400">
+                <span>{meta_description.length}자 / 최대 20자</span>
+              </div>
+            </div>
+
+            {/* 상품 상세 설명 */}
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-900 dark:text-white">
+                상품 상세 설명 <span className="text-red-500">*</span>
               </label>
               <textarea
                 id="description"
@@ -286,10 +343,10 @@ export default function ProductEditPage() {
                 rows={4}
                 minLength={20}
                 className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-                placeholder="상품 설명을 20자 이상 입력하세요"
+                placeholder="상품 상세 설명을 20자 이상 입력하세요"
               />
               <div className="flex justify-end text-sm text-gray-600 dark:text-gray-400">
-                <span>{description.length}자 / 최소 10자</span>
+                <span>{description.length}자 / 최소 20자</span>
               </div>
             </div>
 
@@ -392,9 +449,8 @@ export default function ProductEditPage() {
                 />
                 <label
                   htmlFor="image-upload"
-                  className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 ${
-                    imageFiles.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
-                  }`}
+                  className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 ${imageFiles.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
+                    }`}
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
@@ -403,7 +459,8 @@ export default function ProductEditPage() {
                 </label>
               </div>
               <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                이미지 파일만 업로드 가능합니다 (JPG, PNG, GIF 등). 최대 5장까지 업로드 가능합니다.
+                *첫번 째 이미지는 메인 이미지로 등록됩니다.<br />
+                *이미지 파일만 업로드 가능합니다 (JPG, PNG, GIF 등). 최대 5장까지 업로드 가능합니다.
               </p>
 
               {/* 이미지 미리보기 */}
@@ -431,6 +488,86 @@ export default function ProductEditPage() {
               )}
             </div>
           </div>
+
+          {/* 옵션 추가 */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                옵션 추가 (선택)
+              </label>
+              <button
+                type="button"
+                onClick={addOption}
+                disabled={options.length >= 5}
+                className={`inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 ${
+                  options.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
+                }`}
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                옵션 추가 ({options.length}/5)
+              </button>
+            </div>
+
+            {/* 옵션 리스트 */}
+            {options.length > 0 && (
+              <div className="space-y-3">
+                {options.map((option, index) => (
+                  <div key={index} className="flex gap-3 items-start p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                    {/* 옵션 타입 선택 */}
+                    <div className="flex-shrink-0 w-32">
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        옵션 타입
+                      </label>
+                      <select
+                        value={option.type}
+                        onChange={(e) => updateOptionType(index, e.target.value)}
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                      >
+                        <option value="color">색상</option>
+                        <option value="weight">무게</option>
+                        <option value="capacity">용량</option>
+                      </select>
+                    </div>
+
+                    {/* 옵션 값 입력 */}
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        옵션 내용
+                      </label>
+                      <textarea
+                        value={option.value}
+                        onChange={(e) => updateOptionValue(index, e.target.value)}
+                        rows={2}
+                        placeholder="예: 빨강, 파랑, 검정"
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white resize-none"
+                      />
+                    </div>
+
+                    {/* 삭제 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => removeOption(index)}
+                      className="flex-shrink-0 mt-6 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 transition"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {options.length === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                옵션을 추가하려면 위의 "옵션 추가" 버튼을 클릭하세요.
+              </p>
+            )}
+          </div>
+
+
 
           {/* 버튼 */}
           <div className="mt-8 flex gap-4">

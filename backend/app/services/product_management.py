@@ -1,5 +1,6 @@
 from uuid import uuid4
 from pathlib import Path
+from datetime import datetime, timezone
 
 from app.services.supabase import get_supabase_admin_client
 from fastapi import HTTPException, status, UploadFile
@@ -9,6 +10,58 @@ from app.models.product import CreateProductRequset, VendorProductResponse
 #======================================================
 #공용 사용 (추후 분리)
 #======================================================
+
+# 판매자 권한 확인 및 vendor_id 조회
+def get_vendor_id(current_user: dict) -> str:
+    """
+    현재 로그인한 사용자가 판매자인지 확인하고, vendor_id를 반환합니다.
+    Service Role Key로 RLS를 우회하여 조회합니다.
+
+    Args:
+        current_user: JWT에서 추출한 사용자 정보
+
+    Returns:
+        str: vendor_id
+
+    Raises:
+        HTTPException: 판매자가 아니거나, 판매자 정보를 찾을 수 없는 경우
+    """
+    # 판매자 권한 확인
+    if current_user.get("user_type") != "seller":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="판매자만 접근할 수 있습니다."
+        )
+
+    try:
+        supabase_admin = get_supabase_admin_client()
+
+        # 유저 프로필 정보에 판매자 아이디가 없어 판매자 테이블에서 유저 id 대조로 판매자 id 값 가져오기
+        vendor_response = (
+            supabase_admin.table("vendors")
+            .select("id, user_id")
+            .eq("user_id", current_user["id"])
+            .single()
+            .execute()
+        )
+
+        vendor = vendor_response.data
+        if not vendor:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="판매자 정보를 찾을 수 없습니다."
+            )
+
+        return vendor["id"]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"판매자 정보 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
 
 # 카테고리 slug를 category_id로 변환
 def getCategoryIdToSlug(category_slug: str):
@@ -63,39 +116,11 @@ def GetVendorProducts(current_user: dict):
     Service Role Key로 RLS를 우회하고, 애플리케이션 레벨에서 권한을 확인합니다.
     """
     try:
-        # 판매자 권한 확인
-        if current_user.get("user_type") != "seller":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="판매자만 상품 목록을 조회할 수 있습니다."
-            )
+        # 판매자 권한 확인 및 vendor_id 조회 (헬퍼 함수 사용)
+        vendor_id = get_vendor_id(current_user)
 
         # Service Role Key 사용 (RLS 우회)
         supabase_admin = get_supabase_admin_client()
-
-        #유저 프로필 정보에 판매자 아이디가 없어 판매자 테이블에서 유저 id 대조로 판매자 id 값 가져오기
-        try:
-            vendor_response = (
-                supabase_admin.table("vendors")
-                .select("id, user_id")
-                .eq("user_id", current_user["id"])
-                .single()
-                .execute()
-            )
-            vendor = vendor_response.data
-            if not vendor:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="판매자 정보를 찾을 수 없습니다."
-                )
-            vendor_id = vendor["id"]
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"판매자 정보 조회 중 오류가 발생했습니다: {str(e)}"
-            )
 
         #판매자 id로 상품 목록 조회
         try:
@@ -188,32 +213,11 @@ class CreateProduct:
         상품을 생성하거나 수정합니다.
         product_data.id가 -1이면 신규 생성, 그 외에는 수정입니다.
         """
-        #판매자 확인 검증
-        if self.current_user.get("user_type") != "seller":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="판매자만 상품을 등록/수정할 수 있습니다."
-            )
+        # 판매자 권한 확인 및 vendor_id 조회 (헬퍼 함수 사용)
+        vendor_id = get_vendor_id(self.current_user)
 
         #카테고리 슬러그로 카테고리 아이디 추출
         category_id = getCategoryIdToSlug(category_slug=self.product_data.category)
-
-        #유저 프로필 정보에 판매자 아이디가 없어 판매자 테이블에서 유저 id 대조로 판매자 id 값 가져오기
-        vendor_response = (
-            self.supabase_admin.table("vendors")
-            .select("id, user_id")
-            .eq("user_id", self.current_user["id"])
-            .single()
-            .execute()
-        )
-        vendor = vendor_response.data
-        if not vendor:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="판매자 정보를 찾을 수 없습니다."
-            )
-
-        vendor_id = vendor["id"]
 
         # 신규 등록인지 수정인지 확인
         is_new = self.product_data.id == "-1" or self.product_data.id is None
@@ -222,6 +226,7 @@ class CreateProduct:
         payload = {
             "category_id": category_id,
             "name": self.product_data.name,
+            "meta_description": self.product_data.meta_description,
             "description": self.product_data.description,
             "price": float(self.product_data.price),
             "stock_quantity": self.product_data.stock_quantity,
@@ -239,6 +244,7 @@ class CreateProduct:
 
         if is_new:
             # 신규 등록
+            payload["meta_title"] = self.product_data.name
             payload["vendor_id"] = vendor_id
             payload["slug"] = self.product_data.name  # 임시 slug
             payload["is_active"] = True
@@ -288,11 +294,14 @@ class CreateProduct:
             # 기존 상품 수정
             product_id = self.product_data.id
 
+            # updated_at을 현재 시각으로 갱신
+            payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+
             # 상품 존재 여부 및 소유권 확인
             try:
                 existing_product = (
                     self.supabase_admin.table("products")
-                    .select("id, vendor_id")
+                    .select("id, vendor_id, name")
                     .eq("id", product_id)
                     .single()
                     .execute()
@@ -309,6 +318,10 @@ class CreateProduct:
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="본인의 상품만 수정할 수 있습니다."
                     )
+
+                # 상품명이 변경되었다면 meta_title도 함께 업데이트
+                if existing_product.data.get("name") != self.product_data.name:
+                    payload["meta_title"] = self.product_data.name
             except HTTPException:
                 raise
             except Exception as e:
@@ -358,29 +371,8 @@ class DeleteProduct:
         """
         상품을 삭제합니다. 판매자 본인의 상품만 삭제 가능합니다.
         """
-        # 판매자 확인 검증
-        if self.current_user.get("user_type") != "seller":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="판매자만 상품을 삭제할 수 있습니다."
-            )
-
-        # 유저 프로필 정보에 판매자 아이디가 없어 판매자 테이블에서 유저 id 대조로 판매자 id 값 가져오기
-        vendor_response = (
-            self.supabase_admin.table("vendors")
-            .select("id, user_id")
-            .eq("user_id", self.current_user["id"])
-            .single()
-            .execute()
-        )
-        vendor = vendor_response.data
-        if not vendor:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="판매자 정보를 찾을 수 없습니다."
-            )
-
-        vendor_id = vendor["id"]
+        # 판매자 권한 확인 및 vendor_id 조회 (헬퍼 함수 사용)
+        vendor_id = get_vendor_id(self.current_user)
 
         # 상품 존재 여부 및 소유권 확인
         try:
@@ -447,12 +439,8 @@ class UploadProductImage:
         """
         이미지를 Supabase Storage에 업로드하고 public URL을 반환합니다.
         """
-        # 판매자 확인 검증
-        if self.current_user.get("user_type") != "seller":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="판매자만 이미지를 업로드할 수 있습니다."
-            )
+        # 판매자 권한 확인 및 vendor_id 조회 (헬퍼 함수 사용)
+        vendor_id = get_vendor_id(self.current_user)
 
         # 파일 유효성 검사
         if not self.file.content_type or not self.file.content_type.startswith("image/"):
@@ -468,30 +456,6 @@ class UploadProductImage:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="파일 크기는 5MB를 초과할 수 없습니다."
-            )
-
-        # 유저 프로필 정보에 판매자 아이디가 없어 판매자 테이블에서 유저 id 대조로 판매자 id 값 가져오기
-        try:
-            vendor_response = (
-                self.supabase_admin.table("vendors")
-                .select("id, user_id")
-                .eq("user_id", self.current_user["id"])
-                .single()
-                .execute()
-            )
-            vendor = vendor_response.data
-            if not vendor:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="판매자 정보를 찾을 수 없습니다."
-                )
-            vendor_id = vendor["id"]
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"판매자 정보 조회 중 오류가 발생했습니다: {str(e)}"
             )
 
         # 파일 확장자 추출

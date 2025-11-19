@@ -2,6 +2,7 @@
 export interface Product {
   id: string;
   name: string;
+  meta_description?:string;
   description?: string;
   price: number;
   category?: string;
@@ -9,6 +10,7 @@ export interface Product {
   category_name?: string;
   imageUrl?: string;
   thumbnail_url?: string;
+  images?: string[];  // 추가 이미지 배열
   stock?: number;
   stock_quantity?: number;
   createdAt?: string;
@@ -18,6 +20,7 @@ export interface Product {
 export interface CreateProductRequest {
   id:string;
   name: string;
+  meta_description:string;
   description: string;
   price: number;
   category: string;
@@ -25,7 +28,6 @@ export interface CreateProductRequest {
   sku?: string;
   low_stock_threshold?: number;
   is_active?: boolean;
-  is_featured?: boolean;
   image?: string; // 이미지 URL
 }
 

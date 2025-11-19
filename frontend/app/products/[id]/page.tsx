@@ -1,26 +1,13 @@
 'use client';
 
-import { use, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Button from '@/app/components/common/Button';
+import { Product } from '@/app/types';
+import { productAPI } from '@/app/lib/api';
 
 // 임시 더미 데이터
-const dummyProduct = {
-  id: '1',
-  name: '무선 이어폰',
-  description: '고음질 블루투스 무선 이어폰입니다. 노이즈 캔슬링 기능과 긴 배터리 수명을 자랑합니다.',
-  detailImages: [
-    'https://images.unsplash.com/photo-1590658165737-15a047b7a1c4?w=800&q=80',
-    'https://images.unsplash.com/photo-1606841837239-c5a1a4a07af7?w=800&q=80',
-    'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=800&q=80',
-    'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=800&q=80',
-  ],
-  price: 89000,
-  category: '전자제품',
-  imageUrl: '/placeholder-product.jpg',
-  stock: 50,
-};
-
 const dummyReviews = [
   {
     id: 1,
@@ -53,18 +40,100 @@ const dummyReviews = [
     likes: 31
   },
 ];
+type DetailedProduct = Product & {
+  meta_description?: string;
+  images?: string[] | string;
+};
 
-export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ProductDetailPage() {
+  const params = useParams<{ id: string }>();
+  const productId = params?.id;
+  const [product, setProduct] = useState<DetailedProduct | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchProduct = async () => {
+      if (!productId) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await productAPI.getById(productId);
+        const productData = (response?.product ?? response) as DetailedProduct;
+        if (mounted) {
+          setProduct(productData);
+        }
+      } catch (err: any) {
+        console.error('Failed to load product:', err);
+        if (mounted) {
+          setError(err.message || '상품 정보를 불러오지 못했습니다.');
+          setProduct(null);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchProduct();
+    return () => {
+      mounted = false;
+    };
+  }, [productId]);
+
+  const displayProduct = useMemo(() => product, [product]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-gray-600 dark:text-gray-300">
+        상품 정보를 불러오는 중입니다...
+      </div>
+    );
+  }
+
+  if (error || !displayProduct) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center text-gray-600 dark:text-gray-300">
+        <p>{error || '상품 정보를 찾을 수 없습니다.'}</p>
+        <Button onClick={() => window.location.reload()}>다시 시도</Button>
+      </div>
+    );
+  }
+
+  const thumbnailImageSrc =
+    displayProduct.thumbnail_url ||
+    displayProduct.imageUrl ||
+    '/placeholder-product.jpg';
+  const stock =
+    typeof displayProduct.stock === 'number'
+      ? displayProduct.stock
+      : displayProduct.stock_quantity ?? 0;
+  const categoryLabel =
+    displayProduct.category ||
+    displayProduct.category_name ||
+    displayProduct.category_slug ||
+    '기타';
+  const imageList = Array.isArray(displayProduct.images)
+    ? displayProduct.images
+    : displayProduct.images
+      ? [displayProduct.images]
+      : [];
 
   return (
     <div>
       <div className="grid gap-8 md:grid-cols-2">
-        {/* 상품 이미지 */}
+        {/* 타이틀 상품 이미지 */}
         <div className="relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
           <Image
-            src={dummyProduct.imageUrl}
-            alt={dummyProduct.name}
+            src={thumbnailImageSrc}
+            alt={displayProduct.name}
             fill
             className="object-cover"
             sizes="(max-width: 768px) 100vw, 50vw"
@@ -74,21 +143,22 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         {/* 상품 정보 */}
         <div className="flex flex-col">
           <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-            {dummyProduct.category}
+            {categoryLabel}
           </div>
           <h1 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
-            {dummyProduct.name}
+            {displayProduct.name}
           </h1>
+          {/* meta_description */}
           <p className="mb-6 text-lg text-gray-600 dark:text-gray-300">
-            {dummyProduct.description}
+            {displayProduct.meta_description || displayProduct.description}
           </p>
 
           <div className="mb-6 border-t border-b border-gray-200 py-6 dark:border-gray-700">
             <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              {dummyProduct.price.toLocaleString()}원
+              {Number(displayProduct.price || 0).toLocaleString()}원
             </div>
             <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              재고: {dummyProduct.stock}개
+              재고: {stock}개
             </div>
           </div>
 
@@ -124,34 +194,27 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       {/* Product Detail Description */}
       <div className="mt-12 border-t border-gray-200 pt-12 dark:border-gray-700">
         <h2 className="mb-6 text-base font-bold text-gray-900 dark:text-white">상품 상세 정보</h2>
-        <div className="space-y-3">
-          {dummyProduct.detailImages.map((imgUrl, index) => (
-            <div key={index} className="relative aspect-[16/9] overflow-hidden border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
-              <Image
-                src={imgUrl}
-                alt={`Product detail ${index + 1}`}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 1200px"
-              />
-            </div>
-          ))}
-        </div>
-        <div className="mt-6 border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-          <h3 className="mb-3 text-sm font-bold text-gray-900 dark:text-white">주요 특징</h3>
+
+        {/* 모든 이미지 표시 (images 배열) */}
+        {imageList.length > 0 && (
+          <div className="space-y-3 mb-6">
+            {imageList.map((imgUrl, index) => (
+              <div key={index} className="relative aspect-[16/9] overflow-hidden border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
+                <Image
+                  src={imgUrl}
+                  alt={`${displayProduct.name} 상세 이미지 ${index + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 1200px"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <ul className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
-            <li>• 액티브 노이즈 캔슬링 (ANC) 기술</li>
-            <li>• 최대 24시간 배터리 수명</li>
-            <li>• IPX4 방수 등급</li>
-            <li>• 고품질 AAC/SBC 코덱 지원</li>
-            <li>• 터치 컨트롤 기능</li>
-          </ul>
-          <h3 className="mb-3 mt-6 text-sm font-bold text-gray-900 dark:text-white">제품 사양</h3>
-          <ul className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
-            <li>• 블루투스 버전: 5.2</li>
-            <li>• 드라이버: 10mm 다이나믹 드라이버</li>
-            <li>• 충전 시간: 약 1.5시간</li>
-            <li>• 무게: 이어폰 5g, 충전 케이스 45g</li>
+            {displayProduct.description}
           </ul>
         </div>
       </div>

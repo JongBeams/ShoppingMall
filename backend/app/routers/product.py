@@ -70,6 +70,67 @@ async def get_all_products():
 
     return {"products": product_list}
 
+
+# 상품 상세 조회
+@router.get("/{product_id}", summary="특정 상품 조회")
+async def get_product(product_id: str):
+    """
+    활성화된 특정 상품을 조회합니다 (공개 API)
+    """
+    supabase = get_supabase_client()
+
+    try:
+        product_response = (
+            supabase.table("products")
+            .select(
+                "id, name, description, price, stock_quantity, low_stock_threshold, category_id, "
+                "thumbnail_url, images, meta_title, meta_description, is_active, created_at, updated_at"
+            )
+            .eq("id", product_id)
+            .eq("is_active", True)
+            .single()
+            .execute()
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"상품을 조회하는 중 오류가 발생했습니다: {str(e)}"
+        )
+
+    product = product_response.data
+
+    if not product:
+        raise HTTPException(
+            status_code=404,
+            detail="상품을 찾을 수 없습니다."
+        )
+
+    category_info = {"slug": None, "name": None}
+    category_id = product.get("category_id")
+    if category_id:
+        try:
+            category_response = (
+                supabase.table("categories")
+                .select("slug, name")
+                .eq("id", category_id)
+                .single()
+                .execute()
+            )
+            if category_response.data:
+                category_info["slug"] = category_response.data.get("slug")
+                category_info["name"] = category_response.data.get("name")
+        except Exception:
+            category_info = {"slug": None, "name": None}
+
+    product_data = {
+        **product,
+        "category_slug": category_info["slug"],
+        "category_name": category_info["name"],
+    }
+
+    return {"message": "특정 상품 조회", "product": product_data}
+
+
 #판매자 상품 조회
 @router.get("/management", summary="내 상품 목록 조회")
 async def get_management_products(current_user: dict = Depends(get_current_user)):

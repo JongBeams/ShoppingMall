@@ -49,7 +49,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
           <p className="mb-3 text-sm text-gray-600 line-clamp-2 dark:text-gray-300">
-            {product.description}
+            {product.meta_description}
           </p>
           <div className="flex items-center justify-between">
             <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
