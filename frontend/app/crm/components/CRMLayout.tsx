@@ -114,7 +114,7 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
       ),
     },
     {
-      name: '1:1 문의관리',
+      name: '건의 관리',
       href: '/crm/inquiries',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

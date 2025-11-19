@@ -104,19 +104,19 @@ export default function Inquiry() {
     <div className="space-y-4">
       {/* 헤더 & 새 문의 작성 버튼 */}
       <div className="flex items-center justify-between border-b border-gray-200 pb-4 dark:border-gray-700">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white">1:1 문의</h2>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white">건의하기</h2>
         <button
           onClick={() => setShowForm(!showForm)}
           className="border border-gray-900 bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
         >
-          {showForm ? '취소' : '+ 새 문의 작성'}
+          {showForm ? '취소' : '+ 새 건의 작성'}
         </button>
       </div>
 
       {/* 문의 작성 폼 */}
       {showForm && (
         <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-          <h3 className="mb-4 text-base font-bold text-gray-900 dark:text-white">새 문의 작성</h3>
+          <h3 className="mb-4 text-base font-bold text-gray-900 dark:text-white">새 건의 작성</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">

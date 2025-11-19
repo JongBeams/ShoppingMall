@@ -145,7 +145,7 @@ export default function CRMInquiriesPage() {
     <CRMLayout>
       <div className="p-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">1:1 문의 관리</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">건의 관리</h1>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             고객 문의를 확인하고 답변하세요
           </p>
