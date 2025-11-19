@@ -70,6 +70,20 @@ async def get_all_products():
 
     return {"products": product_list}
 
+#판매자 상품 조회
+@router.get("/management", summary="내 상품 목록 조회")
+async def get_management_products(current_user: dict = Depends(get_current_user)):
+    """
+    로그인한 판매자의 상품 목록을 조회합니다 (JWT 인증 필요)
+    """
+    # GetVendorProducts 서비스 함수 사용
+    products = GetVendorProducts(current_user)
+
+    return {
+        "message": "내 상품 목록 조회",
+        "products": products
+    }
+
 
 # 상품 상세 조회
 @router.get("/{product_id}", summary="특정 상품 조회")
@@ -131,19 +145,7 @@ async def get_product(product_id: str):
     return {"message": "특정 상품 조회", "product": product_data}
 
 
-#판매자 상품 조회
-@router.get("/management", summary="내 상품 목록 조회")
-async def get_management_products(current_user: dict = Depends(get_current_user)):
-    """
-    로그인한 판매자의 상품 목록을 조회합니다 (JWT 인증 필요)
-    """
-    # GetVendorProducts 서비스 함수 사용
-    products = GetVendorProducts(current_user)
 
-    return {
-        "message": "내 상품 목록 조회",
-        "products": products
-    }
 
 # ============================================
 # 판매자 전용 API (인증 필요)
