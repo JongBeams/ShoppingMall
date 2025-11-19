@@ -230,7 +230,28 @@ async def register(user_data: UserRegisterRequest):
 
             vendor = vendor_response.data[0]
 
-        # 4. 응답 생성
+        # 4. 자체 JWT 토큰 생성 (관리자와 동일한 방식)
+        from app.services.jwt_auth import create_access_token
+        from datetime import timedelta
+
+        token_data = {
+            "sub": user_id,
+            "email": profile["email"],
+            "user_type": profile["user_type"],
+            "type": "user"
+        }
+        access_token = create_access_token(
+            data=token_data,
+            expires_delta=timedelta(hours=24)
+        )
+
+        # refresh_token도 동일하게 생성 (더 긴 만료시간)
+        refresh_token = create_access_token(
+            data=token_data,
+            expires_delta=timedelta(days=7)
+        )
+
+        # 5. 응답 생성
         profile_obj = ProfileResponse(
             id=profile["id"],
             email=profile["email"],
@@ -263,9 +284,9 @@ async def register(user_data: UserRegisterRequest):
             )
 
         return AuthResponse(
-            access_token=auth_response.session.access_token,
-            refresh_token=auth_response.session.refresh_token,
-            expires_in=auth_response.session.expires_in,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=86400,  # 24시간 (초 단위)
             user=profile_obj,
             vendor=vendor_obj,
         )
@@ -295,6 +316,7 @@ async def register(user_data: UserRegisterRequest):
 async def login(credentials: UserLoginRequest):
     """로그인"""
     supabase = get_supabase_client()
+    supabase_admin = get_supabase_admin_client()
 
     # Supabase 클라이언트 예외 처리
     from gotrue.errors import AuthApiError
@@ -316,7 +338,7 @@ async def login(credentials: UserLoginRequest):
         user_id = auth_response.user.id
 
         # 2. profiles 테이블에서 사용자 정보 조회
-        profile_response = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
+        profile_response = supabase_admin.table("profiles").select("*").eq("id", user_id).execute()
 
         if not profile_response.data:
             raise HTTPException(
@@ -324,16 +346,37 @@ async def login(credentials: UserLoginRequest):
                 detail="사용자 정보를 찾을 수 없습니다."
             )
 
-        profile = profile_response.data
+        profile = profile_response.data[0]
 
         # 3. seller인 경우 vendors 테이블에서 판매자 정보 조회
         vendor = None
         if profile["user_type"] == "seller":
-            vendor_response = supabase.table("vendors").select("*").eq("user_id", user_id).single().execute()
+            vendor_response = supabase_admin.table("vendors").select("*").eq("user_id", user_id).execute()
             if vendor_response.data:
-                vendor = vendor_response.data
+                vendor = vendor_response.data[0]
 
-        # 4. 응답 생성
+        # 4. 자체 JWT 토큰 생성 (관리자와 동일한 방식)
+        from app.services.jwt_auth import create_access_token
+        from datetime import timedelta
+
+        token_data = {
+            "sub": user_id,
+            "email": profile["email"],
+            "user_type": profile["user_type"],
+            "type": "user"
+        }
+        access_token = create_access_token(
+            data=token_data,
+            expires_delta=timedelta(hours=24)
+        )
+
+        # refresh_token도 동일하게 생성 (더 긴 만료시간)
+        refresh_token = create_access_token(
+            data=token_data,
+            expires_delta=timedelta(days=7)
+        )
+
+        # 5. 응답 생성
         profile_obj = ProfileResponse(
             id=profile["id"],
             email=profile["email"],
@@ -366,9 +409,9 @@ async def login(credentials: UserLoginRequest):
             )
 
         return AuthResponse(
-            access_token=auth_response.session.access_token,
-            refresh_token=auth_response.session.refresh_token,
-            expires_in=auth_response.session.expires_in,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=86400,  # 24시간 (초 단위)
             user=profile_obj,
             vendor=vendor_obj,
         )

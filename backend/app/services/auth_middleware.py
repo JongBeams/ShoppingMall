@@ -80,6 +80,72 @@ async def get_current_admin(
         )
 
 
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> dict:
+    """
+    JWT 토큰을 검증하고 현재 사용자 정보를 반환하는 의존성
+
+    Args:
+        credentials: HTTP Authorization Bearer 토큰
+
+    Returns:
+        사용자 정보 딕셔너리
+
+    Raises:
+        HTTPException: 토큰이 유효하지 않은 경우
+    """
+    token = credentials.credentials
+
+    # JWT 토큰 검증
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효하지 않거나 만료된 토큰입니다.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="유효하지 않은 토큰입니다.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 데이터베이스에서 사용자 정보 조회
+    supabase_admin = get_supabase_admin_client()
+    try:
+        response = supabase_admin.table("profiles").select("*").eq("id", user_id).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="사용자를 찾을 수 없습니다.",
+            )
+
+        user = response.data[0]
+
+        # 활성화 상태 확인
+        if not user.get("is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="비활성화된 계정입니다.",
+            )
+
+        return user
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] 사용자 정보 조회 실패: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="사용자 정보 조회 중 오류가 발생했습니다.",
+        )
+
+
 async def get_optional_admin(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False))
 ) -> Optional[dict]:

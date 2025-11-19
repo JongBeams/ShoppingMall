@@ -7,10 +7,27 @@ import { useRouter } from 'next/navigation';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
+interface NewUser {
+  id: string;
+  full_name: string;
+  user_type: string;
+  created_at: string;
+}
+
+interface PendingInquiry {
+  id: string;
+  user_name: string;
+  title: string;
+  category: string;
+  created_at: string;
+}
+
 export default function CRMPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [adminUser, setAdminUser] = useState<any>(null);
+  const [newUsers, setNewUsers] = useState<NewUser[]>([]);
+  const [pendingInquiries, setPendingInquiries] = useState<PendingInquiry[]>([]);
 
   useEffect(() => {
     // 관리자 로그인 체크
@@ -31,6 +48,89 @@ export default function CRMPage() {
       router.push('/crm/login');
     }
   }, [router]);
+
+  // 신규회원 조회
+  useEffect(() => {
+    const fetchNewUsers = async () => {
+      const adminToken = localStorage.getItem('admin_token');
+      if (!adminToken) return;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/admin/users`, {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // 최근 3명만 가져오기
+          setNewUsers(data.users.slice(0, 3));
+        }
+      } catch (error) {
+        console.error('Failed to fetch new users:', error);
+      }
+    };
+
+    fetchNewUsers();
+  }, []);
+
+  // 문의 대기 조회
+  useEffect(() => {
+    const fetchPendingInquiries = async () => {
+      const adminToken = localStorage.getItem('admin_token');
+      if (!adminToken) return;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/inquiries`, {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // pending 상태만 필터링하고 최근 2개만
+          const pending = data.inquiries.filter((inq: any) => inq.status === 'pending').slice(0, 2);
+          setPendingInquiries(pending);
+        }
+      } catch (error) {
+        console.error('Failed to fetch pending inquiries:', error);
+      }
+    };
+
+    fetchPendingInquiries();
+  }, []);
+
+  // 시간 계산 함수
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const created = new Date(dateString);
+
+    // 날짜만 비교 (시간 무시)
+    const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const createdDate = new Date(created.getFullYear(), created.getMonth(), created.getDate());
+    const diffMs = nowDate.getTime() - createdDate.getTime();
+
+    const diffDays = Math.floor(diffMs / 86400000);
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
+
+    // 하루 미만인 경우 시간/분으로 표시
+    if (diffDays === 0) {
+      const timeDiffMs = now.getTime() - created.getTime();
+      const diffMinutes = Math.floor(timeDiffMs / 60000);
+      const diffHours = Math.floor(timeDiffMs / 3600000);
+
+      if (diffMinutes < 1) return '방금 전';
+      if (diffMinutes < 60) return `${diffMinutes}분 전`;
+      return `${diffHours}시간 전`;
+    }
+
+    if (diffDays < 30) return `${diffDays}일 전`;
+    if (diffMonths < 12) return `${diffMonths}개월 전`;
+    return `${diffYears}년 전`;
+  };
 
   if (isLoading) {
     return (
@@ -235,33 +335,35 @@ export default function CRMPage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {[
-              { id: 1, user: '김철수', subject: '결제 관련 문의', time: '3분 전', status: 'urgent' },
-              { id: 2, user: '이영희', subject: '배송 지연 문의', time: '20분 전', status: 'normal' },
-            ].map((inquiry) => (
-              <Link
-                key={inquiry.id}
-                href={`/crm/inquiries/${inquiry.id}`}
-                className="group flex items-center justify-between border-b border-gray-100 pb-3 last:border-b-0 dark:border-gray-800"
-              >
-                <div>
-                  <h3 className="mb-1 text-sm font-medium text-gray-900 dark:text-white">
-                    {inquiry.subject}
-                  </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{inquiry.user}</p>
-                </div>
-                <div className="text-right">
-                  <span className={`mb-1 block text-xs font-medium ${
-                    inquiry.status === 'urgent'
-                      ? 'text-red-600 dark:text-red-400'
-                      : 'text-yellow-600 dark:text-yellow-400'
-                  }`}>
-                    {inquiry.status === 'urgent' ? '긴급' : '대기중'}
-                  </span>
-                  <span className="text-xs text-gray-400">{inquiry.time}</span>
-                </div>
-              </Link>
-            ))}
+            {pendingInquiries.length > 0 ? (
+              pendingInquiries.map((inquiry) => (
+                <Link
+                  key={inquiry.id}
+                  href={`/crm/inquiries?id=${inquiry.id}`}
+                  className="group flex items-center justify-between border-b border-gray-100 pb-3 last:border-b-0 dark:border-gray-800"
+                >
+                  <div>
+                    <div className="mb-1 flex items-center gap-2">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">[{inquiry.category}]</span>
+                      <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                        {inquiry.title}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{inquiry.user_name}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="mb-1 block text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                      대기중
+                    </span>
+                    <span className="text-xs text-gray-400">{getTimeAgo(inquiry.created_at)}</span>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                대기 중인 문의가 없습니다
+              </div>
+            )}
           </div>
         </div>
 
@@ -274,33 +376,36 @@ export default function CRMPage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {[
-              { id: 1, name: '김철수', type: 'buyer', time: '10분 전' },
-              { id: 2, name: '이영희', type: 'seller', time: '1시간 전' },
-            ].map((user) => (
-              <Link
-                key={user.id}
-                href={`/crm/users/${user.id}`}
-                className="group flex items-center justify-between border-b border-gray-100 pb-3 last:border-b-0 dark:border-gray-800"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-                    <span className="text-sm font-bold text-gray-600 dark:text-gray-400">
-                      {user.name.charAt(0)}
-                    </span>
+            {newUsers.length > 0 ? (
+              newUsers.map((user) => (
+                <Link
+                  key={user.id}
+                  href={`/crm/users/${user.id}`}
+                  className="group flex items-center justify-between border-b border-gray-100 pb-3 last:border-b-0 dark:border-gray-800"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+                      <span className="text-sm font-bold text-gray-600 dark:text-gray-400">
+                        {user.full_name.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="mb-1 text-sm font-medium text-gray-900 dark:text-white">
+                        {user.full_name}
+                      </h3>
+                      <span className={`text-xs ${user.user_type === 'seller' ? 'text-purple-600 dark:text-purple-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                        {user.user_type === 'seller' ? '판매자' : '구매자'}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="mb-1 text-sm font-medium text-gray-900 dark:text-white">
-                      {user.name}
-                    </h3>
-                    <span className={`text-xs ${user.type === 'seller' ? 'text-purple-600 dark:text-purple-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                      {user.type === 'seller' ? '판매자' : '구매자'}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-xs text-gray-400">{user.time}</span>
-              </Link>
-            ))}
+                  <span className="text-xs text-gray-400">{getTimeAgo(user.created_at)}</span>
+                </Link>
+              ))
+            ) : (
+              <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                신규 회원이 없습니다
+              </div>
+            )}
           </div>
         </div>
 

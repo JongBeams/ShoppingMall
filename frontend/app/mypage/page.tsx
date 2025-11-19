@@ -150,12 +150,12 @@ export default function MyPage() {
             {activeTab === 'delivery' && user?.user_type === 'seller' && <DeliveryManagement />}
             {activeTab === 'inquiries' && user?.user_type === 'seller' && <InquiryManagement />}
             {activeTab === 'seller-coupons' && user?.user_type === 'seller' && <SellerCoupons />}
-            {activeTab === 'wishlist' && <Wishlist dummyWishList={dummyWishList} />}
-            {activeTab === 'recent' && <RecentProducts />}
+            {activeTab === 'wishlist' && user?.user_type !== 'seller' && <Wishlist dummyWishList={dummyWishList} />}
+            {activeTab === 'recent' && user?.user_type !== 'seller' && <RecentProducts />}
             {activeTab === 'inquiry' && <Inquiry />}
-            {activeTab === 'subscription' && <Subscription />}
-            {activeTab === 'coupons' && <Coupons />}
-            {activeTab === 'reviews' && <Reviews />}
+            {activeTab === 'subscription' && user?.user_type !== 'seller' && <Subscription />}
+            {activeTab === 'coupons' && user?.user_type !== 'seller' && <Coupons />}
+            {activeTab === 'reviews' && user?.user_type !== 'seller' && <Reviews />}
           </div>
         </div>
       </div>

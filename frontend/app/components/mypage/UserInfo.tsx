@@ -5,6 +5,11 @@ interface UserInfoProps {
 }
 
 export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProps) {
+  const handleTabClick = (tab: string) => {
+    setActiveTab(tab);
+    window.history.pushState(null, '', `#${tab}`);
+  };
+
   return (
     <div className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
       {/* User Info */}
@@ -28,7 +33,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
       {/* Menu */}
       <nav>
         <button
-          onClick={() => setActiveTab('profile')}
+          onClick={() => handleTabClick('profile')}
           className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
             activeTab === 'profile'
               ? 'font-medium text-gray-900 dark:text-white'
@@ -41,7 +46,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
           내 정보
         </button>
         <button
-          onClick={() => setActiveTab('orders')}
+          onClick={() => handleTabClick('orders')}
           className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
             activeTab === 'orders'
               ? 'font-medium text-gray-900 dark:text-white'
@@ -55,7 +60,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
         </button>
         {user?.user_type === 'seller' && (
           <button
-            onClick={() => setActiveTab('sales')}
+            onClick={() => handleTabClick('sales')}
             className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
               activeTab === 'sales'
                 ? 'font-medium text-gray-900 dark:text-white'
@@ -71,7 +76,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
         {user?.user_type === 'seller' && (
           <>
             <button
-              onClick={() => setActiveTab('store')}
+              onClick={() => handleTabClick('store')}
               className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
                 activeTab === 'store'
                   ? 'font-medium text-gray-900 dark:text-white'
@@ -84,7 +89,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
               스토어 관리
             </button>
             <button
-              onClick={() => setActiveTab('products')}
+              onClick={() => handleTabClick('products')}
               className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
                 activeTab === 'products'
                   ? 'font-medium text-gray-900 dark:text-white'
@@ -97,7 +102,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
               상품 관리
             </button>
             <button
-              onClick={() => setActiveTab('delivery')}
+              onClick={() => handleTabClick('delivery')}
               className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
                 activeTab === 'delivery'
                   ? 'font-medium text-gray-900 dark:text-white'
@@ -110,7 +115,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
               배송 관리
             </button>
             <button
-              onClick={() => setActiveTab('inquiries')}
+              onClick={() => handleTabClick('inquiries')}
               className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
                 activeTab === 'inquiries'
                   ? 'font-medium text-gray-900 dark:text-white'
@@ -120,10 +125,23 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
               </svg>
-              문의 관리
+              상품 문의 관리
             </button>
             <button
-              onClick={() => setActiveTab('seller-coupons')}
+              onClick={() => handleTabClick('inquiry')}
+              className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
+                activeTab === 'inquiry'
+                  ? 'font-medium text-gray-900 dark:text-white'
+                  : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800'
+              }`}
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+              </svg>
+              1:1 문의
+            </button>
+            <button
+              onClick={() => handleTabClick('seller-coupons')}
               className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
                 activeTab === 'seller-coupons'
                   ? 'font-medium text-gray-900 dark:text-white'
@@ -139,7 +157,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
         )}
         {user?.user_type !== 'seller' && (
           <button
-            onClick={() => setActiveTab('wishlist')}
+            onClick={() => handleTabClick('wishlist')}
             className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
               activeTab === 'wishlist'
                 ? 'font-medium text-gray-900 dark:text-white'
@@ -154,7 +172,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
         )}
         {user?.user_type !== 'seller' && (
           <button
-            onClick={() => setActiveTab('recent')}
+            onClick={() => handleTabClick('recent')}
             className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
               activeTab === 'recent'
                 ? 'font-medium text-gray-900 dark:text-white'
@@ -169,7 +187,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
         )}
         {user?.user_type !== 'seller' && (
           <button
-            onClick={() => setActiveTab('inquiry')}
+            onClick={() => handleTabClick('inquiry')}
             className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
               activeTab === 'inquiry'
                 ? 'font-medium text-gray-900 dark:text-white'
@@ -184,7 +202,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
         )}
         {user?.user_type !== 'seller' && (
           <button
-            onClick={() => setActiveTab('subscription')}
+            onClick={() => handleTabClick('subscription')}
             className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
               activeTab === 'subscription'
                 ? 'font-medium text-gray-900 dark:text-white'
@@ -199,7 +217,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
         )}
         {user?.user_type !== 'seller' && (
           <button
-            onClick={() => setActiveTab('coupons')}
+            onClick={() => handleTabClick('coupons')}
             className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
               activeTab === 'coupons'
                 ? 'font-medium text-gray-900 dark:text-white'
@@ -214,7 +232,7 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
         )}
         {user?.user_type !== 'seller' && (
           <button
-            onClick={() => setActiveTab('reviews')}
+            onClick={() => handleTabClick('reviews')}
             className={`flex w-full items-center gap-3 border-b border-gray-100 px-5 py-3.5 text-sm transition dark:border-gray-800 ${
               activeTab === 'reviews'
                 ? 'font-medium text-gray-900 dark:text-white'
