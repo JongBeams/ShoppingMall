@@ -5,12 +5,18 @@ import LiveChat from '../chat/LiveChat';
 
 type ChatMode = 'select' | 'ai' | 'agent';
 
+interface Message {
+  role: 'user' | 'ai';
+  content: string;
+  sources?: Array<{document_id: string; filename: string}>;
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 export default function AIChatButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [chatMode, setChatMode] = useState<ChatMode>('select');
-  const [messages, setMessages] = useState<Array<{role: 'user' | 'ai', content: string}>>([]);
+  const [messages, setMessages] = useState<Array<Message>>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDocSearchSuggestion, setShowDocSearchSuggestion] = useState(false);
@@ -46,7 +52,7 @@ export default function AIChatButton() {
       const actualQuery = isDocSearch ? userMessage.replace('@내부문서', '').trim() : userMessage;
 
       if (isDocSearch) {
-        // 내부 문서 검색 모드
+        // 내부 문서 검색 모드 (스트리밍)
         const response = await fetch(`${API_BASE_URL}/documents/search`, {
           method: 'POST',
           headers: {
@@ -63,20 +69,71 @@ export default function AIChatButton() {
           throw new Error('검색 실패');
         }
 
-        const data = await response.json();
+        // 스트리밍 응답 처리
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let aiResponse = '';
+        let sources: Array<{document_id: string; filename: string}> = [];
 
-        // 검색 결과가 없거나 문서가 없으면
-        if (!data.documents || data.documents.length === 0) {
-          setMessages(prev => [...prev, {
-            role: 'ai',
-            content: '죄송합니다. 내부 문서에서 해당 내용을 검색하지 못했습니다.'
-          }]);
-        } else {
-          const aiResponse = data.answer || '죄송합니다. 내부 문서에서 해당 내용을 검색하지 못했습니다.';
-          setMessages(prev => [...prev, {
-            role: 'ai',
-            content: aiResponse
-          }]);
+        // AI 메시지 placeholder 추가
+        setMessages(prev => [...prev, { role: 'ai', content: '' }]);
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+
+                  if (data.type === 'sources') {
+                    // 출처 정보 저장
+                    sources = data.sources;
+                  } else if (data.type === 'token') {
+                    // 토큰 추가
+                    aiResponse += data.token;
+                    setMessages(prev => {
+                      const newMessages = [...prev];
+                      newMessages[newMessages.length - 1] = {
+                        role: 'ai',
+                        content: aiResponse,
+                        sources: sources.length > 0 ? sources : undefined
+                      };
+                      return newMessages;
+                    });
+                  } else if (data.type === 'error') {
+                    // 검색 실패
+                    setMessages(prev => {
+                      const newMessages = [...prev];
+                      newMessages[newMessages.length - 1] = {
+                        role: 'ai',
+                        content: '죄송합니다. 내부 문서에서 해당 내용을 검색하지 못했습니다.'
+                      };
+                      return newMessages;
+                    });
+                  }
+                } catch (e) {
+                  // JSON 파싱 실패 무시
+                }
+              }
+            }
+          }
+        }
+
+        if (!aiResponse) {
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1] = {
+              role: 'ai',
+              content: '죄송합니다. 답변을 생성할 수 없습니다.'
+            };
+            return newMessages;
+          });
         }
       } else {
         // 일반 대화 모드 - Ollama 스트리밍
@@ -323,7 +380,7 @@ export default function AIChatButton() {
                   messages.map((msg, idx) => (
                     <div
                       key={idx}
-                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
                     >
                       <div
                         className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${
@@ -334,6 +391,21 @@ export default function AIChatButton() {
                       >
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                       </div>
+
+                      {/* 출처 표시 (AI 메시지에만) */}
+                      {msg.role === 'ai' && msg.sources && msg.sources.length > 0 && (
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 px-2">
+                          <svg className="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">참고:</span>
+                          {msg.sources.map((source, sidx) => (
+                            <span key={sidx} className="text-xs text-blue-600 dark:text-blue-400">
+                              {source.filename}{sidx < msg.sources!.length - 1 ? ', ' : ''}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

@@ -220,18 +220,86 @@ async def delete_document(document_id: str):
 @router.post("/search")
 async def search_documents_api(request: SearchRequest):
     """
-    RAG 검색 API
+    RAG 검색 API (스트리밍)
     - 질문을 임베딩
     - pgvector로 유사 문서 검색
-    - Ollama로 답변 생성
+    - Ollama로 답변 생성 (스트리밍)
+    - 문서 출처 정보 포함
     """
+    from fastapi.responses import StreamingResponse
+    import json
+
     try:
-        result = rag_search(
-            query=request.query,
-            search_limit=request.limit,
-            use_ollama=request.use_ollama
-        )
-        return result
+        def generate():
+            # 1. 문서 검색
+            from app.services.rag_search import search_documents
+            documents = search_documents(request.query, limit=request.limit)
+
+            # 2. 검색된 문서 출처 정보 전송
+            if documents:
+                # 문서 ID로 파일명 조회
+                doc_ids = list(set([doc.get('document_id') for doc in documents if doc.get('document_id')]))
+                sources = []
+
+                for doc_id in doc_ids:
+                    doc_result = supabase.table('documents').select('filename').eq('id', doc_id).execute()
+                    if doc_result.data:
+                        sources.append({
+                            'document_id': doc_id,
+                            'filename': doc_result.data[0]['filename']
+                        })
+
+                # 출처 정보 전송
+                yield f"data: {json.dumps({'type': 'sources', 'sources': sources})}\n\n"
+            else:
+                # 검색 결과 없음
+                yield f"data: {json.dumps({'type': 'error', 'message': '검색된 문서가 없습니다.'})}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                return
+
+            # 3. Ollama 스트리밍 답변 생성
+            if request.use_ollama:
+                import requests
+
+                # 컨텍스트 생성
+                context = "\n\n".join([
+                    f"문서 {i+1}:\n{doc.get('content', '')}"
+                    for i, doc in enumerate(documents)
+                ])
+
+                prompt = f"""당신은 쇼핑몰 AI 어시스턴트입니다. 아래 문서를 참고하여 질문에 답변하세요.
+
+참고 문서:
+{context}
+
+사용자 질문: {request.query}
+
+답변: (문서 내용을 바탕으로 간결하고 정확하게 답변하세요. 문서에 없는 내용은 "문서에서 찾을 수 없습니다"라고 답변하세요.)"""
+
+                ollama_host = "http://localhost:11435"
+                response = requests.post(
+                    f"{ollama_host}/api/generate",
+                    json={
+                        "model": "qwen2.5:14b",
+                        "prompt": prompt,
+                        "stream": True
+                    },
+                    stream=True,
+                    timeout=60
+                )
+
+                for line in response.iter_lines():
+                    if line:
+                        try:
+                            chunk = json.loads(line)
+                            if "response" in chunk:
+                                yield f"data: {json.dumps({'type': 'token', 'token': chunk['response']})}\n\n"
+                            if chunk.get("done", False):
+                                yield f"data: {json.dumps({'done': True})}\n\n"
+                        except json.JSONDecodeError:
+                            continue
+
+        return StreamingResponse(generate(), media_type="text/event-stream")
 
     except Exception as e:
         print(f"Search error: {e}")
