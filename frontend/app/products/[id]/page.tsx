@@ -77,6 +77,9 @@ export default function ProductDetailPage() {
       const response = await cartAPI.add(productId, quantity, token);
       alert(response.message || '장바구니에 담겼습니다.');
 
+      // 장바구니 업데이트 이벤트 발생
+      window.dispatchEvent(new Event('cartUpdated'));
+
       // 장바구니로 이동할지 물어보기
       if (confirm('장바구니로 이동하시겠습니까?')) {
         router.push('/cart');

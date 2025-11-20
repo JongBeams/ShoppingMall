@@ -46,6 +46,8 @@ export default function CartPage() {
       await cartAPI.updateQuantity(itemId, newQuantity, token);
       // 수량 변경 후 장바구니 다시 조회
       fetchCart();
+      // 장바구니 업데이트 이벤트 발생
+      window.dispatchEvent(new Event('cartUpdated'));
     } catch (err: any) {
       alert(err.message || '수량 변경 중 오류가 발생했습니다.');
     }
@@ -61,6 +63,8 @@ export default function CartPage() {
     try {
       await cartAPI.remove(itemId, token);
       fetchCart();
+      // 장바구니 업데이트 이벤트 발생
+      window.dispatchEvent(new Event('cartUpdated'));
     } catch (err: any) {
       alert(err.message || '삭제 중 오류가 발생했습니다.');
     }
@@ -76,6 +80,8 @@ export default function CartPage() {
     try {
       await cartAPI.clear(token);
       fetchCart();
+      // 장바구니 업데이트 이벤트 발생
+      window.dispatchEvent(new Event('cartUpdated'));
     } catch (err: any) {
       alert(err.message || '장바구니 비우기 중 오류가 발생했습니다.');
     }

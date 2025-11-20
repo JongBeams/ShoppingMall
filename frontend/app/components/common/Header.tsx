@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { cartAPI } from '@/app/lib/api';
 
 export default function Header() {
   const router = useRouter();
@@ -16,9 +17,23 @@ export default function Header() {
   const [userType, setUserType] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
   // CRM 경로 확인
   const isCRMPage = pathname?.startsWith('/crm');
+
+  // 장바구니 개수 조회
+  const fetchCartCount = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token || isCRMPage) return;
+
+    try {
+      const response = await cartAPI.get(token);
+      setCartCount(response.items?.length || 0);
+    } catch (error) {
+      console.error('Failed to fetch cart count:', error);
+    }
+  };
 
   // 로그인 상태 확인
   useEffect(() => {
@@ -48,12 +63,29 @@ export default function Header() {
           const userData = JSON.parse(user);
           setUserName(userData.full_name || '사용자');
           setUserType(userData.user_type || '');
+
+          // 구매자인 경우 장바구니 개수 조회
+          if (userData.user_type === 'buyer') {
+            fetchCartCount();
+          }
         } catch (e) {
           console.error('Failed to parse user data:', e);
         }
       }
     }
   }, [isCRMPage]);
+
+  // 장바구니 업데이트 이벤트 리스너
+  useEffect(() => {
+    const handleCartUpdate = () => {
+      fetchCartCount();
+    };
+
+    window.addEventListener('cartUpdated', handleCartUpdate);
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+    };
+  }, []);
 
   const handleLogout = () => {
     if (isCRMPage) {
@@ -510,11 +542,16 @@ export default function Header() {
             {!(isLoggedIn && userType === 'seller') && !isCRMPage && (
               <Link
                 href="/cart"
-                className="flex items-center text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                className="relative flex items-center text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
               >
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                 </svg>
+                {cartCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white">
+                    {cartCount}
+                  </span>
+                )}
               </Link>
             )}
 
