@@ -23,7 +23,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Link href={`/products/${product.id}`} className="group">
-      <div className="border border-gray-200 bg-white transition-all hover:border-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-white">
+      <div className="flex h-full flex-col border border-gray-200 bg-white transition-all hover:border-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-white">
         {/* 상품 이미지 */}
         <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800">
           <Image
@@ -41,7 +41,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         </div>
 
         {/* 상품 정보 */}
-        <div className="p-2">
+        <div className="flex flex-1 flex-col p-2">
           {/* 카테고리 / 스토어명 */}
           <div className="mb-1 flex items-center gap-1 text-xs">
             <span className="text-gray-500 dark:text-gray-400">{categoryLabel}</span>
@@ -54,8 +54,8 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
 
           {/* 상품명 */}
-          <h3 className="mb-1 line-clamp-2 text-xs font-medium text-gray-900 dark:text-white">
-            {product.name}
+          <h3 className="mb-1 h-8 overflow-hidden text-xs font-medium leading-4 text-gray-900 dark:text-white">
+            <span className="line-clamp-2">{product.name}</span>
           </h3>
 
           {/* 가격 */}

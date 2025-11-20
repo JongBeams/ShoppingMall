@@ -199,7 +199,7 @@ export default function ProductDetailPage() {
     <div className="space-y-4">
       {/* 상품 기본 정보 */}
       <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-[350px_1fr]">
           {/* 상품 이미지 갤러리 */}
           <div className="flex gap-2">
             {/* 썸네일 목록 */}
@@ -209,7 +209,7 @@ export default function ProductDetailPage() {
                   <button
                     key={index}
                     onClick={() => setSelectedImageIndex(index)}
-                    className={`relative h-16 w-16 flex-shrink-0 border bg-gray-50 transition ${
+                    className={`relative h-12 w-12 flex-shrink-0 border bg-gray-50 transition ${
                       selectedImageIndex === index
                         ? 'border-gray-900 dark:border-white'
                         : 'border-gray-200 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-500'
@@ -220,7 +220,7 @@ export default function ProductDetailPage() {
                       alt={`${displayProduct.name} 이미지 ${index + 1}`}
                       fill
                       className="object-cover"
-                      sizes="64px"
+                      sizes="48px"
                     />
                   </button>
                 ))}
@@ -231,7 +231,7 @@ export default function ProductDetailPage() {
             <div
               ref={imageRef}
               className="relative flex-1 overflow-hidden border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
-              style={{ aspectRatio: '1' }}
+              style={{ aspectRatio: '1', maxWidth: '350px' }}
               onMouseEnter={() => setIsZoomed(true)}
               onMouseLeave={() => setIsZoomed(false)}
               onMouseMove={handleMouseMove}
@@ -240,7 +240,7 @@ export default function ProductDetailPage() {
                 src={allImages[selectedImageIndex]}
                 alt={displayProduct.name}
                 fill
-                className={`object-cover transition-transform ${isZoomed ? 'scale-150' : 'scale-100'}`}
+                className={`object-contain transition-transform ${isZoomed ? 'scale-150' : 'scale-100'}`}
                 style={
                   isZoomed
                     ? {
@@ -248,7 +248,7 @@ export default function ProductDetailPage() {
                       }
                     : undefined
                 }
-                sizes="(max-width: 768px) 100vw, 50vw"
+                sizes="350px"
               />
               {isZoomed && (
                 <div className="pointer-events-none absolute right-2 top-2 rounded bg-black/50 px-2 py-1 text-xs text-white">
@@ -377,13 +377,12 @@ export default function ProductDetailPage() {
         {imageList.length > 0 && (
           <div className="mb-4 space-y-2">
             {imageList.map((imgUrl, index) => (
-              <div key={index} className="relative aspect-[16/9] overflow-hidden border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
-                <Image
+              <div key={index} className="relative w-full max-w-md mx-auto">
+                <img
                   src={imgUrl}
                   alt={`${displayProduct.name} 상세 이미지 ${index + 1}`}
-                  fill
-                  className="object-cover"
-                  sizes="100vw"
+                  className="w-full h-auto border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+                  loading="lazy"
                 />
               </div>
             ))}
