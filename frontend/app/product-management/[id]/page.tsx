@@ -22,6 +22,8 @@ export default function ProductEditPage() {
   const [lowStock, setlowStock] = useState('10');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
 
   // 옵션 상태
   interface ProductOptionValue {
@@ -80,6 +82,10 @@ export default function ProductEditPage() {
             setCategory(product.category_slug);
             setStock(product.stock_quantity.toString());
             setlowStock(product.low_stock_threshold.toString());
+            // 태그 설정
+            if (product.tags && Array.isArray(product.tags)) {
+              setTags(product.tags);
+            }
             // 기존 이미지 URL 설정 (thumbnail_url 우선, 없으면 images)
             if (product.thumbnail_url) {
               setImagePreviews([product.thumbnail_url]);
@@ -276,6 +282,7 @@ export default function ProductEditPage() {
         category,
         stock_quantity: Number(stock),
         low_stock_threshold: Number(lowStock),
+        tags: tags.length > 0 ? tags : undefined,
       };
 
       // 대표 이미지(thumbnail)와 추가 이미지들을 설정
@@ -483,6 +490,68 @@ export default function ProductEditPage() {
 
             </div>
 
+            {/* 해시태그 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                해시태그 (선택)
+              </label>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                검색에 사용될 태그를 입력하세요 (최대 10개)
+              </p>
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const tag = tagInput.trim();
+                      if (tag && tags.length < 10 && !tags.includes(tag)) {
+                        setTags([...tags, tag]);
+                        setTagInput('');
+                      }
+                    }
+                  }}
+                  className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  placeholder="태그 입력 후 Enter"
+                  disabled={tags.length >= 10}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tag = tagInput.trim();
+                    if (tag && tags.length < 10 && !tags.includes(tag)) {
+                      setTags([...tags, tag]);
+                      setTagInput('');
+                    }
+                  }}
+                  disabled={!tagInput.trim() || tags.length >= 10}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  추가
+                </button>
+              </div>
+              {tags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                    >
+                      #{tag}
+                      <button
+                        type="button"
+                        onClick={() => setTags(tags.filter((_, i) => i !== index))}
+                        className="hover:text-blue-600 dark:hover:text-blue-400"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* 이미지 파일 */}
             <div>
