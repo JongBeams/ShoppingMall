@@ -126,7 +126,7 @@ def GetVendorProducts(current_user: dict):
         try:
             product_response = (
                 supabase_admin.table("products")
-                .select("id, name, category_id, description, meta_description, price, stock_quantity, low_stock_threshold, images, thumbnail_url, is_active, view_count, sale_count, rating, review_count, created_at, updated_at")
+                .select("id, name, category_id, description, meta_description, price, stock_quantity, low_stock_threshold, images, thumbnail_url, is_active, view_count, sale_count, rating, review_count, tags, created_at, updated_at")
                 .eq("vendor_id", vendor_id)
                 .execute()
             )
@@ -168,6 +168,7 @@ def GetVendorProducts(current_user: dict):
                     sale_count=product["sale_count"],
                     rating=product["rating"],
                     review_count=product["review_count"],
+                    tags=product.get("tags"),
                     created_at=product["created_at"],
                     updated_at=product["updated_at"]
                 )
@@ -233,6 +234,10 @@ class CreateProduct:
             "stock_quantity": self.product_data.stock_quantity,
             "low_stock_threshold": self.product_data.low_stock_threshold,
         }
+
+        # 태그가 있으면 추가
+        if hasattr(self.product_data, 'tags') and self.product_data.tags:
+            payload["tags"] = self.product_data.tags
 
         # 대표 이미지 URL이 있으면 thumbnail_url에 저장
         if hasattr(self.product_data, 'image_url') and self.product_data.image_url:

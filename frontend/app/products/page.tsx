@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import ProductGrid from '../components/product/ProductGrid';
 import ProductFilter from '../components/product/ProductFilter';
 import Pagination from '../components/common/Pagination';
@@ -12,6 +13,9 @@ type SortOption = 'ranking' | 'price_low' | 'price_high' | 'sales' | 'latest';
 const ITEMS_PER_PAGE = 20;
 
 export default function ProductsPage() {
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams?.get('search') || '';
+
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -25,13 +29,20 @@ export default function ProductsPage() {
   const [maxPrice, setMaxPrice] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // 상품 목록 조회
+  // 상품 목록 조회 (검색어가 있으면 검색, 없으면 전체 조회)
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await productAPI.getAll();
+        let response;
+        if (searchQuery && searchQuery.trim().length >= 2) {
+          // 검색
+          response = await productAPI.search(searchQuery);
+        } else {
+          // 전체 조회
+          response = await productAPI.getAll();
+        }
         setProducts(response.products || []);
       } catch (err: any) {
         console.error('Failed to load products:', err);
@@ -42,7 +53,7 @@ export default function ProductsPage() {
     };
 
     fetchProducts();
-  }, []);
+  }, [searchQuery]);
 
   // 카테고리 목록 조회
   useEffect(() => {
@@ -138,8 +149,14 @@ export default function ProductsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-xl font-bold text-gray-900 dark:text-white">
-        전체 상품
+      <h1 className="mb-6 text-sm text-gray-900 dark:text-white">
+        {searchQuery ? (
+          <>
+            전체 &gt; <span className="font-bold">'{searchQuery}'</span>
+          </>
+        ) : (
+          <span className="font-bold">전체 상품</span>
+        )}
       </h1>
 
       <div className="flex gap-4">
@@ -325,6 +342,15 @@ export default function ProductsPage() {
 
         {/* 오른쪽 상품 목록 */}
         <div className="flex-1">
+          {/* 검색 결과 안내 */}
+          {searchQuery && (
+            <div className="mb-2">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                <span className="font-bold text-blue-600 dark:text-blue-400">'{searchQuery}'</span>에 대한 검색결과
+              </p>
+            </div>
+          )}
+
           {/* 상단 필터 바 - 네이버 스타일 */}
           <div className="mb-4 flex items-center justify-between border-b border-gray-200 bg-white pb-3 dark:border-gray-700 dark:bg-gray-900">
             {/* 왼쪽: 정렬 버튼들 */}

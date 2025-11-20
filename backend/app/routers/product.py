@@ -13,6 +13,122 @@ router = APIRouter(prefix="/products", tags=["products"])
 # 공개 API (인증 불필요)
 # ============================================
 
+@router.get("/search", summary="상품 검색")
+async def search_products(q: str = ""):
+    """
+    상품을 검색합니다 (이름, 설명, 해시태그로 검색)
+    """
+    if not q or len(q.strip()) < 2:
+        return {"products": [], "count": 0}
+
+    supabase = get_supabase_client()
+    search_term = q.strip()
+
+    try:
+        # 상품명, 설명으로 검색
+        products_response = (
+            supabase.table("products")
+            .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, tags, created_at")
+            .eq("is_active", True)
+            .or_(f"name.ilike.%{search_term}%,description.ilike.%{search_term}%")
+            .order("created_at", desc=True)
+            .limit(50)
+            .execute()
+        )
+
+        products = products_response.data or []
+
+        # 해시태그로도 검색
+        if products:
+            # 이미 찾은 상품 ID들
+            found_ids = {p["id"] for p in products}
+        else:
+            found_ids = set()
+
+        # tags 배열에 검색어가 포함된 상품 검색
+        try:
+            tag_response = (
+                supabase.table("products")
+                .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, tags, created_at")
+                .eq("is_active", True)
+                .execute()
+            )
+
+            for product in tag_response.data or []:
+                if product["id"] not in found_ids and product.get("tags"):
+                    # 태그 배열에서 검색어 찾기
+                    for tag in product["tags"]:
+                        if search_term.lower() in tag.lower():
+                            products.append(product)
+                            found_ids.add(product["id"])
+                            break
+        except Exception:
+            pass
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"상품 검색 중 오류가 발생했습니다: {str(e)}"
+        )
+
+    category_ids = {product["category_id"] for product in products if product.get("category_id")}
+    vendor_ids = {product["vendor_id"] for product in products if product.get("vendor_id")}
+    category_map = {}
+    vendor_map = {}
+
+    if category_ids:
+        try:
+            categories_response = (
+                supabase.table("categories")
+                .select("id, slug, name")
+                .in_("id", list(category_ids))
+                .execute()
+            )
+            for category in categories_response.data or []:
+                category_map[category["id"]] = {
+                    "slug": category.get("slug"),
+                    "name": category.get("name"),
+                }
+        except Exception:
+            category_map = {}
+
+    if vendor_ids:
+        try:
+            from app.services.supabase import get_supabase_admin_client
+            supabase_admin = get_supabase_admin_client()
+            vendors_response = (
+                supabase_admin.table("vendors")
+                .select("id, store_name")
+                .in_("id", list(vendor_ids))
+                .execute()
+            )
+            for vendor in vendors_response.data or []:
+                vendor_map[vendor["id"]] = vendor.get("store_name")
+        except Exception as e:
+            print(f"❌ Error fetching vendors: {str(e)}")
+            vendor_map = {}
+
+    product_list = []
+    for product in products:
+        category_info = category_map.get(product.get("category_id"), {})
+        vendor_name = vendor_map.get(product.get("vendor_id"))
+        product_list.append({
+            "id": product["id"],
+            "name": product["name"],
+            "description": product.get("description"),
+            "price": product["price"],
+            "stock_quantity": product.get("stock_quantity", 0),
+            "thumbnail_url": product.get("thumbnail_url"),
+            "category_slug": category_info.get("slug"),
+            "category_name": category_info.get("name"),
+            "vendor_name": vendor_name,
+            "tags": product.get("tags", []),
+            "created_at": product.get("created_at"),
+        })
+
+    return {"products": product_list, "count": len(product_list)}
+
+
 @router.get("/categories", summary="카테고리 목록 조회")
 async def get_categories():
     """

@@ -14,7 +14,6 @@ export default function ProductEditPage() {
 
   // Form state
   const [name, setName] = useState('');
-  const [meta_description, setMeta_Description] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
@@ -22,6 +21,8 @@ export default function ProductEditPage() {
   const [lowStock, setlowStock] = useState('10');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
 
   // 옵션 상태
   interface ProductOptionValue {
@@ -81,6 +82,10 @@ export default function ProductEditPage() {
             setCategory(product.category_slug);
             setStock(product.stock_quantity.toString());
             setlowStock(product.low_stock_threshold.toString());
+            // 태그 설정
+            if (product.tags && Array.isArray(product.tags)) {
+              setTags(product.tags);
+            }
             // 기존 이미지 URL 설정 (thumbnail_url 우선, 없으면 images)
             if (product.thumbnail_url) {
               setImagePreviews([product.thumbnail_url]);
@@ -272,18 +277,19 @@ export default function ProductEditPage() {
       const productData: CreateProductRequest = {
         id: productId,  // -1 (신규) 또는 실제 상품 ID
         name,
-        meta_description,
+        meta_description: name.substring(0, 20),  // 상품명에서 자동 생성
         description,
         price: Number(price),
         category,
         // 옵션이 있으면 옵션 재고 합계를, 없으면 일반 재고를 DB에 저장
         stock_quantity: options.length > 0 ? calculateTotalStock() : Number(stock),
         low_stock_threshold: Number(lowStock),
+        tags: tags.length > 0 ? tags : undefined,
       };
 
       // 대표 이미지(thumbnail)와 추가 이미지들을 설정
       if (thumbnailUrl) {
-        productData.image = thumbnailUrl as any; // 첫 번째 이미지를 대표 이미지로 사용
+        (productData as any).image_url = thumbnailUrl; // 첫 번째 이미지를 대표 이미지로 사용
       }
 
       // 추가 이미지 URLs 설정 (2번째 이미지부터)
@@ -355,26 +361,6 @@ export default function ProductEditPage() {
                 className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
                 placeholder="상품명을 입력하세요"
               />
-            </div>
-
-            {/* 상품 간단 설명 */}
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-900 dark:text-white">
-                상품 간단 설명 <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                id="meta_description"
-                value={meta_description}
-                onChange={(e) => setMeta_Description(e.target.value)}
-                required
-                rows={1}
-                maxLength={20}
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-                placeholder="상품 간단 설명을 20자 이하 입력하세요"
-              />
-              <div className="flex justify-end text-sm text-gray-600 dark:text-gray-400">
-                <span>{meta_description.length}자 / 최대 20자</span>
-              </div>
             </div>
 
             {/* 상품 상세 설명 */}
@@ -491,6 +477,68 @@ export default function ProductEditPage() {
 
             </div>
 
+            {/* 해시태그 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                해시태그 (선택)
+              </label>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                검색에 사용될 태그를 입력하세요 (최대 10개)
+              </p>
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const tag = tagInput.trim();
+                      if (tag && tags.length < 10 && !tags.includes(tag)) {
+                        setTags([...tags, tag]);
+                        setTagInput('');
+                      }
+                    }
+                  }}
+                  className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  placeholder="태그 입력 후 Enter"
+                  disabled={tags.length >= 10}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tag = tagInput.trim();
+                    if (tag && tags.length < 10 && !tags.includes(tag)) {
+                      setTags([...tags, tag]);
+                      setTagInput('');
+                    }
+                  }}
+                  disabled={!tagInput.trim() || tags.length >= 10}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  추가
+                </button>
+              </div>
+              {tags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                    >
+                      #{tag}
+                      <button
+                        type="button"
+                        onClick={() => setTags(tags.filter((_, i) => i !== index))}
+                        className="hover:text-blue-600 dark:hover:text-blue-400"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* 이미지 파일 */}
             <div>
