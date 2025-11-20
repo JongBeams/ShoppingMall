@@ -41,6 +41,9 @@ class CreateProductRequset(BaseModel):
     #추가 이미지 URLs (images JSONB에 배열로 저장됨)
     image_urls: Optional[list[str]] = None
 
+    #해시태그
+    tags: Optional[list[str]] = None
+
 
 
 
@@ -113,6 +116,7 @@ class VendorProductResponse(BaseModel):
     sale_count: int
     rating: Decimal
     review_count: int
+    tags: Optional[list[str]] = None
     created_at: datetime
     updated_at: datetime
 

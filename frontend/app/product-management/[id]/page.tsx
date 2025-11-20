@@ -287,7 +287,7 @@ export default function ProductEditPage() {
 
       // 대표 이미지(thumbnail)와 추가 이미지들을 설정
       if (thumbnailUrl) {
-        productData.image = thumbnailUrl as any; // 첫 번째 이미지를 대표 이미지로 사용
+        (productData as any).image_url = thumbnailUrl; // 첫 번째 이미지를 대표 이미지로 사용
       }
 
       // 추가 이미지 URLs 설정 (2번째 이미지부터)
