@@ -42,6 +42,7 @@ export interface GetVendorProductRequest {
   category_slug: string;
   meta_description?: string;
   description?: string;
+  meta_description?: string;
   price: number;
   stock_quantity: number;
   low_stock_threshold: number;

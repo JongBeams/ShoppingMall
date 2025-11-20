@@ -126,7 +126,7 @@ def GetVendorProducts(current_user: dict):
         try:
             product_response = (
                 supabase_admin.table("products")
-                .select("id, name, category_id, meta_description, description, price, stock_quantity, low_stock_threshold, images, thumbnail_url, is_active, view_count, sale_count, rating, review_count, tags, created_at, updated_at")
+                .select("id, name, category_id, description, meta_description, price, stock_quantity, low_stock_threshold, images, thumbnail_url, is_active, view_count, sale_count, rating, review_count, tags, created_at, updated_at")
                 .eq("vendor_id", vendor_id)
                 .execute()
             )
@@ -156,8 +156,8 @@ def GetVendorProducts(current_user: dict):
                     id=product["id"],
                     name=product["name"],
                     category_slug=category_slug,
-                    meta_description=product.get("meta_description"),
                     description=product.get("description"),
+                    meta_description=product.get("meta_description"),
                     price=product["price"],
                     stock_quantity=product["stock_quantity"],
                     low_stock_threshold=product["low_stock_threshold"],
@@ -294,6 +294,11 @@ class CreateProduct:
             product["slug"] = slug
             product["category_id"] = category_id
             product["vendor_id"] = vendor_id
+
+            # 옵션 저장
+            if self.product_data.options and len(self.product_data.options) > 0:
+                self._save_product_options(product["id"], self.product_data.options)
+
             return product
 
         else:
@@ -357,7 +362,78 @@ class CreateProduct:
                     detail="상품 수정 결과를 가져오지 못했습니다."
                 )
 
+            # 기존 옵션 삭제 후 새로 저장
+            if self.product_data.options is not None:
+                self._delete_product_options(product_id)
+                if len(self.product_data.options) > 0:
+                    self._save_product_options(product_id, self.product_data.options)
+
             return product
+
+    def _save_product_options(self, product_id: str, options: list):
+        """
+        상품 옵션을 product_options 및 product_option_values 테이블에 저장합니다.
+        """
+        try:
+            for option in options:
+                # product_options 테이블에 옵션 타입 저장
+                option_response = (
+                    self.supabase_admin.table("product_options")
+                    .insert({
+                        "product_id": product_id,
+                        "custom_type": option.customType
+                    })
+                    .execute()
+                )
+
+                if not option_response.data or len(option_response.data) == 0:
+                    raise Exception("옵션 저장에 실패했습니다.")
+
+                option_id = option_response.data[0]["id"]
+
+                # product_option_values 테이블에 옵션 값들 저장
+                for idx, value_data in enumerate(option.values):
+                    self.supabase_admin.table("product_option_values").insert({
+                        "option_id": option_id,
+                        "num": idx,
+                        "value": value_data.value,
+                        "price": float(value_data.price) if value_data.price else 0,
+                        "stock": int(value_data.stock) if value_data.stock else 0
+                    }).execute()
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"옵션 저장 중 오류가 발생했습니다: {str(e)}"
+            )
+
+    def _delete_product_options(self, product_id: str):
+        """
+        상품의 기존 옵션을 모두 삭제합니다.
+        product_option_values는 외래키 제약조건으로 CASCADE 삭제됩니다.
+        """
+        try:
+            # product_options 조회
+            options_response = (
+                self.supabase_admin.table("product_options")
+                .select("id")
+                .eq("product_id", product_id)
+                .execute()
+            )
+
+            # 각 옵션의 값들 먼저 삭제
+            if options_response.data:
+                for option in options_response.data:
+                    self.supabase_admin.table("product_option_values").delete().eq("option_id", option["id"]).execute()
+
+            # 옵션 삭제
+            self.supabase_admin.table("product_options").delete().eq("product_id", product_id).execute()
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"기존 옵션 삭제 중 오류가 발생했습니다: {str(e)}"
+            )
 
 
 #상품 삭제
