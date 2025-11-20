@@ -140,7 +140,7 @@ async def get_product(product_id: str):
         product_response = (
             supabase.table("products")
             .select(
-                "id, name, description, price, stock_quantity, low_stock_threshold, category_id, "
+                "id, name, description, price, stock_quantity, low_stock_threshold, category_id, vendor_id, "
                 "thumbnail_url, images, meta_title, meta_description, is_active, created_at, updated_at"
             )
             .eq("id", product_id)
@@ -179,10 +179,28 @@ async def get_product(product_id: str):
         except Exception:
             category_info = {"slug": None, "name": None}
 
+    # vendor 정보 조회
+    vendor_name = None
+    vendor_id = product.get("vendor_id")
+    if vendor_id:
+        try:
+            vendor_response = (
+                supabase.table("vendors")
+                .select("store_name")
+                .eq("id", vendor_id)
+                .single()
+                .execute()
+            )
+            if vendor_response.data:
+                vendor_name = vendor_response.data.get("store_name")
+        except Exception:
+            vendor_name = None
+
     product_data = {
         **product,
         "category_slug": category_info["slug"],
         "category_name": category_info["name"],
+        "vendor_name": vendor_name,
     }
 
     return {"message": "특정 상품 조회", "product": product_data}
