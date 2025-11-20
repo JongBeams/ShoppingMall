@@ -1,42 +1,166 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import LiveChat from '../chat/LiveChat';
 
 type ChatMode = 'select' | 'ai' | 'agent';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 export default function AIChatButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [chatMode, setChatMode] = useState<ChatMode>('select');
   const [messages, setMessages] = useState<Array<{role: 'user' | 'ai', content: string}>>([]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showDocSearchSuggestion, setShowDocSearchSuggestion] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  // 메시지가 업데이트될 때마다 스크롤 아래로
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-    setMessages([...messages, { role: 'user', content: input }]);
+  // 입력값 변경 감지하여 @내 입력 시 제안 표시
+  useEffect(() => {
+    if (input.startsWith('@내') && !input.startsWith('@내부문서 ')) {
+      setShowDocSearchSuggestion(true);
+    } else {
+      setShowDocSearchSuggestion(false);
+    }
+  }, [input]);
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage = input.trim();
     setInput('');
 
-    // AI 응답 시뮬레이션 (AI 모드일 때만)
-    if (chatMode === 'ai') {
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          role: 'ai',
-          content: '안녕하세요! AI 쇼핑 도우미입니다. 어떤 상품을 찾으시나요?'
-        }]);
-      }, 500);
+    // 사용자 메시지 추가
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsLoading(true);
+
+    try {
+      // @내부문서 모드 체크 (어디든 포함되어 있으면 검색 모드)
+      const isDocSearch = userMessage.includes('@내부문서');
+      const actualQuery = isDocSearch ? userMessage.replace('@내부문서', '').trim() : userMessage;
+
+      if (isDocSearch) {
+        // 내부 문서 검색 모드
+        const response = await fetch(`${API_BASE_URL}/documents/search`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: actualQuery,
+            limit: 3,
+            use_ollama: true
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('검색 실패');
+        }
+
+        const data = await response.json();
+
+        // 검색 결과가 없거나 문서가 없으면
+        if (!data.documents || data.documents.length === 0) {
+          setMessages(prev => [...prev, {
+            role: 'ai',
+            content: '죄송합니다. 내부 문서에서 해당 내용을 검색하지 못했습니다.'
+          }]);
+        } else {
+          const aiResponse = data.answer || '죄송합니다. 내부 문서에서 해당 내용을 검색하지 못했습니다.';
+          setMessages(prev => [...prev, {
+            role: 'ai',
+            content: aiResponse
+          }]);
+        }
+      } else {
+        // 일반 대화 모드 - Ollama 스트리밍
+        const response = await fetch(`${API_BASE_URL}/chat/general`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: userMessage
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('채팅 실패');
+        }
+
+        // 스트리밍 응답 처리
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let aiResponse = '';
+
+        // AI 메시지 placeholder 추가
+        setMessages(prev => [...prev, { role: 'ai', content: '' }]);
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.token) {
+                    aiResponse += data.token;
+                    // 실시간으로 메시지 업데이트
+                    setMessages(prev => {
+                      const newMessages = [...prev];
+                      newMessages[newMessages.length - 1] = {
+                        role: 'ai',
+                        content: aiResponse
+                      };
+                      return newMessages;
+                    });
+                  }
+                } catch (e) {
+                  // JSON 파싱 실패 무시
+                }
+              }
+            }
+          }
+        }
+
+        if (!aiResponse) {
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1] = {
+              role: 'ai',
+              content: '죄송합니다. 답변을 생성할 수 없습니다.'
+            };
+            return newMessages;
+          });
+        }
+      }
+
+    } catch (error) {
+      console.error('AI chat error:', error);
+      // 에러 메시지 표시
+      setMessages(prev => [...prev, {
+        role: 'ai',
+        content: '죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleModeSelect = (mode: 'ai' | 'agent') => {
     setChatMode(mode);
     setMessages([]);
-    if (mode === 'ai') {
-      setMessages([{
-        role: 'ai',
-        content: '안녕하세요! AI 쇼핑 도우미입니다. 무엇을 도와드릴까요?'
-      }]);
-    }
   };
 
   const handleClose = () => {
@@ -180,27 +304,76 @@ export default function AIChatButton() {
           {chatMode === 'ai' && (
             <>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {messages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${
-                        msg.role === 'user'
-                          ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                          : 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
-                      }`}
-                    >
-                      <p className="text-sm leading-relaxed">{msg.content}</p>
+                {messages.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-center">
+                    <div className="space-y-2">
+                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
+                        <svg className="h-7 w-7 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line">
+                        무엇을 도와드릴까요?
+                        {'\n'}
+                        문의 내용을 입력해주세요.
+                      </p>
                     </div>
                   </div>
-                ))}
+                ) : (
+                  messages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${
+                          msg.role === 'user'
+                            ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                            : 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
+                        }`}
+                      >
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[75%] rounded-2xl bg-gray-100 px-3.5 py-2.5 dark:bg-gray-700">
+                      <div className="flex gap-1">
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500" style={{ animationDelay: '0ms' }}></span>
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500" style={{ animationDelay: '150ms' }}></span>
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-gray-500" style={{ animationDelay: '300ms' }}></span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* 스크롤 참조점 */}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* 입력 영역 */}
-              <div className="border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
-                <div className="flex gap-2">
+              <div className="border-t border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900">
+                {/* @내부문서 제안 */}
+                {showDocSearchSuggestion && (
+                  <div className="border-b border-gray-200 px-4 py-2 dark:border-gray-700">
+                    <button
+                      onClick={() => {
+                        setInput('@내부문서 ');
+                        setShowDocSearchSuggestion(false);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg bg-white px-3 py-2 text-left text-sm transition hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"
+                    >
+                      <svg className="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span className="font-medium text-gray-900 dark:text-white">@내부문서</span>
+                      <span className="text-gray-500 dark:text-gray-400">내부 문서에서 검색</span>
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex gap-2 p-4">
                   <button
                     onClick={() => {
                       setChatMode('select');
@@ -212,17 +385,30 @@ export default function AIChatButton() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder="메시지 입력..."
-                    className="flex-1 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm placeholder:text-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white dark:focus:ring-white"
-                  />
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleSend()}
+                      placeholder="메시지 입력..."
+                      disabled={isLoading}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm placeholder:text-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white dark:focus:ring-white"
+                      style={input.includes('@내부문서') ? {
+                        color: 'transparent',
+                        caretColor: '#1f2937'
+                      } : {}}
+                    />
+                    {input.includes('@내부문서') && (
+                      <div className="pointer-events-none absolute inset-0 flex items-center px-3.5 py-2 text-sm">
+                        <span className="font-medium text-blue-600 dark:text-blue-400">@내부문서</span>
+                        <span className="text-gray-900 dark:text-white">{input.replace('@내부문서', '')}</span>
+                      </div>
+                    )}
+                  </div>
                   <button
                     onClick={handleSend}
-                    disabled={!input.trim()}
+                    disabled={!input.trim() || isLoading}
                     className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900 text-white transition hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                   >
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

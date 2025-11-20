@@ -1,0 +1,22 @@
+Defaulting to user installation because normal site-packages is not writeable
+Requirement already satisfied: pydantic in c:\users\ieunj\appdata\roaming\python\python313\site-packages (2.10.3)
+Collecting pydantic
+  Using cached pydantic-2.12.4-py3-none-any.whl.metadata (89 kB)
+Requirement already satisfied: annotated-types>=0.6.0 in c:\users\ieunj\appdata\roaming\python\python313\site-packages (from pydantic) (0.7.0)
+Collecting pydantic-core==2.41.5 (from pydantic)
+  Using cached pydantic_core-2.41.5-cp313-cp313-win_amd64.whl.metadata (7.4 kB)
+Requirement already satisfied: typing-extensions>=4.14.1 in c:\users\ieunj\appdata\roaming\python\python313\site-packages (from pydantic) (4.14.1)
+Requirement already satisfied: typing-inspection>=0.4.2 in c:\users\ieunj\appdata\roaming\python\python313\site-packages (from pydantic) (0.4.2)
+Using cached pydantic-2.12.4-py3-none-any.whl (463 kB)
+Using cached pydantic_core-2.41.5-cp313-cp313-win_amd64.whl (2.0 MB)
+Installing collected packages: pydantic-core, pydantic
+  Attempting uninstall: pydantic-core
+    Found existing installation: pydantic_core 2.27.1
+    Uninstalling pydantic_core-2.27.1:
+      Successfully uninstalled pydantic_core-2.27.1
+  Attempting uninstall: pydantic
+    Found existing installation: pydantic 2.10.3
+    Uninstalling pydantic-2.10.3:
+      Successfully uninstalled pydantic-2.10.3
+
+Successfully installed pydantic-2.12.4 pydantic-core-2.41.5

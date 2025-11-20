@@ -3,10 +3,16 @@ from typing import Dict, List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 import json
+import requests
 
 from app.services.supabase import supabase
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+# 일반 채팅 요청 모델
+class GeneralChatRequest(BaseModel):
+    message: str
 
 # WebSocket 연결 관리자
 class ConnectionManager:
@@ -302,3 +308,51 @@ async def admin_monitor_websocket(websocket: WebSocket):
     except Exception as e:
         print(f"Admin WebSocket error: {e}")
         manager.disconnect(websocket, "admin_room")
+
+
+# 일반 AI 채팅 API (Ollama 직접 호출 - 스트리밍)
+@router.post("/general")
+async def general_chat(request: GeneralChatRequest):
+    """
+    일반 대화용 AI 채팅 (스트리밍)
+    문서 검색 없이 Ollama로 직접 답변 생성
+    """
+    from fastapi.responses import StreamingResponse
+
+    try:
+        ollama_host = "http://localhost:11435"
+
+        def generate():
+            response = requests.post(
+                f"{ollama_host}/api/generate",
+                json={
+                    "model": "qwen2.5:14b",
+                    "prompt": f"""당신은 친절한 쇼핑몰 AI 어시스턴트입니다. 사용자의 질문에 자연스럽고 도움이 되도록 답변하세요.
+
+사용자 질문: {request.message}
+
+답변:""",
+                    "stream": True
+                },
+                stream=True,
+                timeout=60
+            )
+
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        chunk = json.loads(line)
+                        if "response" in chunk:
+                            yield f"data: {json.dumps({'token': chunk['response']})}\n\n"
+                        if chunk.get("done", False):
+                            yield f"data: {json.dumps({'done': True})}\n\n"
+                    except json.JSONDecodeError:
+                        continue
+
+        return StreamingResponse(generate(), media_type="text/event-stream")
+
+    except Exception as e:
+        print(f"General chat error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"채팅 중 오류 발생: {str(e)}")
