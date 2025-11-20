@@ -41,62 +41,6 @@ const dummyReviews = [
   },
 ];
 
-// 임시 옵션 더미 데이터
-const dummyOptions = [
-  {
-    id: 1,
-    label: '면 종류',
-    values: [
-      { value: '', label: '옵션을 선택하세요' },
-      { value: 'soy', label: '간장 라멘' },
-      { value: 'pigbone', label: '돼지 육수 라멘' },
-      { value: 'soyfied', label: '볶음 우동' },
-      { value: 'curry', label: '카레 우동' },
-    ]
-  },
-  {
-    id: 2,
-    label: '갯 수',
-    values: [
-      { value: '', label: '옵션을 선택하세요' },
-      { value: '1', label: '1 개' },
-      { value: '2', label: '2 개' },
-      { value: '5', label: '5 개' },
-      { value: '10', label: '10 개' },
-    ]
-  },
-  {
-    id: 3,
-    label: '개당 용량',
-    values: [
-      { value: '', label: '옵션을 선택하세요' },
-      { value: '500g', label: '500g' },
-      { value: '800g', label: '800g' },
-      { value: '1kg', label: '1kg' },
-      { value: '2kg', label: '2kg' },
-    ]
-  },
-  {
-    id: 4,
-    label: '조리 여부',
-    values: [
-      { value: '', label: '옵션을 선택하세요' },
-      { value: 'uncooked', label: '비조리(-1000원)' },
-      { value: 'cooked', label: '조리(+1000원)' },
-    ]
-  },
-  {
-    id: 5,
-    label: '추가 옵션',
-    values: [
-      { value: '', label: '옵션을 선택하세요' },
-      { value: 'noodle', label: '면 추가(+1000원)' },
-      { value: 'soup', label: '육수 추가(+1000원)' },
-      { value: 'egg', label: '계란 추가(+1000원)' },
-      { value: 'meat', label: '고기 추가(+1000원)' },
-    ]
-  },
-];
 
 type DetailedProduct = Product & {
   meta_description?: string;
@@ -147,8 +91,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  // 옵션 표시 여부 (임시로 true 설정)
-  const [hasOptions, setHasOptions] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -436,22 +378,24 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* 옵션 섹션 - hasOptions가 true일 때만 표시 */}
-              {hasOptions && (
+              {/* 옵션 섹션 - 상품에 옵션이 있을 때만 표시 */}
+              {displayProduct.options && displayProduct.options.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="text-sm font-medium text-gray-900 dark:text-white">옵션 선택</h3>
 
-                  {/* 옵션 항목들 - 더미 데이터 매핑 */}
+                  {/* 옵션 항목들 - 실제 상품 옵션 데이터 매핑 */}
                   <div className="space-y-2">
-                    {dummyOptions.map((option) => (
-                      <div key={option.id}>
+                    {displayProduct.options.map((option, optionIndex) => (
+                      <div key={optionIndex}>
                         <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
-                          {option.label}
+                          {option.customType}
                         </label>
                         <select className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                          {option.values.map((val, idx) => (
-                            <option key={idx} value={val.value}>
-                              {val.label}
+                          <option value="">옵션을 선택하세요</option>
+                          {option.values.map((val, valueIndex) => (
+                            <option key={valueIndex} value={val.value}>
+                              {val.value}
+                              {val.price && val.price !== '0' && ` (+${Number(val.price).toLocaleString()}원)`}
                             </option>
                           ))}
                         </select>

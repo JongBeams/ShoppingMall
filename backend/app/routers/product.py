@@ -2,8 +2,8 @@ from fastapi import APIRouter, status, UploadFile, File, HTTPException, Depends
 import asyncio
 
 from app.models.product import CreateProductRequset
-from app.services.product_management import CreateProduct, DeleteProduct, UploadProductImage, GetVendorProducts
-from app.services.supabase import get_supabase_client
+from app.services.product_management import CreateProduct, DeleteProduct, UploadProductImage, GetVendorProducts, get_product_options
+from app.services.supabase import get_supabase_client, get_supabase_admin_client
 from app.services.auth_middleware import get_current_user
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -299,14 +299,13 @@ async def get_product(product_id: str):
             category_info = {"slug": None, "name": None}
 
     # vendor 정보 조회 (RLS 우회를 위해 admin client 사용)
-    from app.services.supabase import get_supabase_admin_client
+    supabase_admin = get_supabase_admin_client()
     vendor_name = None
     vendor_address = None
     vendor_id = product.get("vendor_id")
     print(f"🔍 Product vendor_id: {vendor_id}")
     if vendor_id:
         try:
-            supabase_admin = get_supabase_admin_client()
             # vendor_id로 user_id를 먼저 찾거나, 직접 조회
             # 먼저 id로 시도
             vendor_response = (
@@ -339,12 +338,16 @@ async def get_product(product_id: str):
             vendor_name = None
             vendor_address = None
 
+    # 상품 옵션 조회
+    options = get_product_options(supabase_admin, product_id)
+
     product_data = {
         **product,
         "category_slug": category_info["slug"],
         "category_name": category_info["name"],
         "vendor_name": vendor_name,
         "vendor_address": vendor_address,
+        "options": options,
     }
 
     print(f"📦 Final product_data vendor_name: {product_data.get('vendor_name')}")

@@ -15,6 +15,7 @@ export interface Product {
   images?: string[];  // 추가 이미지 배열
   stock?: number;
   stock_quantity?: number;
+  options?: ProductOption[];  // 상품 옵션
   createdAt?: string;
   created_at?: string;
 }
@@ -55,7 +56,6 @@ export interface GetVendorProductRequest {
   category_slug: string;
   meta_description?: string;
   description?: string;
-  meta_description?: string;
   price: number;
   stock_quantity: number;
   low_stock_threshold: number;
