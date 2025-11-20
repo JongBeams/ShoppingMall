@@ -8,12 +8,14 @@ export interface Product {
   category?: string;
   category_slug?: string;
   category_name?: string;
+  vendor_name?: string;  // 스토어명
   imageUrl?: string;
   thumbnail_url?: string;
   images?: string[];  // 추가 이미지 배열
   stock?: number;
   stock_quantity?: number;
   createdAt?: string;
+  created_at?: string;
 }
 
 // Product Creation/Update Request

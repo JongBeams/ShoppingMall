@@ -42,9 +42,23 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* 상품 정보 */}
         <div className="p-2">
+          {/* 스토어명 / 카테고리 */}
+          <div className="mb-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            {product.vendor_name && (
+              <>
+                <span className="font-medium">{product.vendor_name}</span>
+                <span>·</span>
+              </>
+            )}
+            <span>{categoryLabel}</span>
+          </div>
+
+          {/* 상품명 */}
           <h3 className="mb-1 line-clamp-2 text-xs font-medium text-gray-900 dark:text-white">
             {product.name}
           </h3>
+
+          {/* 가격 */}
           <div className="flex items-baseline gap-1">
             <span className="text-sm font-bold text-gray-900 dark:text-white">
               {product.price.toLocaleString()}

@@ -48,7 +48,7 @@ async def get_all_products():
     try:
         products_response = (
             supabase.table("products")
-            .select("id, name, description, price, stock_quantity, category_id, thumbnail_url, is_active, created_at")
+            .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, is_active, created_at")
             .eq("is_active", True)
             .order("created_at", desc=True)
             .execute()
@@ -61,7 +61,9 @@ async def get_all_products():
 
     products = products_response.data or []
     category_ids = {product["category_id"] for product in products if product.get("category_id")}
+    vendor_ids = {product["vendor_id"] for product in products if product.get("vendor_id")}
     category_map = {}
+    vendor_map = {}
 
     if category_ids:
         try:
@@ -79,9 +81,23 @@ async def get_all_products():
         except Exception:
             category_map = {}
 
+    if vendor_ids:
+        try:
+            vendors_response = (
+                supabase.table("vendors")
+                .select("id, store_name")
+                .in_("id", list(vendor_ids))
+                .execute()
+            )
+            for vendor in vendors_response.data or []:
+                vendor_map[vendor["id"]] = vendor.get("store_name")
+        except Exception:
+            vendor_map = {}
+
     product_list = []
     for product in products:
         category_info = category_map.get(product.get("category_id"), {})
+        vendor_name = vendor_map.get(product.get("vendor_id"))
         product_list.append({
             "id": product["id"],
             "name": product["name"],
@@ -91,6 +107,8 @@ async def get_all_products():
             "thumbnail_url": product.get("thumbnail_url"),
             "category_slug": category_info.get("slug"),
             "category_name": category_info.get("name"),
+            "vendor_name": vendor_name,
+            "created_at": product.get("created_at"),
         })
 
     return {"products": product_list}

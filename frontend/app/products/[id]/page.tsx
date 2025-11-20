@@ -128,9 +128,9 @@ export default function ProductDetailPage() {
 
   return (
     <div>
-      <div className="grid gap-8 md:grid-cols-2">
-        {/* 타이틀 상품 이미지 */}
-        <div className="relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* 상품 이미지 */}
+        <div className="relative aspect-[4/3] overflow-hidden border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
           <Image
             src={thumbnailImageSrc}
             alt={displayProduct.name}
@@ -142,27 +142,26 @@ export default function ProductDetailPage() {
 
         {/* 상품 정보 */}
         <div className="flex flex-col">
-          <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+          <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">
             {categoryLabel}
           </div>
-          <h1 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="mb-3 text-xl font-bold text-gray-900 dark:text-white">
             {displayProduct.name}
           </h1>
-          {/* meta_description */}
-          <p className="mb-6 text-lg text-gray-600 dark:text-gray-300">
+          <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
             {displayProduct.meta_description || displayProduct.description}
           </p>
 
-          <div className="mb-6 border-t border-b border-gray-200 py-6 dark:border-gray-700">
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">
+          <div className="mb-4 border-t border-b border-gray-200 py-4 dark:border-gray-700">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {Number(displayProduct.price || 0).toLocaleString()}원
             </div>
-            <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
               재고: {stock}개
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <Button
               onClick={() => alert('장바구니 기능은 개발 중입니다')}
               className="flex-1"
@@ -178,11 +177,11 @@ export default function ProductDetailPage() {
             </Button>
           </div>
 
-          <div className="mt-8 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-            <h3 className="mb-2 font-semibold text-gray-900 dark:text-white">
+          <div className="mt-6 border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+            <h3 className="mb-2 text-sm font-bold text-gray-900 dark:text-white">
               배송 안내
             </h3>
-            <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+            <ul className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
               <li>• 무료 배송</li>
               <li>• 주문 후 24시간 이내 배송</li>
               <li>• 30일 무료 반품/교환</li>
@@ -192,12 +191,12 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Product Detail Description */}
-      <div className="mt-12 border-t border-gray-200 pt-12 dark:border-gray-700">
-        <h2 className="mb-6 text-base font-bold text-gray-900 dark:text-white">상품 상세 정보</h2>
+      <div className="mt-8 border-t border-gray-200 pt-8 dark:border-gray-700">
+        <h2 className="mb-4 text-sm font-bold text-gray-900 dark:text-white">상품 상세 정보</h2>
 
         {/* 모든 이미지 표시 (images 배열) */}
         {imageList.length > 0 && (
-          <div className="space-y-3 mb-6">
+          <div className="space-y-2 mb-4">
             {imageList.map((imgUrl, index) => (
               <div key={index} className="relative aspect-[16/9] overflow-hidden border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
                 <Image
@@ -212,17 +211,17 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-          <ul className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+        <div className="border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+          <div className="text-xs text-gray-700 dark:text-gray-300">
             {displayProduct.description}
-          </ul>
+          </div>
         </div>
       </div>
 
       {/* Review Stats */}
-      <div className="mt-12 border-t border-gray-200 pt-12 dark:border-gray-700">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-base font-bold text-gray-900 dark:text-white">
+      <div className="mt-8 border-t border-gray-200 pt-8 dark:border-gray-700">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-bold text-gray-900 dark:text-white">
             상품 리뷰 <span className="text-xs font-normal text-gray-500 dark:text-gray-400">({dummyReviews.length})</span>
           </h2>
           <div className="flex gap-1">
@@ -236,20 +235,20 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Rating Summary */}
-        <div className="mb-6 border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-          <div className="flex gap-8">
-            <div className="flex flex-col items-center justify-center border-r border-gray-200 pr-8 dark:border-gray-700">
-              <div className="mb-1 text-3xl font-bold text-gray-900 dark:text-white">4.7</div>
-              <div className="mb-2 flex gap-0.5">
+        <div className="mb-4 border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+          <div className="flex gap-6">
+            <div className="flex flex-col items-center justify-center border-r border-gray-200 pr-6 dark:border-gray-700">
+              <div className="mb-1 text-2xl font-bold text-gray-900 dark:text-white">4.7</div>
+              <div className="mb-1.5 flex gap-0.5">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <svg key={star} className="h-3.5 w-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                  <svg key={star} className="h-3 w-3 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
                   </svg>
                 ))}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400">{dummyReviews.length}개 리뷰</p>
             </div>
-            <div className="flex-1 space-y-1.5">
+            <div className="flex-1 space-y-1">
               {[5, 4, 3, 2, 1].map((rating) => (
                 <div key={rating} className="flex items-center gap-2">
                   <span className="w-8 text-xs text-gray-600 dark:text-gray-400">{rating}점</span>
@@ -270,12 +269,12 @@ export default function ProductDetailPage() {
 
 
         {/* Review List */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {dummyReviews.map((review) => (
-            <div key={review.id} className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-              <div className="mb-3 flex items-start justify-between">
+            <div key={review.id} className="border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+              <div className="mb-2 flex items-start justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">{review.userName}</span>
+                  <span className="text-xs font-medium text-gray-900 dark:text-white">{review.userName}</span>
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <svg
@@ -291,18 +290,18 @@ export default function ProductDetailPage() {
                 </div>
                 <span className="text-xs text-gray-400 dark:text-gray-500">{review.date}</span>
               </div>
-              <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">{review.content}</p>
+              <p className="mb-2 text-xs text-gray-700 dark:text-gray-300">{review.content}</p>
               {review.photos.length > 0 && (
-                <div className="mb-3 flex gap-2">
+                <div className="mb-2 flex gap-2">
                   {review.photos.map((photo, index) => (
-                    <div key={index} className="relative h-16 w-16 border border-gray-200 dark:border-gray-700">
-                      <Image src={photo} alt={`Review ${index + 1}`} fill className="object-cover" sizes="64px" />
+                    <div key={index} className="relative h-14 w-14 border border-gray-200 dark:border-gray-700">
+                      <Image src={photo} alt={`Review ${index + 1}`} fill className="object-cover" sizes="56px" />
                     </div>
                   ))}
                 </div>
               )}
-              <button className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75A2.25 2.25 0 0116.5 4.5c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904M14.25 9h2.25M5.904 18.75c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 10.203 4.167 9.75 5 9.75h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z" />
                 </svg>
                 도움돼요 {review.likes}
