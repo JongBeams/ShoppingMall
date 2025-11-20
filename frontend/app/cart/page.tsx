@@ -194,6 +194,18 @@ export default function CartPage() {
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       {item.product_price.toLocaleString()}원
                     </p>
+
+                    {/* 선택된 옵션 표시 */}
+                    {item.selected_options && item.selected_options.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {item.selected_options.map((option, idx) => (
+                          <p key={idx} className="text-xs text-gray-600 dark:text-gray-400">
+                            • {option.option_name}: {option.value_name}
+                            {option.price > 0 && ` (+${option.price.toLocaleString()}원)`}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between">

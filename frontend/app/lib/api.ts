@@ -101,10 +101,19 @@ export const cartAPI = {
   get: (token: string) => fetchAPI('/cart', { token }),
 
   // 장바구니에 상품 추가
-  add: (product_id: string, quantity: number, token: string) =>
+  add: (
+    product_id: string,
+    quantity: number,
+    token: string,
+    selected_options?: Array<{ option_id: string; value_id: string }>
+  ) =>
     fetchAPI('/cart', {
       method: 'POST',
-      body: JSON.stringify({ product_id, quantity }),
+      body: JSON.stringify({
+        product_id,
+        quantity,
+        ...(selected_options && selected_options.length > 0 && { selected_options })
+      }),
       token,
     }),
 

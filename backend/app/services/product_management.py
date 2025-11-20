@@ -125,13 +125,14 @@ def get_product_options(supabase_admin, product_id: str):
             # product_option_values 조회
             values_response = (
                 supabase_admin.table("product_option_values")
-                .select("value, price, stock")
+                .select("id, value, price, stock")
                 .eq("option_id", option["id"])
                 .order("num")
                 .execute()
             )
 
             options.append({
+                "id": option["id"],
                 "customType": option["custom_type"],
                 "values": values_response.data or []
             })

@@ -22,12 +22,14 @@ export interface Product {
 
 // Product Option Types
 export interface ProductOptionValue {
+  id: string;
   value: string;
   price: string;
   stock: string;
 }
 
 export interface ProductOption {
+  id: string;
   customType: string;
   values: ProductOptionValue[];
 }
@@ -81,6 +83,13 @@ export interface CartItem {
   product_thumbnail: string | null;
   quantity: number;
   total_price: number;
+  selected_options?: Array<{
+    option_id: string;
+    option_name: string;
+    value_id: string;
+    value_name: string;
+    price: number;
+  }>;
   created_at: string;
 }
 
@@ -93,6 +102,10 @@ export interface CartResponse {
 export interface AddToCartRequest {
   product_id: string;
   quantity: number;
+  selected_options?: Array<{
+    option_id: string;
+    value_id: string;
+  }>;
 }
 
 export interface UpdateCartItemRequest {

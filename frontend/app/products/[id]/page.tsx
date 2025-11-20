@@ -59,6 +59,16 @@ export default function ProductDetailPage() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLDivElement>(null);
   const [quantity, setQuantity] = useState(1);
+  // 옵션 선택 state: { optionId: valueId }
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+
+  // 옵션 선택 핸들러
+  const handleOptionChange = (optionId: string, valueId: string) => {
+    setSelectedOptions(prev => ({
+      ...prev,
+      [optionId]: valueId
+    }));
+  };
 
   // 장바구니 담기
   const handleAddToCart = async () => {
@@ -75,8 +85,33 @@ export default function ProductDetailPage() {
       return;
     }
 
+    // 옵션이 있는 경우 모든 옵션이 선택되었는지 확인
+    if (product?.options && product.options.length > 0) {
+      const unselectedOptions = product.options.filter(
+        option => !selectedOptions[option.id] || selectedOptions[option.id] === ''
+      );
+
+      if (unselectedOptions.length > 0) {
+        alert('모든 옵션을 선택해주세요.');
+        return;
+      }
+    }
+
     try {
-      const response = await cartAPI.add(productId, quantity, token);
+      // 선택된 옵션을 배열로 변환 (빈 값은 제외)
+      const optionsArray = Object.entries(selectedOptions)
+        .filter(([_, valueId]) => valueId !== '')
+        .map(([optionId, valueId]) => ({
+          option_id: optionId,
+          value_id: valueId
+        }));
+
+      const response = await cartAPI.add(
+        productId,
+        quantity,
+        token,
+        optionsArray.length > 0 ? optionsArray : undefined
+      );
       alert(response.message || '장바구니에 담겼습니다.');
 
       // 장바구니 업데이트 이벤트 발생
@@ -385,15 +420,19 @@ export default function ProductDetailPage() {
 
                   {/* 옵션 항목들 - 실제 상품 옵션 데이터 매핑 */}
                   <div className="space-y-2">
-                    {displayProduct.options.map((option, optionIndex) => (
-                      <div key={optionIndex}>
+                    {displayProduct.options.map((option) => (
+                      <div key={option.id}>
                         <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
                           {option.customType}
                         </label>
-                        <select className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                        <select
+                          value={selectedOptions[option.id] || ''}
+                          onChange={(e) => handleOptionChange(option.id, e.target.value)}
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        >
                           <option value="">옵션을 선택하세요</option>
-                          {option.values.map((val, valueIndex) => (
-                            <option key={valueIndex} value={val.value}>
+                          {option.values.map((val) => (
+                            <option key={val.id} value={val.id}>
                               {val.value}
                               {val.price && val.price !== '0' && ` (+${Number(val.price).toLocaleString()}원)`}
                             </option>

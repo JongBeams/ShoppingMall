@@ -13,15 +13,31 @@ router = APIRouter(prefix="/cart", tags=["cart"])
 # REQUEST/RESPONSE MODELS
 # ============================================
 
+class SelectedOption(BaseModel):
+    """선택된 옵션"""
+    option_id: str
+    value_id: str
+
+
 class AddToCartRequest(BaseModel):
     """장바구니 담기 요청"""
     product_id: str
     quantity: int = 1
+    selected_options: Optional[List[SelectedOption]] = None
 
 
 class UpdateCartItemRequest(BaseModel):
     """장바구니 수량 변경 요청"""
     quantity: int
+
+
+class SelectedOptionResponse(BaseModel):
+    """선택된 옵션 응답"""
+    option_id: str
+    option_name: str
+    value_id: str
+    value_name: str
+    price: float
 
 
 class CartItemResponse(BaseModel):
@@ -33,6 +49,7 @@ class CartItemResponse(BaseModel):
     product_thumbnail: Optional[str]
     quantity: int
     total_price: Decimal
+    selected_options: Optional[List[SelectedOptionResponse]] = None
     created_at: str
 
 
@@ -49,10 +66,10 @@ async def get_cart(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
 
     try:
-        # 장바구니 아이템 조회
+        # 장바구니 아이템 조회 (옵션 정보 포함)
         cart_response = (
             supabase.table("cart_items")
-            .select("id, product_id, quantity, created_at")
+            .select("id, product_id, quantity, selected_options, created_at")
             .eq("user_id", user_id)
             .order("created_at", desc=True)
             .execute()
@@ -84,17 +101,60 @@ async def get_cart(current_user: dict = Depends(get_current_user)):
             if not product:
                 continue
 
-            item_total = float(product["price"]) * cart_item["quantity"]
+            # 기본 가격
+            base_price = float(product["price"])
+            option_total_price = 0
+
+            # 선택된 옵션 정보 처리
+            selected_options_data = []
+            if cart_item.get("selected_options"):
+                for option_info in cart_item["selected_options"]:
+                    option_id = option_info.get("option_id")
+                    value_id = option_info.get("value_id")
+
+                    if option_id and value_id:
+                        # 옵션 정보 조회
+                        option_response = (
+                            supabase.table("product_options")
+                            .select("custom_type")
+                            .eq("id", option_id)
+                            .single()
+                            .execute()
+                        )
+
+                        value_response = (
+                            supabase.table("product_option_values")
+                            .select("value, price")
+                            .eq("id", value_id)
+                            .single()
+                            .execute()
+                        )
+
+                        if option_response.data and value_response.data:
+                            option_price = float(value_response.data.get("price", 0))
+                            option_total_price += option_price
+
+                            selected_options_data.append({
+                                "option_id": option_id,
+                                "option_name": option_response.data["custom_type"],
+                                "value_id": value_id,
+                                "value_name": value_response.data["value"],
+                                "price": option_price
+                            })
+
+            # 총 가격 = (상품 가격 + 옵션 가격) * 수량
+            item_total = (base_price + option_total_price) * cart_item["quantity"]
             total += item_total
 
             items.append({
                 "id": cart_item["id"],
                 "product_id": cart_item["product_id"],
                 "product_name": product["name"],
-                "product_price": float(product["price"]),
+                "product_price": base_price,
                 "product_thumbnail": product.get("thumbnail_url"),
                 "quantity": cart_item["quantity"],
                 "total_price": item_total,
+                "selected_options": selected_options_data if selected_options_data else None,
                 "created_at": cart_item["created_at"]
             })
 
@@ -159,18 +219,34 @@ async def add_to_cart(
                 detail=f"재고가 부족합니다. (현재 재고: {product['stock_quantity']}개)"
             )
 
-        # 이미 장바구니에 있는지 확인
+        # 선택된 옵션을 JSONB 형태로 변환
+        selected_options_json = None
+        if request.selected_options:
+            selected_options_json = [
+                {"option_id": opt.option_id, "value_id": opt.value_id}
+                for opt in request.selected_options
+            ]
+
+        # 이미 장바구니에 있는지 확인 (같은 상품 + 같은 옵션)
         existing_response = (
             supabase.table("cart_items")
-            .select("id, quantity")
+            .select("id, quantity, selected_options")
             .eq("user_id", user_id)
             .eq("product_id", request.product_id)
             .execute()
         )
 
+        # 같은 상품에 같은 옵션 조합이 있는지 확인
+        existing_item = None
         if existing_response.data:
+            for item in existing_response.data:
+                # 옵션이 동일한지 비교
+                if item.get("selected_options") == selected_options_json:
+                    existing_item = item
+                    break
+
+        if existing_item:
             # 이미 있으면 수량 증가
-            existing_item = existing_response.data[0]
             new_quantity = existing_item["quantity"] + request.quantity
 
             if product["stock_quantity"] < new_quantity:
@@ -193,13 +269,19 @@ async def add_to_cart(
             }
         else:
             # 새로 추가
+            insert_data = {
+                "user_id": user_id,
+                "product_id": request.product_id,
+                "quantity": request.quantity
+            }
+
+            # 옵션이 있으면 추가
+            if selected_options_json:
+                insert_data["selected_options"] = selected_options_json
+
             insert_response = (
                 supabase.table("cart_items")
-                .insert({
-                    "user_id": user_id,
-                    "product_id": request.product_id,
-                    "quantity": request.quantity
-                })
+                .insert(insert_data)
                 .execute()
             )
 
