@@ -49,6 +49,7 @@ export const productAPI = {
   getAll: () => fetchAPI('/products'),
   getById: (id: string) => fetchAPI(`/products/${id}`),
   getByCategory: (category: string) => fetchAPI(`/products/category/${category}`),
+  getCategories: () => fetchAPI('/products/categories'),
 };
 
 // Auth API types

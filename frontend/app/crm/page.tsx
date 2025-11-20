@@ -336,10 +336,10 @@ export default function CRMPage() {
           </div>
         </div>
 
-        {/* 1:1 문의 대기 */}
+        {/* 건의하기 대기 */}
         <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">1:1 문의 대기</h2>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">건의하기 대기</h2>
             <Link href="/crm/inquiries?status=pending" className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400">
               +
             </Link>

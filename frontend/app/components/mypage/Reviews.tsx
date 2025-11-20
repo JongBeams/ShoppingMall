@@ -55,21 +55,21 @@ export default function Reviews() {
   ];
 
   return (
-    <div className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+    <div className="border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
       {/* Header */}
-      <div className="border-b border-gray-100 p-5 dark:border-gray-800">
-        <h2 className="text-base font-bold text-gray-900 dark:text-white">리뷰 관리</h2>
+      <div className="mb-4 border-b border-gray-200 pb-3 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 dark:text-white">리뷰 관리</h2>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           구매한 상품의 리뷰를 작성하고 관리하세요
         </p>
       </div>
 
       {/* Filter Tabs */}
-      <div className="border-b border-gray-100 px-5 dark:border-gray-800">
+      <div className="mb-3 border-b border-gray-100 dark:border-gray-800">
         <div className="flex gap-2">
           <button
             onClick={() => setActiveFilter('writable')}
-            className={`px-4 py-3 text-sm font-medium transition ${
+            className={`px-3 py-2 text-xs font-medium transition ${
               activeFilter === 'writable'
                 ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
@@ -79,7 +79,7 @@ export default function Reviews() {
           </button>
           <button
             onClick={() => setActiveFilter('written')}
-            className={`px-4 py-3 text-sm font-medium transition ${
+            className={`px-3 py-2 text-xs font-medium transition ${
               activeFilter === 'written'
                 ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
@@ -91,23 +91,23 @@ export default function Reviews() {
       </div>
 
       {/* Review List */}
-      <div className="p-5">
+      <div>
         {activeFilter === 'writable' ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {writableReviews.length > 0 ? (
               writableReviews.map((item) => (
                 <div
                   key={item.id}
-                  className="flex gap-4 border border-gray-200 p-4 dark:border-gray-700"
+                  className="flex gap-3 border border-gray-200 p-3 dark:border-gray-700"
                 >
                   <Link href={`/products/${item.productId}`} className="flex-shrink-0">
-                    <div className="relative h-20 w-20 overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <div className="relative h-16 w-16 overflow-hidden border border-gray-200 dark:border-gray-700">
                       <Image
                         src={item.productImage}
                         alt={item.productName}
                         fill
                         className="object-cover"
-                        sizes="80px"
+                        sizes="64px"
                       />
                     </div>
                   </Link>
@@ -115,7 +115,7 @@ export default function Reviews() {
                     <div>
                       <Link
                         href={`/products/${item.productId}`}
-                        className="text-sm font-medium text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400"
+                        className="text-xs font-medium text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400"
                       >
                         {item.productName}
                       </Link>
@@ -125,7 +125,7 @@ export default function Reviews() {
                     </div>
                     <button
                       onClick={() => window.location.href = `/reviews/write?productId=${item.productId}`}
-                      className="mt-2 self-start border border-gray-900 bg-gray-900 px-4 py-1.5 text-xs font-medium text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                      className="mt-2 self-start border border-gray-900 bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                     >
                       리뷰 작성
                     </button>
@@ -133,41 +133,41 @@ export default function Reviews() {
                 </div>
               ))
             ) : (
-              <div className="py-16 text-center">
-                <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <div className="py-12 text-center">
+                <svg className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
                 </svg>
-                <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
                   작성 가능한 리뷰가 없습니다
                 </p>
               </div>
             )}
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-3">
             {writtenReviews.length > 0 ? (
               writtenReviews.map((review) => (
                 <div
                   key={review.id}
-                  className="border border-gray-200 p-5 dark:border-gray-700"
+                  className="border border-gray-200 p-3 dark:border-gray-700"
                 >
                   {/* Product Info */}
-                  <div className="mb-4 flex gap-4">
+                  <div className="mb-3 flex gap-3">
                     <Link href={`/products/${review.productId}`} className="flex-shrink-0">
-                      <div className="relative h-16 w-16 overflow-hidden border border-gray-200 dark:border-gray-700">
+                      <div className="relative h-12 w-12 overflow-hidden border border-gray-200 dark:border-gray-700">
                         <Image
                           src={review.productImage}
                           alt={review.productName}
                           fill
                           className="object-cover"
-                          sizes="64px"
+                          sizes="48px"
                         />
                       </div>
                     </Link>
                     <div className="flex-1">
                       <Link
                         href={`/products/${review.productId}`}
-                        className="text-sm font-medium text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400"
+                        className="text-xs font-medium text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400"
                       >
                         {review.productName}
                       </Link>
@@ -175,7 +175,7 @@ export default function Reviews() {
                         {[...Array(5)].map((_, i) => (
                           <svg
                             key={i}
-                            className={`h-4 w-4 ${
+                            className={`h-3 w-3 ${
                               i < review.rating
                                 ? 'text-yellow-400'
                                 : 'text-gray-300 dark:text-gray-600'
@@ -194,30 +194,30 @@ export default function Reviews() {
                   </div>
 
                   {/* Review Content */}
-                  <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
+                  <p className="mb-2 text-xs text-gray-700 dark:text-gray-300">
                     {review.content}
                   </p>
 
                   {/* Review Photos */}
                   {review.photos.length > 0 && (
-                    <div className="mb-3 flex gap-2">
+                    <div className="mb-2 flex gap-2">
                       {review.photos.map((photo, idx) => (
                         <div
                           key={idx}
-                          className="relative h-20 w-20 overflow-hidden border border-gray-200 dark:border-gray-700"
+                          className="relative h-16 w-16 overflow-hidden border border-gray-200 dark:border-gray-700"
                         >
                           <Image
                             src={photo}
                             alt={`리뷰 사진 ${idx + 1}`}
                             fill
                             className="object-cover"
-                            sizes="80px"
+                            sizes="64px"
                           />
                         </div>
                       ))}
                       {review.photos.length > 0 && (
                         <div className="flex items-center">
-                          <span className="rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                          <span className="bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-950 dark:text-blue-400">
                             포토리뷰
                           </span>
                         </div>
@@ -226,9 +226,9 @@ export default function Reviews() {
                   )}
 
                   {/* Review Actions */}
-                  <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
+                  <div className="flex items-center justify-between border-t border-gray-100 pt-2 dark:border-gray-800">
                     <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75A2.25 2.25 0 0116.5 4.5c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-.971a3.75 3.75 0 00-1.156-.18H6.75v-8.25h.133c.356 0 .697.088 1.002.247z" />
                       </svg>
                       {review.likes}
@@ -245,11 +245,11 @@ export default function Reviews() {
                 </div>
               ))
             ) : (
-              <div className="py-16 text-center">
-                <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <div className="py-12 text-center">
+                <svg className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
                 </svg>
-                <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
                   작성한 리뷰가 없습니다
                 </p>
               </div>

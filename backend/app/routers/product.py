@@ -13,6 +13,31 @@ router = APIRouter(prefix="/products", tags=["products"])
 # 공개 API (인증 불필요)
 # ============================================
 
+@router.get("/categories", summary="카테고리 목록 조회")
+async def get_categories():
+    """
+    전체 카테고리 목록을 조회합니다 (공개 API)
+    """
+    supabase = get_supabase_client()
+
+    try:
+        categories_response = (
+            supabase.table("categories")
+            .select("id, slug, name")
+            .order("name")
+            .execute()
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"카테고리 목록을 조회하는 중 오류가 발생했습니다: {str(e)}"
+        )
+
+    categories = categories_response.data or []
+
+    return {"categories": categories}
+
+
 @router.get("/", summary="전체 상품 목록 조회")
 async def get_all_products():
     """

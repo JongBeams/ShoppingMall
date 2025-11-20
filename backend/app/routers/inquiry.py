@@ -48,7 +48,7 @@ async def create_inquiry(
     inquiry_data: InquiryCreateRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """1:1 문의 작성 (일반회원/판매자)"""
+    """건의하기 작성 (일반회원/판매자)"""
     supabase_admin = get_supabase_admin_client()
 
     try:

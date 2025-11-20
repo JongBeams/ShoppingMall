@@ -11,7 +11,7 @@ export default function DeliveryManagement() {
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <span className="text-sm font-medium text-gray-900 dark:text-white">주문번호: ORD-2025-{String(i).padStart(6, '0')}</span>
-                <span className="ml-3 rounded bg-orange-100 px-2 py-1 text-xs font-medium text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+                <span className="ml-3 bg-orange-100 px-2 py-1 text-xs font-medium text-orange-800 dark:bg-orange-900 dark:text-orange-300">
                   배송 대기
                 </span>
               </div>

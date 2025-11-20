@@ -61,21 +61,21 @@ export default function Coupons() {
   const filteredCoupons = coupons.filter(c => c.status === activeFilter);
 
   return (
-    <div className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+    <div className="border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
       {/* Header */}
-      <div className="border-b border-gray-100 p-5 dark:border-gray-800">
-        <h2 className="text-base font-bold text-gray-900 dark:text-white">쿠폰함</h2>
+      <div className="mb-4 border-b border-gray-200 pb-3 dark:border-gray-700">
+        <h2 className="text-sm font-bold text-gray-900 dark:text-white">쿠폰함</h2>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           보유 중인 쿠폰을 확인하고 사용하세요
         </p>
       </div>
 
       {/* Filter Tabs */}
-      <div className="border-b border-gray-100 px-5 dark:border-gray-800">
+      <div className="mb-3 border-b border-gray-100 dark:border-gray-800">
         <div className="flex gap-2">
           <button
             onClick={() => setActiveFilter('available')}
-            className={`px-4 py-3 text-sm font-medium transition ${
+            className={`px-3 py-2 text-xs font-medium transition ${
               activeFilter === 'available'
                 ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
@@ -85,7 +85,7 @@ export default function Coupons() {
           </button>
           <button
             onClick={() => setActiveFilter('used')}
-            className={`px-4 py-3 text-sm font-medium transition ${
+            className={`px-3 py-2 text-xs font-medium transition ${
               activeFilter === 'used'
                 ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
@@ -95,7 +95,7 @@ export default function Coupons() {
           </button>
           <button
             onClick={() => setActiveFilter('expired')}
-            className={`px-4 py-3 text-sm font-medium transition ${
+            className={`px-3 py-2 text-xs font-medium transition ${
               activeFilter === 'expired'
                 ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white'
                 : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
@@ -107,13 +107,13 @@ export default function Coupons() {
       </div>
 
       {/* Coupon List */}
-      <div className="p-5">
+      <div>
         {filteredCoupons.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {filteredCoupons.map((coupon) => (
               <div
                 key={coupon.id}
-                className={`relative overflow-hidden border p-5 ${
+                className={`relative overflow-hidden border p-3 ${
                   coupon.status === 'available'
                     ? 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/20'
                     : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
@@ -122,31 +122,31 @@ export default function Coupons() {
                 {/* Coupon Badge */}
                 <div className="absolute right-0 top-0">
                   {coupon.status === 'available' && (
-                    <div className="bg-blue-600 px-3 py-1 text-xs font-medium text-white dark:bg-blue-500">
+                    <div className="bg-blue-600 px-2 py-1 text-xs font-medium text-white dark:bg-blue-500">
                       사용가능
                     </div>
                   )}
                   {coupon.status === 'used' && (
-                    <div className="bg-gray-600 px-3 py-1 text-xs font-medium text-white">
+                    <div className="bg-gray-600 px-2 py-1 text-xs font-medium text-white">
                       사용완료
                     </div>
                   )}
                   {coupon.status === 'expired' && (
-                    <div className="bg-red-600 px-3 py-1 text-xs font-medium text-white">
+                    <div className="bg-red-600 px-2 py-1 text-xs font-medium text-white">
                       기간만료
                     </div>
                   )}
                 </div>
 
-                <div className="pr-20">
-                  <h3 className="mb-2 text-lg font-bold text-gray-900 dark:text-white">
+                <div className="pr-16">
+                  <h3 className="mb-1 text-xs font-bold text-gray-900 dark:text-white">
                     {coupon.name}
                   </h3>
-                  <div className="mb-3 flex items-baseline gap-2">
-                    <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="mb-2 flex items-baseline gap-2">
+                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                       {coupon.discount}
                     </span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">할인</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">할인</span>
                   </div>
                   <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
                     <p>• 최소 주문금액: {coupon.minAmount.toLocaleString()}원</p>
@@ -159,7 +159,7 @@ export default function Coupons() {
                 </div>
 
                 {coupon.status === 'available' && (
-                  <button className="mt-4 w-full border border-gray-900 bg-gray-900 py-2 text-sm font-medium text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
+                  <button className="mt-3 w-full border border-gray-900 bg-gray-900 py-1.5 text-xs font-medium text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
                     쇼핑하러 가기
                   </button>
                 )}
@@ -167,11 +167,11 @@ export default function Coupons() {
             ))}
           </div>
         ) : (
-          <div className="py-16 text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+          <div className="py-12 text-center">
+            <svg className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3v.75m-9-6v.75m0 3v.75m-3 0h15a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v6.75a2.25 2.25 0 002.25 2.25zm13.5-9a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v6.75a2.25 2.25 0 002.25 2.25h13.5a2.25 2.25 0 002.25-2.25V6z" />
             </svg>
-            <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+            <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
               {activeFilter === 'available' && '사용 가능한 쿠폰이 없습니다'}
               {activeFilter === 'used' && '사용한 쿠폰이 없습니다'}
               {activeFilter === 'expired' && '만료된 쿠폰이 없습니다'}

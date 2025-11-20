@@ -11,7 +11,7 @@ export default function InquiryManagement() {
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-900 dark:text-white">프리미엄 유기농 토마토 1kg</span>
-                <span className="rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                <span className="bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
                   답변 대기
                 </span>
               </div>

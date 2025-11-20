@@ -52,29 +52,29 @@ export default function RecentProducts() {
 
   return (
     <div className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-      <div className="border-b border-gray-100 p-5 dark:border-gray-800">
-        <h2 className="text-base font-bold text-gray-900 dark:text-white">최근 본 상품</h2>
+      <div className="border-b border-gray-100 p-4 dark:border-gray-800">
+        <h2 className="text-sm font-bold text-gray-900 dark:text-white">최근 본 상품</h2>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           최근 30일 이내에 본 상품 목록입니다
         </p>
       </div>
 
-      <div className="p-5">
+      <div className="p-4">
         {recentProducts.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {recentProducts.map((product) => (
               <Link
                 key={product.id}
                 href={`/products/${product.id}`}
-                className="group flex gap-4 border-b border-gray-100 pb-4 last:border-b-0 dark:border-gray-800"
+                className="group flex gap-3 border-b border-gray-100 pb-3 last:border-b-0 dark:border-gray-800"
               >
-                <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden border border-gray-200 dark:border-gray-700">
+                <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden border border-gray-200 dark:border-gray-700">
                   <Image
                     src={product.image}
                     alt={product.name}
                     fill
                     className="object-cover transition group-hover:scale-105"
-                    sizes="96px"
+                    sizes="64px"
                   />
                 </div>
                 <div className="flex flex-1 flex-col justify-between">
@@ -82,10 +82,10 @@ export default function RecentProducts() {
                     <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">
                       {product.brand} · {product.category}
                     </p>
-                    <h3 className="mb-2 text-sm font-medium text-gray-900 transition group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
+                    <h3 className="mb-1 text-xs font-medium text-gray-900 transition group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
                       {product.name}
                     </h3>
-                    <p className="text-base font-bold text-gray-900 dark:text-white">
+                    <p className="text-xs font-bold text-gray-900 dark:text-white">
                       {product.price.toLocaleString()}원
                     </p>
                   </div>
@@ -99,7 +99,7 @@ export default function RecentProducts() {
                     // TODO: 장바구니 추가 기능
                     alert('장바구니에 추가되었습니다');
                   }}
-                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center self-start border border-gray-300 text-gray-600 transition hover:border-gray-900 hover:text-gray-900 dark:border-gray-600 dark:text-gray-400 dark:hover:border-white dark:hover:text-white"
+                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center self-start border border-gray-300 text-gray-600 transition hover:border-gray-900 hover:text-gray-900 dark:border-gray-600 dark:text-gray-400 dark:hover:border-white dark:hover:text-white"
                   title="장바구니에 추가"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -110,11 +110,11 @@ export default function RecentProducts() {
             ))}
           </div>
         ) : (
-          <div className="py-16 text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+          <div className="py-12 text-center">
+            <svg className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+            <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
               최근 본 상품이 없습니다
             </p>
           </div>

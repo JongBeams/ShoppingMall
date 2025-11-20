@@ -347,7 +347,7 @@ export default function StoreManagement() {
                   <div className="mb-3 flex items-center justify-between">
                     <div>
                       <span className="text-sm font-medium text-gray-900 dark:text-white">주문번호: ORD-2025-{String(i).padStart(6, '0')}</span>
-                      <span className="ml-3 rounded bg-orange-100 px-2 py-1 text-xs font-medium text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+                      <span className="ml-3 bg-orange-100 px-2 py-1 text-xs font-medium text-orange-800 dark:bg-orange-900 dark:text-orange-300">
                         배송 대기
                       </span>
                     </div>
@@ -390,7 +390,7 @@ export default function StoreManagement() {
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-900 dark:text-white">프리미엄 유기농 토마토 1kg</span>
-                      <span className="rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                      <span className="bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
                         답변 대기
                       </span>
                     </div>

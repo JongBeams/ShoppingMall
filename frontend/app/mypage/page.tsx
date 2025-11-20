@@ -132,16 +132,16 @@ export default function MyPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
-      <div className="mx-auto max-w-7xl px-6 py-8 lg:px-8">
-        <h1 className="mb-8 text-3xl font-bold text-gray-900 dark:text-white">마이페이지</h1>
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+        <h1 className="mb-6 text-xl font-bold text-gray-900 dark:text-white">마이페이지</h1>
 
-        <div className="grid gap-8 lg:grid-cols-3">
+        <div className="flex gap-4">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="w-56 flex-shrink-0">
             <UserInfo user={user} activeTab={activeTab} setActiveTab={setActiveTab} />
           </div>
           {/* Main Content */}
-          <div className="lg:col-span-2">
+          <div className="flex-1">
             {activeTab === 'profile' && <Profile user={user} vendor={vendor} />}
             {activeTab === 'orders' && <Orders user={user} dummyOrders={dummyOrders} />}
             {activeTab === 'sales' && user?.user_type === 'seller' && <Sales />}

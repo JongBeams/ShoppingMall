@@ -31,8 +31,8 @@ export default function Sales() {
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h4 className="text-sm font-semibold text-gray-900 dark:text-white">월별 매출 추이</h4>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-600 ring-1 ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-600 dark:bg-green-400"></span>
+            <span className="inline-flex items-center gap-1.5 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-600 ring-1 ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20">
+              <span className="h-1.5 w-1.5 bg-green-600 dark:bg-green-400"></span>
               Live
             </span>
           </div>
@@ -119,7 +119,7 @@ export default function Sales() {
 
         {/* Stats grid */}
         <div className="grid grid-cols-3 gap-4 border-t border-gray-200 pt-4 dark:border-gray-700">
-          <div className="rounded-lg bg-gray-50 p-3 ring-1 ring-gray-200 dark:bg-gray-800/50 dark:ring-gray-700">
+          <div className="bg-gray-50 p-3 ring-1 ring-gray-200 dark:bg-gray-800/50 dark:ring-gray-700">
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-600 dark:text-gray-400">총 매출</p>
               <svg className="h-4 w-4 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -131,7 +131,7 @@ export default function Sales() {
             </p>
             <p className="mt-0.5 text-xs text-green-600 dark:text-green-400">+12.5%</p>
           </div>
-          <div className="rounded-lg bg-gray-50 p-3 ring-1 ring-gray-200 dark:bg-gray-800/50 dark:ring-gray-700">
+          <div className="bg-gray-50 p-3 ring-1 ring-gray-200 dark:bg-gray-800/50 dark:ring-gray-700">
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-600 dark:text-gray-400">평균</p>
               <svg className="h-4 w-4 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -143,7 +143,7 @@ export default function Sales() {
             </p>
             <p className="mt-0.5 text-xs text-gray-500">월 평균</p>
           </div>
-          <div className="rounded-lg bg-gray-50 p-3 ring-1 ring-gray-200 dark:bg-gray-800/50 dark:ring-gray-700">
+          <div className="bg-gray-50 p-3 ring-1 ring-gray-200 dark:bg-gray-800/50 dark:ring-gray-700">
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-600 dark:text-gray-400">최고</p>
               <svg className="h-4 w-4 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
