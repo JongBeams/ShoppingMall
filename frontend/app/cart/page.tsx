@@ -253,12 +253,12 @@ export default function CartPage() {
               <span>총 금액</span>
               <span className="text-red-600 dark:text-red-500">{totalPrice.toLocaleString()}원</span>
             </div>
-            <button
-              onClick={() => alert('주문 기능은 개발 중입니다')}
-              className="mt-4 w-full border border-gray-900 bg-gray-900 py-2.5 text-sm font-bold text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+            <Link
+              href="/order"
+              className="mt-4 block w-full border border-gray-900 bg-gray-900 py-2.5 text-center text-sm font-bold text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
             >
               주문하기
-            </button>
+            </Link>
             <Link
               href="/products"
               className="mt-2 block w-full border border-gray-300 bg-white py-2.5 text-center text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
