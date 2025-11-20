@@ -9,6 +9,7 @@ export interface Product {
   category_slug?: string;
   category_name?: string;
   vendor_name?: string;  // 스토어명
+  vendor_address?: string;  // 사업장 주소
   imageUrl?: string;
   thumbnail_url?: string;
   images?: string[];  // 추가 이미지 배열

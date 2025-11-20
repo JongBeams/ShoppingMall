@@ -92,7 +92,13 @@ export default function ProductDetailPage() {
     };
   }, [productId]);
 
-  const displayProduct = useMemo(() => product, [product]);
+  const displayProduct = useMemo(() => {
+    if (product) {
+      console.log('Product data:', product);
+      console.log('Vendor name:', product.vendor_name);
+    }
+    return product;
+  }, [product]);
 
   // 이미지 갤러리 처리
   const allImages = useMemo(() => {
@@ -226,14 +232,10 @@ export default function ProductDetailPage() {
           <div className="flex flex-col">
             <div className="mb-2 flex items-center gap-2 text-xs">
               <span className="text-gray-500 dark:text-gray-400">{categoryLabel}</span>
-              {displayProduct.vendor_name && (
-                <>
-                  <span className="text-gray-300 dark:text-gray-600">|</span>
-                  <span className="font-medium text-blue-600 dark:text-blue-400">
-                    {displayProduct.vendor_name}
-                  </span>
-                </>
-              )}
+              <span className="text-gray-300 dark:text-gray-600">|</span>
+              <span className="font-medium text-blue-600 dark:text-blue-400">
+                {displayProduct.vendor_name || 'null (스토어명 없음)'}
+              </span>
             </div>
             <h1 className="mb-2 text-base font-bold text-gray-900 dark:text-white">
               {displayProduct.name}
@@ -356,6 +358,16 @@ export default function ProductDetailPage() {
         <div className="border-t border-gray-200 pt-4 text-xs leading-relaxed text-gray-700 dark:border-gray-700 dark:text-gray-300">
           {displayProduct.description}
         </div>
+
+        {/* 사업장 주소 */}
+        {displayProduct.vendor_address && (
+          <div className="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+            <h3 className="mb-2 text-xs font-bold text-gray-900 dark:text-white">사업장 주소</h3>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              {displayProduct.vendor_address}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 상품 리뷰 */}

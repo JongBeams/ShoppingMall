@@ -83,15 +83,18 @@ async def get_all_products():
 
     if vendor_ids:
         try:
+            from app.services.supabase import get_supabase_admin_client
+            supabase_admin = get_supabase_admin_client()
             vendors_response = (
-                supabase.table("vendors")
+                supabase_admin.table("vendors")
                 .select("id, store_name")
                 .in_("id", list(vendor_ids))
                 .execute()
             )
             for vendor in vendors_response.data or []:
                 vendor_map[vendor["id"]] = vendor.get("store_name")
-        except Exception:
+        except Exception as e:
+            print(f"❌ Error fetching vendors: {str(e)}")
             vendor_map = {}
 
     product_list = []
@@ -179,29 +182,56 @@ async def get_product(product_id: str):
         except Exception:
             category_info = {"slug": None, "name": None}
 
-    # vendor 정보 조회
+    # vendor 정보 조회 (RLS 우회를 위해 admin client 사용)
+    from app.services.supabase import get_supabase_admin_client
     vendor_name = None
+    vendor_address = None
     vendor_id = product.get("vendor_id")
+    print(f"🔍 Product vendor_id: {vendor_id}")
     if vendor_id:
         try:
+            supabase_admin = get_supabase_admin_client()
+            # vendor_id로 user_id를 먼저 찾거나, 직접 조회
+            # 먼저 id로 시도
             vendor_response = (
-                supabase.table("vendors")
-                .select("store_name")
+                supabase_admin.table("vendors")
+                .select("store_name, business_address")
                 .eq("id", vendor_id)
-                .single()
                 .execute()
             )
-            if vendor_response.data:
-                vendor_name = vendor_response.data.get("store_name")
-        except Exception:
+            print(f"🔍 Vendor response (by id): {vendor_response.data}")
+
+            if vendor_response.data and len(vendor_response.data) > 0:
+                vendor_name = vendor_response.data[0].get("store_name")
+                vendor_address = vendor_response.data[0].get("business_address")
+                print(f"✅ Vendor found by id: {vendor_name}, {vendor_address}")
+            else:
+                # id로 못 찾으면 user_id로 시도
+                vendor_response = (
+                    supabase_admin.table("vendors")
+                    .select("store_name, business_address")
+                    .eq("user_id", vendor_id)
+                    .execute()
+                )
+                print(f"🔍 Vendor response (by user_id): {vendor_response.data}")
+                if vendor_response.data and len(vendor_response.data) > 0:
+                    vendor_name = vendor_response.data[0].get("store_name")
+                    vendor_address = vendor_response.data[0].get("business_address")
+                    print(f"✅ Vendor found by user_id: {vendor_name}, {vendor_address}")
+        except Exception as e:
+            print(f"❌ Error fetching vendor: {str(e)}")
             vendor_name = None
+            vendor_address = None
 
     product_data = {
         **product,
         "category_slug": category_info["slug"],
         "category_name": category_info["name"],
         "vendor_name": vendor_name,
+        "vendor_address": vendor_address,
     }
+
+    print(f"📦 Final product_data vendor_name: {product_data.get('vendor_name')}")
 
     return {"message": "특정 상품 조회", "product": product_data}
 
