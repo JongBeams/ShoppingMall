@@ -560,9 +560,9 @@ FRONTEND_PORT={self.env_vars['frontend']['FRONTEND_PORT']}
                         shell=True
                     )
                 else:
-                    # Linux/Mac: use nohup or tmux
+                    # Linux/Mac: use python3
                     backend_proc = subprocess.Popen(
-                        ["python", "-m", "uvicorn", "app.main:app", "--reload", "--port", backend_port],
+                        ["python3", "-m", "uvicorn", "app.main:app", "--reload", "--port", backend_port],
                         cwd="backend",
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL
