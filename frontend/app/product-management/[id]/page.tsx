@@ -303,9 +303,16 @@ export default function ProductEditPage() {
         (productData as any).image_urls = additionalImageUrls.slice(1);
       }
 
-      // 옵션 데이터 추가
+      // 옵션 데이터 추가 (price, stock을 문자열로 변환)
       if (options.length > 0) {
-        (productData as any).options = options;
+        (productData as any).options = options.map(option => ({
+          ...option,
+          values: option.values.map(value => ({
+            ...value,
+            price: String(value.price),
+            stock: String(value.stock)
+          }))
+        }));
       }
 
       if (isNewProduct) {
@@ -367,26 +374,6 @@ export default function ProductEditPage() {
                 placeholder="상품명을 입력하세요"
               />
             </div>
-                        {/* 상품 간단 설명 */}
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-900 dark:text-white">
-                상품 간단 설명 <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                id="meta_description"
-                value={meta_description}
-                onChange={(e) => setMeta_Description(e.target.value)}
-                required
-                rows={1}
-                maxLength={20}
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-                placeholder="상품 간단 설명을 20자 이하 입력하세요"
-              />
-              <div className="flex justify-end text-sm text-gray-600 dark:text-gray-400">
-                <span>{meta_description.length}자 / 최대 20자</span>
-              </div>
-            </div>
-
 
             {/* 상품 간단 설명 */}
             <div>

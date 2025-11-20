@@ -151,14 +151,15 @@ export const productManagementAPI = {
 
   // 상품 등록/수정 (판매자 전용)
   create: (data: CreateProductRequest, token: string) => {
-    // image 필드를 image_url로 변환
+    // image 필드를 image_url로 변환 (단, image_url이 이미 있으면 유지)
     const { image, ...productData } = data;
 
     return fetchAPI(`/products/management/${data.id}`, {
       method: 'POST',
       body: JSON.stringify({
         ...productData,
-        image_url: image || null, // image는 URL string
+        // productData에 image_url이 이미 있으면 그걸 사용, 없으면 image 사용
+        image_url: (productData as any).image_url || image || null,
       }),
       token,
     });
@@ -173,7 +174,8 @@ export const productManagementAPI = {
       body: JSON.stringify({
         ...productData,
         id,
-        image_url: image || null,
+        // productData에 image_url이 이미 있으면 그걸 사용, 없으면 image 사용
+        image_url: (productData as any).image_url || image || null,
       }),
       token,
     });
