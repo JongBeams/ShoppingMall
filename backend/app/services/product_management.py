@@ -103,6 +103,43 @@ def getCategoryIdToSlug(category_slug: str):
         )
 
 
+# 상품 옵션 조회
+def get_product_options(supabase_admin, product_id: str):
+    """
+    상품의 옵션 정보를 조회합니다.
+    """
+    try:
+        # product_options 조회
+        options_response = (
+            supabase_admin.table("product_options")
+            .select("id, custom_type")
+            .eq("product_id", product_id)
+            .execute()
+        )
+
+        if not options_response.data:
+            return []
+
+        options = []
+        for option in options_response.data:
+            # product_option_values 조회
+            values_response = (
+                supabase_admin.table("product_option_values")
+                .select("value, price, stock")
+                .eq("option_id", option["id"])
+                .order("num")
+                .execute()
+            )
+
+            options.append({
+                "customType": option["custom_type"],
+                "values": values_response.data or []
+            })
+
+        return options
+    except Exception:
+        return []
+
 
 #======================================================
 #판매자 상품 관리
@@ -135,7 +172,7 @@ def GetVendorProducts(current_user: dict):
             if not products_data:
                 return []
 
-            # 각 상품의 카테고리 이름을 조회하여 VendorProductResponse 배열로 변환
+            # 각 상품의 카테고리 이름과 옵션을 조회하여 VendorProductResponse 배열로 변환
             vendor_products = []
             for product in products_data:
                 # 카테고리 ID로 카테고리 이름 조회
@@ -150,6 +187,9 @@ def GetVendorProducts(current_user: dict):
                     category_slug = category_response.data["slug"] if category_response.data else "알 수 없음"
                 except Exception:
                     category_slug = "알 수 없음"
+
+                # 옵션 조회
+                options = get_product_options(supabase_admin, product["id"])
 
                 # VendorProductResponse 객체 생성
                 vendor_product = VendorProductResponse(
@@ -169,6 +209,7 @@ def GetVendorProducts(current_user: dict):
                     rating=product["rating"],
                     review_count=product["review_count"],
                     tags=product.get("tags"),
+                    options=options,
                     created_at=product["created_at"],
                     updated_at=product["updated_at"]
                 )

@@ -55,7 +55,7 @@ class CreateProductRequset(BaseModel):
     #해시태그
     tags: Optional[list[str]] = None
 
-    #상품 옵션 (옵션이 있으면 함께 저장)
+    #상품 옵션
     options: Optional[list[ProductOptionRequest]] = None
 
 
@@ -133,6 +133,7 @@ class VendorProductResponse(BaseModel):
     rating: Decimal
     review_count: int
     tags: Optional[list[str]] = None
+    options: Optional[list[dict]] = None
     created_at: datetime
     updated_at: datetime
 

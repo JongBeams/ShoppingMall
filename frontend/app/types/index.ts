@@ -19,6 +19,18 @@ export interface Product {
   created_at?: string;
 }
 
+// Product Option Types
+export interface ProductOptionValue {
+  value: string;
+  price: string;
+  stock: string;
+}
+
+export interface ProductOption {
+  customType: string;
+  values: ProductOptionValue[];
+}
+
 // Product Creation/Update Request
 export interface CreateProductRequest {
   id:string;
@@ -33,6 +45,7 @@ export interface CreateProductRequest {
   is_active?: boolean;
   image?: string; // 이미지 URL
   tags?: string[]; // 해시태그 배열
+  options?: ProductOption[]; // 상품 옵션
 }
 
 // Vendor Product Response (판매자 상품 목록 조회용)
@@ -49,6 +62,7 @@ export interface GetVendorProductRequest {
   images?: any;
   thumbnail_url?: string;
   tags?: string[];
+  options?: ProductOption[];
   is_active: boolean;
   view_count: number;
   sale_count: number;

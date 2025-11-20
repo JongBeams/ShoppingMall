@@ -87,6 +87,10 @@ export default function ProductEditPage() {
             if (product.tags && Array.isArray(product.tags)) {
               setTags(product.tags);
             }
+            // 옵션 설정
+            if (product.options && Array.isArray(product.options)) {
+              setOptions(product.options);
+            }
             // 기존 이미지 URL 설정 (thumbnail_url 우선, 없으면 images)
             if (product.thumbnail_url) {
               setImagePreviews([product.thumbnail_url]);
