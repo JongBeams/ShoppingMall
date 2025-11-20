@@ -40,6 +40,64 @@ const dummyReviews = [
     likes: 31
   },
 ];
+
+// 임시 옵션 더미 데이터
+const dummyOptions = [
+  {
+    id: 1,
+    label: '면 종류',
+    values: [
+      { value: '', label: '옵션을 선택하세요' },
+      { value: 'soy', label: '간장 라멘' },
+      { value: 'pigbone', label: '돼지 육수 라멘' },
+      { value: 'soyfied', label: '볶음 우동' },
+      { value: 'curry', label: '카레 우동' },
+    ]
+  },
+  {
+    id: 2,
+    label: '갯 수',
+    values: [
+      { value: '', label: '옵션을 선택하세요' },
+      { value: '1', label: '1 개' },
+      { value: '2', label: '2 개' },
+      { value: '5', label: '5 개' },
+      { value: '10', label: '10 개' },
+    ]
+  },
+  {
+    id: 3,
+    label: '개당 용량',
+    values: [
+      { value: '', label: '옵션을 선택하세요' },
+      { value: '500g', label: '500g' },
+      { value: '800g', label: '800g' },
+      { value: '1kg', label: '1kg' },
+      { value: '2kg', label: '2kg' },
+    ]
+  },
+  {
+    id: 4,
+    label: '조리 여부',
+    values: [
+      { value: '', label: '옵션을 선택하세요' },
+      { value: 'uncooked', label: '비조리(-1000원)' },
+      { value: 'cooked', label: '조리(+1000원)' },
+    ]
+  },
+  {
+    id: 5,
+    label: '추가 옵션',
+    values: [
+      { value: '', label: '옵션을 선택하세요' },
+      { value: 'noodle', label: '면 추가(+1000원)' },
+      { value: 'soup', label: '육수 추가(+1000원)' },
+      { value: 'egg', label: '계란 추가(+1000원)' },
+      { value: 'meat', label: '고기 추가(+1000원)' },
+    ]
+  },
+];
+
 type DetailedProduct = Product & {
   meta_description?: string;
   images?: string[] | string;
@@ -55,6 +113,9 @@ export default function ProductDetailPage() {
   const [isZoomed, setIsZoomed] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLDivElement>(null);
+
+  // 옵션 표시 여부 (임시로 true 설정)
+  const [hasOptions, setHasOptions] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -179,11 +240,10 @@ export default function ProductDetailPage() {
                   <button
                     key={index}
                     onClick={() => setSelectedImageIndex(index)}
-                    className={`relative h-16 w-16 flex-shrink-0 border bg-gray-50 transition ${
-                      selectedImageIndex === index
-                        ? 'border-gray-900 dark:border-white'
-                        : 'border-gray-200 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-500'
-                    }`}
+                    className={`relative h-16 w-16 flex-shrink-0 border bg-gray-50 transition ${selectedImageIndex === index
+                      ? 'border-gray-900 dark:border-white'
+                      : 'border-gray-200 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-500'
+                      }`}
                   >
                     <Image
                       src={img}
@@ -214,8 +274,8 @@ export default function ProductDetailPage() {
                 style={
                   isZoomed
                     ? {
-                        transformOrigin: `${mousePosition.x}% ${mousePosition.y}%`,
-                      }
+                      transformOrigin: `${mousePosition.x}% ${mousePosition.y}%`,
+                    }
                     : undefined
                 }
                 sizes="(max-width: 768px) 100vw, 50vw"
@@ -262,72 +322,104 @@ export default function ProductDetailPage() {
               <span className="text-xs text-gray-500 dark:text-gray-400">({dummyReviews.length})</span>
             </div>
 
-            {/* 가격 정보 */}
-            <div className="mb-4 border-t border-gray-200 pt-4 dark:border-gray-700">
-              <div className="mb-2 text-xl font-bold text-red-600 dark:text-red-500">
-                {Number(displayProduct.price || 0).toLocaleString()}원
-              </div>
-            </div>
+            {/* 구매 섹션 (구매 및 옵션추가) */}
+            <div className="mt-4 grid gap-6 md:grid-cols-2 md:items-start border-t border-gray-200 pt-4 dark:border-gray-700">
 
-            {/* 수량 선택 */}
-            <div className="mb-4 flex items-center gap-2">
-              <input
-                type="number"
-                value="1"
-                min="1"
-                readOnly
-                className="h-8 w-14 border border-gray-300 bg-white text-center text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-              />
-              <div className="flex flex-col">
-                <button className="h-4 w-6 border border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
-                  ▲
-                </button>
-                <button className="h-4 w-6 border border-t-0 border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
-                  ▼
-                </button>
-              </div>
-            </div>
-
-            {/* 구매 버튼 */}
-            <div className="mb-4 flex gap-2">
-              <Button
-                onClick={() => alert('장바구니 기능은 개발 중입니다')}
-                variant="outline"
-                className="text-xs px-6"
-              >
-                장바구니 담기
-              </Button>
-              <Button
-                onClick={() => alert('구매 기능은 개발 중입니다')}
-                className="text-xs px-8"
-              >
-                바로 구매
-              </Button>
-            </div>
-
-            {/* 상품 정보 */}
-            <div className="border-t border-gray-200 pt-4 dark:border-gray-700">
-              <div className="space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
-                <div className="flex items-start gap-2">
-                  <span className="text-gray-400">•</span>
-                  <span>배송비: 무료배송</span>
+              {/* 기존 가격·수량·버튼 섹션 */}
+              <div className="space-y-4">
+                {/* 가격 정보 */}
+                <div className="mb-4 ">
+                  <div className="mb-2 text-xl font-bold text-red-600 dark:text-red-500">
+                    {Number(displayProduct.price || 0).toLocaleString()}원
+                  </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-gray-400">•</span>
-                  <span>배송 예정일: 주문 후 1~2일</span>
+
+                {/* 수량 선택 */}
+                <div className="mb-4 flex items-center gap-2">
+                  <input
+                    type="number"
+                    value="1"
+                    min="1"
+                    readOnly
+                    className="h-8 w-14 border border-gray-300 bg-white text-center text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  />
+                  <div className="flex flex-col">
+                    <button className="h-4 w-6 border border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
+                      ▲
+                    </button>
+                    <button className="h-4 w-6 border border-t-0 border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
+                      ▼
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-gray-400">•</span>
-                  <span>재고: {stock}개</span>
+
+                {/* 구매 버튼 */}
+                <div className="mb-1 flex gap-2 ">
+                  <Button
+                    onClick={() => alert('장바구니 기능은 개발 중입니다')}
+                    variant="outline"
+                    className="text-xs px-6"
+                  >
+                    장바구니 담기
+                  </Button>
+                  <Button
+                    onClick={() => alert('구매 기능은 개발 중입니다')}
+                    className="text-xs px-8"
+                  >
+                    바로 구매
+                  </Button>
+                </div>
+                {/* 상품 정보 */}
+                <div className="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+                  <div className="space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-400">•</span>
+                      <span>배송비: 무료배송</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-400">•</span>
+                      <span>배송 예정일: 주문 후 1~2일</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-gray-400">•</span>
+                      <span>재고: {stock}개</span>
+                    </div>
+                  </div>
+
+                  <button className="mt-3 flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    상품정보에 문제가 있나요?
+                  </button>
                 </div>
               </div>
 
-              <button className="mt-3 flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                상품정보에 문제가 있나요?
-              </button>
+              {/* 옵션 섹션 - hasOptions가 true일 때만 표시 */}
+              {hasOptions && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">옵션 선택</h3>
+
+                  {/* 옵션 항목들 - 더미 데이터 매핑 */}
+                  <div className="space-y-2">
+                    {dummyOptions.map((option) => (
+                      <div key={option.id}>
+                        <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                          {option.label}
+                        </label>
+                        <select className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                          {option.values.map((val, idx) => (
+                            <option key={idx} value={val.value}>
+                              {val.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
             </div>
           </div>
         </div>
