@@ -95,17 +95,37 @@ export const authAPI = {
     }),
 };
 
-// Cart API (예시)
+// Cart API
 export const cartAPI = {
+  // 장바구니 조회
   get: (token: string) => fetchAPI('/cart', { token }),
-  add: (productId: string, quantity: number, token: string) =>
+
+  // 장바구니에 상품 추가
+  add: (product_id: string, quantity: number, token: string) =>
     fetchAPI('/cart', {
       method: 'POST',
-      body: JSON.stringify({ productId, quantity }),
+      body: JSON.stringify({ product_id, quantity }),
       token,
     }),
-  remove: (productId: string, token: string) =>
-    fetchAPI(`/cart/${productId}`, {
+
+  // 장바구니 수량 변경
+  updateQuantity: (item_id: string, quantity: number, token: string) =>
+    fetchAPI(`/cart/${item_id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ quantity }),
+      token,
+    }),
+
+  // 장바구니 아이템 삭제
+  remove: (item_id: string, token: string) =>
+    fetchAPI(`/cart/${item_id}`, {
+      method: 'DELETE',
+      token,
+    }),
+
+  // 장바구니 전체 비우기
+  clear: (token: string) =>
+    fetchAPI('/cart', {
       method: 'DELETE',
       token,
     }),
@@ -131,14 +151,15 @@ export const productManagementAPI = {
 
   // 상품 등록/수정 (판매자 전용)
   create: (data: CreateProductRequest, token: string) => {
-    // image 필드를 image_url로 변환
+    // image 필드를 image_url로 변환 (단, image_url이 이미 있으면 유지)
     const { image, ...productData } = data;
 
     return fetchAPI(`/products/management/${data.id}`, {
       method: 'POST',
       body: JSON.stringify({
         ...productData,
-        image_url: image || null, // image는 URL string
+        // productData에 image_url이 이미 있으면 그걸 사용, 없으면 image 사용
+        image_url: (productData as any).image_url || image || null,
       }),
       token,
     });
@@ -153,7 +174,8 @@ export const productManagementAPI = {
       body: JSON.stringify({
         ...productData,
         id,
-        image_url: image || null,
+        // productData에 image_url이 이미 있으면 그걸 사용, 없으면 image 사용
+        image_url: (productData as any).image_url || image || null,
       }),
       token,
     });

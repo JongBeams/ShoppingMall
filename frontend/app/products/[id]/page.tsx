@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Button from '@/app/components/common/Button';
 import { Product } from '@/app/types';
-import { productAPI } from '@/app/lib/api';
+import { productAPI, cartAPI } from '@/app/lib/api';
 
 // 임시 더미 데이터
 const dummyReviews = [
@@ -105,6 +105,7 @@ type DetailedProduct = Product & {
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const productId = params?.id;
   const [product, setProduct] = useState<DetailedProduct | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,6 +114,35 @@ export default function ProductDetailPage() {
   const [isZoomed, setIsZoomed] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLDivElement>(null);
+  const [quantity, setQuantity] = useState(1);
+
+  // 장바구니 담기
+  const handleAddToCart = async () => {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+      alert('로그인이 필요한 서비스입니다.');
+      router.push('/login');
+      return;
+    }
+
+    if (!productId) {
+      alert('상품 정보를 불러올 수 없습니다.');
+      return;
+    }
+
+    try {
+      const response = await cartAPI.add(productId, quantity, token);
+      alert(response.message || '장바구니에 담겼습니다.');
+
+      // 장바구니로 이동할지 물어보기
+      if (confirm('장바구니로 이동하시겠습니까?')) {
+        router.push('/cart');
+      }
+    } catch (error: any) {
+      alert(error.message || '장바구니에 담는 중 오류가 발생했습니다.');
+    }
+  };
 
   // 옵션 표시 여부 (임시로 true 설정)
   const [hasOptions, setHasOptions] = useState(true);
@@ -230,7 +260,7 @@ export default function ProductDetailPage() {
     <div className="space-y-4">
       {/* 상품 기본 정보 */}
       <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-[350px_1fr]">
           {/* 상품 이미지 갤러리 */}
           <div className="flex gap-2">
             {/* 썸네일 목록 */}
@@ -240,17 +270,18 @@ export default function ProductDetailPage() {
                   <button
                     key={index}
                     onClick={() => setSelectedImageIndex(index)}
-                    className={`relative h-16 w-16 flex-shrink-0 border bg-gray-50 transition ${selectedImageIndex === index
-                      ? 'border-gray-900 dark:border-white'
-                      : 'border-gray-200 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-500'
-                      }`}
+                    className={`relative h-12 w-12 flex-shrink-0 border bg-gray-50 transition ${
+                      selectedImageIndex === index
+                        ? 'border-gray-900 dark:border-white'
+                        : 'border-gray-200 hover:border-gray-400 dark:border-gray-700 dark:hover:border-gray-500'
+                    }`}
                   >
                     <Image
                       src={img}
                       alt={`${displayProduct.name} 이미지 ${index + 1}`}
                       fill
                       className="object-cover"
-                      sizes="64px"
+                      sizes="48px"
                     />
                   </button>
                 ))}
@@ -261,7 +292,7 @@ export default function ProductDetailPage() {
             <div
               ref={imageRef}
               className="relative flex-1 overflow-hidden border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
-              style={{ aspectRatio: '1' }}
+              style={{ aspectRatio: '1', maxWidth: '350px' }}
               onMouseEnter={() => setIsZoomed(true)}
               onMouseLeave={() => setIsZoomed(false)}
               onMouseMove={handleMouseMove}
@@ -270,7 +301,7 @@ export default function ProductDetailPage() {
                 src={allImages[selectedImageIndex]}
                 alt={displayProduct.name}
                 fill
-                className={`object-cover transition-transform ${isZoomed ? 'scale-150' : 'scale-100'}`}
+                className={`object-contain transition-transform ${isZoomed ? 'scale-150' : 'scale-100'}`}
                 style={
                   isZoomed
                     ? {
@@ -278,7 +309,7 @@ export default function ProductDetailPage() {
                     }
                     : undefined
                 }
-                sizes="(max-width: 768px) 100vw, 50vw"
+                sizes="350px"
               />
               {isZoomed && (
                 <div className="pointer-events-none absolute right-2 top-2 rounded bg-black/50 px-2 py-1 text-xs text-white">
@@ -334,57 +365,64 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
 
-                {/* 수량 선택 */}
-                <div className="mb-4 flex items-center gap-2">
-                  <input
-                    type="number"
-                    value="1"
-                    min="1"
-                    readOnly
-                    className="h-8 w-14 border border-gray-300 bg-white text-center text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                  />
-                  <div className="flex flex-col">
-                    <button className="h-4 w-6 border border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
-                      ▲
-                    </button>
-                    <button className="h-4 w-6 border border-t-0 border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
-                      ▼
-                    </button>
-                  </div>
-                </div>
+            {/* 수량 선택 */}
+            <div className="mb-4 flex items-center gap-2">
+              <input
+                type="number"
+                value={quantity}
+                min="1"
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                className="h-8 w-14 border border-gray-300 bg-white text-center text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              />
+              <div className="flex flex-col">
+                <button
+                  onClick={() => setQuantity(q => q + 1)}
+                  className="h-4 w-6 border border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                  className="h-4 w-6 border border-t-0 border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                >
+                  ▼
+                </button>
+              </div>
+            </div>
 
-                {/* 구매 버튼 */}
-                <div className="mb-1 flex gap-2 ">
-                  <Button
-                    onClick={() => alert('장바구니 기능은 개발 중입니다')}
-                    variant="outline"
-                    className="text-xs px-6"
-                  >
-                    장바구니 담기
-                  </Button>
-                  <Button
-                    onClick={() => alert('구매 기능은 개발 중입니다')}
-                    className="text-xs px-8"
-                  >
-                    바로 구매
-                  </Button>
+            {/* 구매 버튼 */}
+            <div className="mb-4 flex gap-2">
+              <Button
+                onClick={handleAddToCart}
+                variant="outline"
+                className="text-xs px-6"
+              >
+                장바구니 담기
+              </Button>
+              <Button
+                onClick={() => alert('구매 기능은 개발 중입니다')}
+                className="text-xs px-8"
+              >
+                바로 구매
+              </Button>
+            </div>
+
+            {/* 상품 정보 */}
+            <div className="border-t border-gray-200 pt-4 dark:border-gray-700">
+              <div className="space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-400">•</span>
+                  <span>배송비: 무료배송</span>
                 </div>
-                {/* 상품 정보 */}
-                <div className="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
-                  <div className="space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
-                    <div className="flex items-start gap-2">
-                      <span className="text-gray-400">•</span>
-                      <span>배송비: 무료배송</span>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-gray-400">•</span>
-                      <span>배송 예정일: 주문 후 1~2일</span>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-gray-400">•</span>
-                      <span>재고: {stock}개</span>
-                    </div>
-                  </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-400">•</span>
+                  <span>배송 예정일: 주문 후 1~2일</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-400">•</span>
+                  <span>재고: {stock}개</span>
+                </div>
+              </div>
 
                   <button className="mt-3 flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400">
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -433,13 +471,12 @@ export default function ProductDetailPage() {
         {imageList.length > 0 && (
           <div className="mb-4 space-y-2">
             {imageList.map((imgUrl, index) => (
-              <div key={index} className="relative aspect-[16/9] overflow-hidden border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
-                <Image
+              <div key={index} className="relative w-full max-w-md mx-auto">
+                <img
                   src={imgUrl}
                   alt={`${displayProduct.name} 상세 이미지 ${index + 1}`}
-                  fill
-                  className="object-cover"
-                  sizes="100vw"
+                  className="w-full h-auto border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+                  loading="lazy"
                 />
               </div>
             ))}

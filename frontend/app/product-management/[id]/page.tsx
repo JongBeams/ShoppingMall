@@ -87,6 +87,10 @@ export default function ProductEditPage() {
             if (product.tags && Array.isArray(product.tags)) {
               setTags(product.tags);
             }
+            // 옵션 설정
+            if (product.options && Array.isArray(product.options)) {
+              setOptions(product.options);
+            }
             // 기존 이미지 URL 설정 (thumbnail_url 우선, 없으면 images)
             if (product.thumbnail_url) {
               setImagePreviews([product.thumbnail_url]);
@@ -299,9 +303,16 @@ export default function ProductEditPage() {
         (productData as any).image_urls = additionalImageUrls.slice(1);
       }
 
-      // 옵션 데이터 추가
+      // 옵션 데이터 추가 (price, stock을 문자열로 변환)
       if (options.length > 0) {
-        (productData as any).options = options;
+        (productData as any).options = options.map(option => ({
+          ...option,
+          values: option.values.map(value => ({
+            ...value,
+            price: String(value.price),
+            stock: String(value.stock)
+          }))
+        }));
       }
 
       if (isNewProduct) {
@@ -347,7 +358,7 @@ export default function ProductEditPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* 상품명 */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-900 dark:text-white">
@@ -363,9 +374,10 @@ export default function ProductEditPage() {
                 placeholder="상품명을 입력하세요"
               />
             </div>
-                        {/* 상품 간단 설명 */}
+
+            {/* 상품 간단 설명 */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-900 dark:text-white">
+              <label htmlFor="meta_description" className="block text-sm font-medium text-gray-900 dark:text-white">
                 상품 간단 설명 <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -382,7 +394,6 @@ export default function ProductEditPage() {
                 <span>{meta_description.length}자 / 최대 20자</span>
               </div>
             </div>
-
 
             {/* 상품 상세 설명 */}
             <div>

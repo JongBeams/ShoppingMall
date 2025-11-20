@@ -1,64 +1,125 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { CartItem as CartItemType } from '../types';
-
-// 임시 더미 데이터
-const initialCartItems: CartItemType[] = [
-  {
-    product: {
-      id: '1',
-      name: 'AirPods Pro',
-      description: '고음질 블루투스 무선 이어폰',
-      price: 359000,
-      category: '전자제품',
-      imageUrl: 'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=400&q=80',
-      stock: 50,
-    },
-    quantity: 2,
-  },
-  {
-    product: {
-      id: '2',
-      name: 'Leather Crossbag',
-      description: '심플한 디자인의 데일리 백팩',
-      price: 189000,
-      category: '패션',
-      imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&q=80',
-      stock: 20,
-    },
-    quantity: 1,
-  },
-];
+import Link from 'next/link';
+import { cartAPI } from '../lib/api';
+import { CartItem } from '../types';
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState<CartItemType[]>(initialCartItems);
+  const router = useRouter();
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleQuantityChange = (productId: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    setCartItems((items) =>
-      items.map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity: newQuantity }
-          : item
-      )
+  // 장바구니 조회
+  const fetchCart = async () => {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+      alert('로그인이 필요한 서비스입니다.');
+      router.push('/login');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await cartAPI.get(token);
+      setCartItems(response.items || []);
+    } catch (err: any) {
+      console.error('장바구니 조회 실패:', err);
+      setError(err.message || '장바구니를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 수량 변경
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      await cartAPI.updateQuantity(itemId, newQuantity, token);
+      // 수량 변경 후 장바구니 다시 조회
+      fetchCart();
+    } catch (err: any) {
+      alert(err.message || '수량 변경 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 아이템 삭제
+  const handleRemoveItem = async (itemId: string) => {
+    if (!confirm('장바구니에서 삭제하시겠습니까?')) return;
+
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      await cartAPI.remove(itemId, token);
+      fetchCart();
+    } catch (err: any) {
+      alert(err.message || '삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 장바구니 전체 비우기
+  const handleClearCart = async () => {
+    if (!confirm('장바구니를 전체 비우시겠습니까?')) return;
+
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      await cartAPI.clear(token);
+      fetchCart();
+    } catch (err: any) {
+      alert(err.message || '장바구니 비우기 중 오류가 발생했습니다.');
+    }
+  };
+
+  useEffect(() => {
+    fetchCart();
+  }, []);
+
+  // 전체 금액 계산
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.total_price, 0);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400">장바구니를 불러오는 중...</p>
+      </div>
     );
-  };
+  }
 
-  const handleRemove = (productId: string) => {
-    setCartItems((items) => items.filter((item) => item.product.id !== productId));
-  };
-
-  const totalPrice = cartItems.reduce(
-    (sum, item) => sum + item.product.price * item.quantity,
-    0
-  );
+  if (error) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <p className="text-red-600 dark:text-red-400">{error}</p>
+      </div>
+    );
+  }
 
   if (cartItems.length === 0) {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center">
+        <svg
+          className="mb-4 h-16 w-16 text-gray-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+          />
+        </svg>
         <h1 className="mb-6 text-xl font-bold text-gray-900 dark:text-white">
           장바구니가 비어있습니다
         </h1>
@@ -74,38 +135,58 @@ export default function CartPage() {
 
   return (
     <div className="max-w-5xl">
-      <h1 className="mb-6 text-xl font-bold text-gray-900 dark:text-white">
-        장바구니
-      </h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">장바구니</h1>
+        <button
+          onClick={handleClearCart}
+          className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+        >
+          전체 비우기
+        </button>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* 장바구니 아이템 목록 */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className="space-y-3 lg:col-span-2">
           {cartItems.map((item) => (
             <div
-              key={item.product.id}
+              key={item.id}
               className="border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
             >
               <div className="flex gap-4">
                 {/* 상품 이미지 */}
-                <div className="relative h-24 w-24 flex-shrink-0 border border-gray-200 dark:border-gray-700">
-                  <Image
-                    src={item.product.imageUrl}
-                    alt={item.product.name}
-                    fill
-                    className="object-cover"
-                    sizes="96px"
-                  />
-                </div>
+                <Link
+                  href={`/products/${item.product_id}`}
+                  className="relative h-24 w-24 flex-shrink-0 cursor-pointer overflow-hidden border border-gray-200 dark:border-gray-700"
+                >
+                  {item.product_thumbnail ? (
+                    <Image
+                      src={item.product_thumbnail}
+                      alt={item.product_name}
+                      fill
+                      className="object-cover"
+                      sizes="96px"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-gray-100 text-gray-400 dark:bg-gray-800">
+                      <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                      </svg>
+                    </div>
+                  )}
+                </Link>
 
                 {/* 상품 정보 */}
                 <div className="flex flex-1 flex-col justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                      {item.product.name}
-                    </h3>
+                    <Link
+                      href={`/products/${item.product_id}`}
+                      className="text-sm font-bold text-gray-900 hover:underline dark:text-white"
+                    >
+                      {item.product_name}
+                    </Link>
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {item.product.category}
+                      {item.product_price.toLocaleString()}원
                     </p>
                   </div>
 
@@ -113,7 +194,7 @@ export default function CartPage() {
                     {/* 수량 조절 */}
                     <div className="flex items-center border border-gray-300 dark:border-gray-600">
                       <button
-                        onClick={() => handleQuantityChange(item.product.id, item.quantity - 1)}
+                        onClick={() => handleUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}
                         className="px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                       >
                         -
@@ -122,7 +203,7 @@ export default function CartPage() {
                         {item.quantity}
                       </span>
                       <button
-                        onClick={() => handleQuantityChange(item.product.id, item.quantity + 1)}
+                        onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
                         className="px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                       >
                         +
@@ -132,10 +213,10 @@ export default function CartPage() {
                     {/* 가격 */}
                     <div className="text-right">
                       <p className="text-sm font-bold text-gray-900 dark:text-white">
-                        {(item.product.price * item.quantity).toLocaleString()}원
+                        {item.total_price.toLocaleString()}원
                       </p>
                       <button
-                        onClick={() => handleRemove(item.product.id)}
+                        onClick={() => handleRemoveItem(item.id)}
                         className="mt-1 text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                       >
                         삭제
@@ -151,9 +232,7 @@ export default function CartPage() {
         {/* 주문 요약 */}
         <div>
           <div className="border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-            <h2 className="mb-4 text-sm font-bold text-gray-900 dark:text-white">
-              주문 요약
-            </h2>
+            <h2 className="mb-4 text-sm font-bold text-gray-900 dark:text-white">주문 요약</h2>
             <div className="space-y-2 border-b border-gray-200 pb-4 dark:border-gray-700">
               <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
                 <span>상품 금액</span>
@@ -166,7 +245,7 @@ export default function CartPage() {
             </div>
             <div className="mt-4 flex justify-between text-base font-bold text-gray-900 dark:text-white">
               <span>총 금액</span>
-              <span>{totalPrice.toLocaleString()}원</span>
+              <span className="text-red-600 dark:text-red-500">{totalPrice.toLocaleString()}원</span>
             </div>
             <button
               onClick={() => alert('주문 기능은 개발 중입니다')}

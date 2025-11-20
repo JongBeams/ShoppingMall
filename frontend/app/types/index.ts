@@ -19,6 +19,18 @@ export interface Product {
   created_at?: string;
 }
 
+// Product Option Types
+export interface ProductOptionValue {
+  value: string;
+  price: string;
+  stock: string;
+}
+
+export interface ProductOption {
+  customType: string;
+  values: ProductOptionValue[];
+}
+
 // Product Creation/Update Request
 export interface CreateProductRequest {
   id:string;
@@ -33,6 +45,7 @@ export interface CreateProductRequest {
   is_active?: boolean;
   image?: string; // 이미지 URL
   tags?: string[]; // 해시태그 배열
+  options?: ProductOption[]; // 상품 옵션
 }
 
 // Vendor Product Response (판매자 상품 목록 조회용)
@@ -40,6 +53,7 @@ export interface GetVendorProductRequest {
   id: string;
   name: string;
   category_slug: string;
+  meta_description?: string;
   description?: string;
   meta_description?: string;
   price: number;
@@ -48,6 +62,7 @@ export interface GetVendorProductRequest {
   images?: any;
   thumbnail_url?: string;
   tags?: string[];
+  options?: ProductOption[];
   is_active: boolean;
   view_count: number;
   sale_count: number;
@@ -59,9 +74,29 @@ export interface GetVendorProductRequest {
 
 // Cart Types
 export interface CartItem {
-  product: Product;
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  product_thumbnail: string | null;
   quantity: number;
-  status?: 'pending' | 'shipping' | 'delivered' | 'cancelled';
+  total_price: number;
+  created_at: string;
+}
+
+export interface CartResponse {
+  items: CartItem[];
+  total: number;
+  count: number;
+}
+
+export interface AddToCartRequest {
+  product_id: string;
+  quantity: number;
+}
+
+export interface UpdateCartItemRequest {
+  quantity: number;
 }
 
 // User Types
