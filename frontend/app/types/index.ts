@@ -40,6 +40,7 @@ export interface GetVendorProductRequest {
   id: string;
   name: string;
   category_slug: string;
+  meta_description?: string;
   description?: string;
   price: number;
   stock_quantity: number;
@@ -58,9 +59,29 @@ export interface GetVendorProductRequest {
 
 // Cart Types
 export interface CartItem {
-  product: Product;
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_price: number;
+  product_thumbnail: string | null;
   quantity: number;
-  status?: 'pending' | 'shipping' | 'delivered' | 'cancelled';
+  total_price: number;
+  created_at: string;
+}
+
+export interface CartResponse {
+  items: CartItem[];
+  total: number;
+  count: number;
+}
+
+export interface AddToCartRequest {
+  product_id: string;
+  quantity: number;
+}
+
+export interface UpdateCartItemRequest {
+  quantity: number;
 }
 
 // User Types

@@ -95,17 +95,37 @@ export const authAPI = {
     }),
 };
 
-// Cart API (예시)
+// Cart API
 export const cartAPI = {
+  // 장바구니 조회
   get: (token: string) => fetchAPI('/cart', { token }),
-  add: (productId: string, quantity: number, token: string) =>
+
+  // 장바구니에 상품 추가
+  add: (product_id: string, quantity: number, token: string) =>
     fetchAPI('/cart', {
       method: 'POST',
-      body: JSON.stringify({ productId, quantity }),
+      body: JSON.stringify({ product_id, quantity }),
       token,
     }),
-  remove: (productId: string, token: string) =>
-    fetchAPI(`/cart/${productId}`, {
+
+  // 장바구니 수량 변경
+  updateQuantity: (item_id: string, quantity: number, token: string) =>
+    fetchAPI(`/cart/${item_id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ quantity }),
+      token,
+    }),
+
+  // 장바구니 아이템 삭제
+  remove: (item_id: string, token: string) =>
+    fetchAPI(`/cart/${item_id}`, {
+      method: 'DELETE',
+      token,
+    }),
+
+  // 장바구니 전체 비우기
+  clear: (token: string) =>
+    fetchAPI('/cart', {
       method: 'DELETE',
       token,
     }),

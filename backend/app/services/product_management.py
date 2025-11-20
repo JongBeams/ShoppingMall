@@ -126,7 +126,7 @@ def GetVendorProducts(current_user: dict):
         try:
             product_response = (
                 supabase_admin.table("products")
-                .select("id, name, category_id, description, price, stock_quantity, low_stock_threshold, images, thumbnail_url, is_active, view_count, sale_count, rating, review_count, tags, created_at, updated_at")
+                .select("id, name, category_id, meta_description, description, price, stock_quantity, low_stock_threshold, images, thumbnail_url, is_active, view_count, sale_count, rating, review_count, tags, created_at, updated_at")
                 .eq("vendor_id", vendor_id)
                 .execute()
             )
@@ -156,6 +156,7 @@ def GetVendorProducts(current_user: dict):
                     id=product["id"],
                     name=product["name"],
                     category_slug=category_slug,
+                    meta_description=product.get("meta_description"),
                     description=product.get("description"),
                     price=product["price"],
                     stock_quantity=product["stock_quantity"],

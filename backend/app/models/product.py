@@ -104,6 +104,7 @@ class VendorProductResponse(BaseModel):
     id: UUID
     name: str
     category_slug: str
+    meta_description: Optional[str] = None
     description: Optional[str] = None
     price: Decimal
     stock_quantity: int

@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Button from '@/app/components/common/Button';
 import { Product } from '@/app/types';
-import { productAPI } from '@/app/lib/api';
+import { productAPI, cartAPI } from '@/app/lib/api';
 
 // 임시 더미 데이터
 const dummyReviews = [
@@ -47,6 +47,7 @@ type DetailedProduct = Product & {
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const productId = params?.id;
   const [product, setProduct] = useState<DetailedProduct | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,35 @@ export default function ProductDetailPage() {
   const [isZoomed, setIsZoomed] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLDivElement>(null);
+  const [quantity, setQuantity] = useState(1);
+
+  // 장바구니 담기
+  const handleAddToCart = async () => {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+      alert('로그인이 필요한 서비스입니다.');
+      router.push('/login');
+      return;
+    }
+
+    if (!productId) {
+      alert('상품 정보를 불러올 수 없습니다.');
+      return;
+    }
+
+    try {
+      const response = await cartAPI.add(productId, quantity, token);
+      alert(response.message || '장바구니에 담겼습니다.');
+
+      // 장바구니로 이동할지 물어보기
+      if (confirm('장바구니로 이동하시겠습니까?')) {
+        router.push('/cart');
+      }
+    } catch (error: any) {
+      alert(error.message || '장바구니에 담는 중 오류가 발생했습니다.');
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -273,16 +303,22 @@ export default function ProductDetailPage() {
             <div className="mb-4 flex items-center gap-2">
               <input
                 type="number"
-                value="1"
+                value={quantity}
                 min="1"
-                readOnly
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                 className="h-8 w-14 border border-gray-300 bg-white text-center text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
               />
               <div className="flex flex-col">
-                <button className="h-4 w-6 border border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
+                <button
+                  onClick={() => setQuantity(q => q + 1)}
+                  className="h-4 w-6 border border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                >
                   ▲
                 </button>
-                <button className="h-4 w-6 border border-t-0 border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700">
+                <button
+                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                  className="h-4 w-6 border border-t-0 border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                >
                   ▼
                 </button>
               </div>
@@ -291,7 +327,7 @@ export default function ProductDetailPage() {
             {/* 구매 버튼 */}
             <div className="mb-4 flex gap-2">
               <Button
-                onClick={() => alert('장바구니 기능은 개발 중입니다')}
+                onClick={handleAddToCart}
                 variant="outline"
                 className="text-xs px-6"
               >

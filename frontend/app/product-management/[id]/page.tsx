@@ -14,6 +14,7 @@ export default function ProductEditPage() {
 
   // Form state
   const [name, setName] = useState('');
+  const [meta_description, setMeta_Description] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
@@ -75,6 +76,7 @@ export default function ProductEditPage() {
 
             // 폼 필드에 상품 정보 설정
             setName(product.name);
+            setMeta_Description(product.meta_description || '');
             setDescription(product.description || '');
             setPrice(product.price.toString());
             // category_slug 값을 그대로 사용
@@ -275,7 +277,7 @@ export default function ProductEditPage() {
       const productData: CreateProductRequest = {
         id: productId,  // -1 (신규) 또는 실제 상품 ID
         name,
-        meta_description: name.substring(0, 20),  // 상품명에서 자동 생성
+        meta_description,
         description,
         price: Number(price),
         category,
@@ -353,6 +355,26 @@ export default function ProductEditPage() {
                 className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
                 placeholder="상품명을 입력하세요"
               />
+            </div>
+
+            {/* 상품 간단 설명 */}
+            <div>
+              <label htmlFor="meta_description" className="block text-sm font-medium text-gray-900 dark:text-white">
+                상품 간단 설명 <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="meta_description"
+                value={meta_description}
+                onChange={(e) => setMeta_Description(e.target.value)}
+                required
+                rows={1}
+                maxLength={20}
+                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+                placeholder="상품 간단 설명을 20자 이하 입력하세요"
+              />
+              <div className="flex justify-end text-sm text-gray-600 dark:text-gray-400">
+                <span>{meta_description.length}자 / 최대 20자</span>
+              </div>
             </div>
 
             {/* 상품 상세 설명 */}
