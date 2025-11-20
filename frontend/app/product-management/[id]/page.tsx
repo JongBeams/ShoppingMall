@@ -74,6 +74,7 @@ export default function ProductEditPage() {
 
             // 폼 필드에 상품 정보 설정
             setName(product.name);
+            setMeta_Description(product.meta_description || '');
             setDescription(product.description || '');
             setPrice(product.price.toString());
             // category_slug 값을 그대로 사용
@@ -223,7 +224,8 @@ export default function ProductEditPage() {
     }
 
     // 재고 검증 (최대 999,999)
-    const stockValue = Number(stock);
+    // 옵션이 있으면 옵션 재고 합계를, 없으면 일반 재고를 사용
+    const stockValue = options.length > 0 ? calculateTotalStock() : Number(stock);
     if (stockValue < 0) {
       alert('재고는 0 이상이어야 합니다.');
       return;
@@ -274,7 +276,8 @@ export default function ProductEditPage() {
         description,
         price: Number(price),
         category,
-        stock_quantity: Number(stock),
+        // 옵션이 있으면 옵션 재고 합계를, 없으면 일반 재고를 DB에 저장
+        stock_quantity: options.length > 0 ? calculateTotalStock() : Number(stock),
         low_stock_threshold: Number(lowStock),
       };
 
@@ -287,6 +290,11 @@ export default function ProductEditPage() {
       if (additionalImageUrls.length > 1) {
         // TypeScript 타입 에러를 피하기 위해 any로 캐스팅
         (productData as any).image_urls = additionalImageUrls.slice(1);
+      }
+
+      // 옵션 데이터 추가
+      if (options.length > 0) {
+        (productData as any).options = options;
       }
 
       if (isNewProduct) {

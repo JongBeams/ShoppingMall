@@ -11,6 +11,17 @@ from pydantic import BaseModel, Field
 # REQUEST MODELS
 # ============================================
 
+class ProductOptionValueRequest(BaseModel):
+    """상품 옵션 값 요청 모델"""
+    value: str = Field(..., min_length=1)
+    price: str
+    stock: str
+
+class ProductOptionRequest(BaseModel):
+    """상품 옵션 요청 모델"""
+    customType: str = Field(..., min_length=1)
+    values: list[ProductOptionValueRequest]
+
 class CreateProductRequset(BaseModel):
     """상품정보 요청 모델"""
     #상품 ID값 -1일땐 신규 나머지 값은 조회 후 수정으로 진행
@@ -40,6 +51,9 @@ class CreateProductRequset(BaseModel):
 
     #추가 이미지 URLs (images JSONB에 배열로 저장됨)
     image_urls: Optional[list[str]] = None
+
+    #상품 옵션 (옵션이 있으면 함께 저장)
+    options: Optional[list[ProductOptionRequest]] = None
 
 
 
@@ -102,6 +116,7 @@ class VendorProductResponse(BaseModel):
     name: str
     category_slug: str
     description: Optional[str] = None
+    meta_description: Optional[str] = None
     price: Decimal
     stock_quantity: int
     low_stock_threshold: int
