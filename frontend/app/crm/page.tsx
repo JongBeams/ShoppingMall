@@ -177,8 +177,8 @@ export default function CRMPage() {
 
       {/* Quick Menu - App Icon Style */}
       <section className="mt-3 bg-white py-8 dark:bg-gray-900">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid grid-cols-4 gap-6 md:grid-cols-8">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-5 md:grid-cols-9">
             {[
               {
                 name: '회원관리',
