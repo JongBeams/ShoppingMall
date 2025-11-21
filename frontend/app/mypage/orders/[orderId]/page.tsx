@@ -15,6 +15,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [writtenReviewProductIds, setWrittenReviewProductIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!orderId) {
@@ -23,7 +24,29 @@ export default function OrderDetailPage() {
     }
 
     fetchOrderDetails();
+    fetchWrittenReviews();
   }, [orderId]);
+
+  const fetchWrittenReviews = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/reviews/my`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const productIds = new Set<string>(
+          (data.reviews || []).map((r: any) => r.product_id)
+        );
+        setWrittenReviewProductIds(productIds);
+      }
+    } catch (error) {
+      console.error('리뷰 목록 조회 실패:', error);
+    }
+  };
 
   const fetchOrderDetails = async () => {
     const token = localStorage.getItem('access_token');
@@ -208,6 +231,20 @@ export default function OrderDetailPage() {
                     <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                       {item.price.toLocaleString()}원 × {item.quantity}개
                     </p>
+                    {order.status === 'delivered' && (
+                      writtenReviewProductIds.has(item.product_id) ? (
+                        <span className="mt-2 inline-block border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                          리뷰작성완료
+                        </span>
+                      ) : (
+                        <Link
+                          href={`/reviews/write?orderId=${order.id}&productId=${item.product_id}`}
+                          className="mt-2 inline-block border border-blue-500 px-3 py-1 text-xs font-medium text-blue-500 transition hover:bg-blue-50 dark:hover:bg-blue-950"
+                        >
+                          리뷰작성
+                        </Link>
+                      )
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-gray-900 dark:text-white">

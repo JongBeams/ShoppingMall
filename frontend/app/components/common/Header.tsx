@@ -120,7 +120,13 @@ export default function Header() {
         // 구매자: 상품 검색
         router.push(`/products?search=${encodeURIComponent(searchQuery)}`);
       }
-      // 검색 후에도 입력창에 검색어 유지 (제거하지 않음)
+      // 검색 후 검색어 초기화
+      setSearchQuery('');
+    } else {
+      // 검색어 없이 엔터 시 상품 목록으로 이동 (검색 초기화)
+      if (!isCRMPage && userType !== 'seller') {
+        router.push('/products');
+      }
     }
   };
 
