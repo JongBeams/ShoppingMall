@@ -56,23 +56,8 @@ export default function OrderPage() {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
 
-      // 저장된 배송지가 있으면 불러오기
-      const savedAddress = localStorage.getItem('saved_shipping_address');
-      if (savedAddress) {
-        const parsed = JSON.parse(savedAddress);
-        setOrderForm((prev) => ({
-          ...prev,
-          ...parsed,
-        }));
-        setHasSavedAddress(true);
-      } else {
-        // 저장된 배송지가 없으면 사용자 정보로 초기값 설정
-        setOrderForm((prev) => ({
-          ...prev,
-          recipient_name: parsedUser.full_name || '',
-          recipient_phone: parsedUser.phone || '',
-        }));
-      }
+      // 기본 배송지 API에서 불러오기
+      fetchDefaultAddress(token, parsedUser);
     } catch (e) {
       console.error('Failed to parse user data:', e);
     }
@@ -115,33 +100,42 @@ export default function OrderPage() {
     fetchCart(token);
   }, [orderType]);
 
-  // 배송지 저장
-  const saveShippingAddress = () => {
-    const addressToSave = {
-      recipient_name: orderForm.recipient_name,
-      recipient_phone: orderForm.recipient_phone,
-      postal_code: orderForm.postal_code,
-      address: orderForm.address,
-      address_detail: orderForm.address_detail,
-    };
-    localStorage.setItem('saved_shipping_address', JSON.stringify(addressToSave));
-    setHasSavedAddress(true);
-    alert('배송지가 저장되었습니다.');
-  };
-
-  // 배송지 초기화
-  const resetShippingAddress = () => {
-    localStorage.removeItem('saved_shipping_address');
-    setHasSavedAddress(false);
-    setOrderForm((prev) => ({
-      ...prev,
-      recipient_name: user?.full_name || '',
-      recipient_phone: user?.phone || '',
-      postal_code: '',
-      address: '',
-      address_detail: '',
-    }));
-    alert('배송지가 초기화되었습니다.');
+  // 기본 배송지 API에서 불러오기
+  const fetchDefaultAddress = async (token: string, parsedUser: any) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/payment/addresses/default`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data) {
+          setOrderForm((prev) => ({
+            ...prev,
+            recipient_name: data.recipient || parsedUser.full_name || '',
+            recipient_phone: data.phone || parsedUser.phone || '',
+            postal_code: data.postal_code || '',
+            address: data.address || '',
+            address_detail: data.detail_address || '',
+          }));
+          setHasSavedAddress(true);
+        } else {
+          // 기본 배송지 없으면 사용자 정보로 초기값 설정
+          setOrderForm((prev) => ({
+            ...prev,
+            recipient_name: parsedUser.full_name || '',
+            recipient_phone: parsedUser.phone || '',
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('기본 배송지 조회 실패:', error);
+      // 실패시 사용자 정보로
+      setOrderForm((prev) => ({
+        ...prev,
+        recipient_name: parsedUser.full_name || '',
+        recipient_phone: parsedUser.phone || '',
+      }));
+    }
   };
 
   // 장바구니 조회 (선택된 상품만)
@@ -407,22 +401,6 @@ export default function OrderPage() {
                       저장됨
                     </span>
                   )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={saveShippingAddress}
-                    className="border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    저장하기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetShippingAddress}
-                    className="border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    초기화
-                  </button>
                 </div>
               </div>
               <div className="space-y-4 p-5">
