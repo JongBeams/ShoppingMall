@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { CartItem as CartItemType, Product } from '../types';
 import UserInfo from '../components/mypage/UserInfo';
 import Profile from '../components/mypage/Profile';
@@ -87,17 +87,33 @@ const dummyWishList: Product[] = [
 
 export default function MyPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [vendor, setVendor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState<string | null>(null);
 
-  // 탭 변경 시 URL도 업데이트
+  // 탭 변경 시 URL hash 업데이트
   const handleSetActiveTab = (tab: string) => {
     setActiveTab(tab);
-    router.replace(`/mypage?tab=${tab}`, { scroll: false });
+    window.history.replaceState(null, '', `/mypage#${tab}`);
   };
+
+  // URL hash에서 탭 읽기 (초기 로드 + hash 변경 시)
+  useEffect(() => {
+    const getTabFromHash = () => {
+      const hash = window.location.hash.replace('#', '');
+      return hash || 'profile';
+    };
+
+    setActiveTab(getTabFromHash());
+
+    const handleHashChange = () => {
+      setActiveTab(getTabFromHash());
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   useEffect(() => {
     // 페이지 로드 시 스크롤 맨 위로
@@ -125,15 +141,7 @@ export default function MyPage() {
     }
   }, [router]);
 
-  // URL 쿼리 파라미터에 따라 활성 탭 설정
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab) {
-      setActiveTab(tab);
-    }
-  }, [searchParams]);
-
-  if (loading) {
+  if (loading || activeTab === null) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-gray-600 dark:text-gray-400">로딩 중...</div>

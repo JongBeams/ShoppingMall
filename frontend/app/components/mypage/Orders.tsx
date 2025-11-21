@@ -26,7 +26,9 @@ export default function Orders({ user }: OrdersProps) {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/orders`, {
+      // 판매자는 /vendors/orders, 구매자는 /orders
+      const endpoint = user?.user_type === 'seller' ? '/vendors/orders' : '/orders';
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -115,17 +117,23 @@ export default function Orders({ user }: OrdersProps) {
 
   return (
     <div>
-      <h2 className="mb-6 text-lg font-bold text-gray-900 dark:text-white">주문 내역</h2>
+      <h2 className="mb-6 text-lg font-bold text-gray-900 dark:text-white">
+        {user?.user_type === 'seller' ? '주문 요청 목록' : '주문 내역'}
+      </h2>
 
       {orders.length === 0 ? (
         <div className="flex min-h-[300px] flex-col items-center justify-center">
-          <p className="mb-4 text-gray-500 dark:text-gray-400">주문 내역이 없습니다.</p>
-          <Link
-            href="/products"
-            className="border border-gray-900 bg-gray-900 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
-          >
-            쇼핑하러 가기
-          </Link>
+          <p className="mb-4 text-gray-500 dark:text-gray-400">
+            {user?.user_type === 'seller' ? '주문 요청이 없습니다.' : '주문 내역이 없습니다.'}
+          </p>
+          {user?.user_type !== 'seller' && (
+            <Link
+              href="/products"
+              className="border border-gray-900 bg-gray-900 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+            >
+              쇼핑하러 가기
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -145,8 +153,12 @@ export default function Orders({ user }: OrdersProps) {
               <div className="mb-4 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
                 <div>
                   <span>주문일: {new Date(order.created_at).toLocaleDateString('ko-KR')}</span>
-                  <span className="mx-2">|</span>
-                  <span className="font-mono">{order.order_number}</span>
+                  {order.order_number && (
+                    <>
+                      <span className="mx-2">|</span>
+                      <span className="font-mono">{order.order_number}</span>
+                    </>
+                  )}
                   {order.status === 'cancelled' && order.cancelled_at && (
                     <>
                       <span className="mx-2">|</span>
@@ -155,21 +167,30 @@ export default function Orders({ user }: OrdersProps) {
                   )}
                 </div>
                 <span className="font-bold text-gray-900 dark:text-white">
-                  {order.total.toLocaleString()}원
+                  {(order.total || order.total_amount || 0).toLocaleString()}원
                 </span>
               </div>
 
+              {/* 판매자용: 수령인 정보 */}
+              {user?.user_type === 'seller' && order.recipient_name && (
+                <div className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                  수령인: {order.recipient_name} | {order.recipient_phone}
+                  <br />
+                  주소: {order.address} {order.address_detail}
+                </div>
+              )}
+
               {/* 상품 목록 */}
               <div className="space-y-3">
-                {order.items && order.items.map((item: any) => (
-                  <div key={item.id} className="flex gap-3">
+                {order.items && order.items.map((item: any, idx: number) => (
+                  <div key={`${order.id}-${item.product_id}-${idx}`} className="flex gap-3">
                     <Link
                       href={`/products/${item.product_id}`}
                       className="relative h-20 w-20 flex-shrink-0 overflow-hidden border border-gray-200 dark:border-gray-700"
                     >
-                      {item.product_thumbnail ? (
+                      {(item.thumbnail_url || item.product_thumbnail) ? (
                         <Image
-                          src={item.product_thumbnail}
+                          src={item.thumbnail_url || item.product_thumbnail}
                           alt={item.product_name}
                           fill
                           className="object-cover"
@@ -201,12 +222,12 @@ export default function Orders({ user }: OrdersProps) {
                         </div>
                       )}
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {item.price.toLocaleString()}원 × {item.quantity}개
+                        {Math.floor(item.price || 0).toLocaleString()}원 × {item.quantity}개
                       </p>
                       <p className="text-sm font-bold text-gray-900 dark:text-white">
-                        {item.subtotal.toLocaleString()}원
+                        {Math.floor(item.subtotal || (item.price * item.quantity) || 0).toLocaleString()}원
                       </p>
-                      {order.status === 'delivered' && (
+                      {order.status === 'delivered' && user?.user_type !== 'seller' && (
                         writtenReviewProductIds.has(item.product_id) ? (
                           <span className="mt-2 inline-block border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
                             리뷰작성완료
