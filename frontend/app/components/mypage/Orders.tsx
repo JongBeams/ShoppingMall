@@ -13,9 +13,11 @@ interface OrdersProps {
 export default function Orders({ user }: OrdersProps) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [writtenReviewProductIds, setWrittenReviewProductIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchOrders();
+    fetchWrittenReviews();
   }, []);
 
   const fetchOrders = async () => {
@@ -38,6 +40,29 @@ export default function Orders({ user }: OrdersProps) {
       console.error('주문 내역 조회 실패:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchWrittenReviews = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/reviews/my`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const productIds = new Set<string>(
+          (data.reviews || []).map((r: any) => r.product_id)
+        );
+        setWrittenReviewProductIds(productIds);
+      }
+    } catch (error) {
+      console.error('리뷰 목록 조회 실패:', error);
     }
   };
 
@@ -181,6 +206,20 @@ export default function Orders({ user }: OrdersProps) {
                       <p className="text-sm font-bold text-gray-900 dark:text-white">
                         {item.subtotal.toLocaleString()}원
                       </p>
+                      {order.status === 'delivered' && (
+                        writtenReviewProductIds.has(item.product_id) ? (
+                          <span className="mt-2 inline-block border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                            리뷰작성완료
+                          </span>
+                        ) : (
+                          <Link
+                            href={`/reviews/write?orderId=${order.id}&productId=${item.product_id}`}
+                            className="mt-2 inline-block border border-blue-500 px-3 py-1 text-xs font-medium text-blue-500 transition hover:bg-blue-50 dark:hover:bg-blue-950"
+                          >
+                            리뷰작성
+                          </Link>
+                        )
+                      )}
                     </div>
                   </div>
                 ))}
@@ -223,18 +262,14 @@ export default function Orders({ user }: OrdersProps) {
                     주문취소
                   </button>
                 )}
-                <button
-                  onClick={() => alert('교환/반품 신청 기능은 준비중입니다.')}
-                  className="border border-gray-300 px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-                >
-                  교환/반품
-                </button>
-                <button
-                  onClick={() => alert('리뷰 작성 기능은 준비중입니다.')}
-                  className="border border-gray-300 px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-                >
-                  리뷰작성
-                </button>
+                {order.status === 'delivered' && (
+                  <button
+                    onClick={() => alert('교환/반품 신청 기능은 준비중입니다.')}
+                    className="border border-gray-300 px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                  >
+                    교환/반품
+                  </button>
+                )}
               </div>
             </div>
           ))}

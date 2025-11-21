@@ -16,16 +16,27 @@ interface WritableReview {
   price: number;
 }
 
+interface WrittenReview {
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_image: string;
+  rating: number;
+  content: string;
+  created_at: string;
+}
+
 export default function Reviews() {
   const [activeFilter, setActiveFilter] = useState<'writable' | 'written'>('writable');
   const [writableReviews, setWritableReviews] = useState<WritableReview[]>([]);
+  const [writtenReviews, setWrittenReviews] = useState<WrittenReview[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchWritableReviews();
+    fetchData();
   }, []);
 
-  const fetchWritableReviews = async () => {
+  const fetchData = async () => {
     const token = localStorage.getItem('access_token');
     if (!token) {
       setLoading(false);
@@ -33,36 +44,50 @@ export default function Reviews() {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/orders`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      // 작성 가능한 리뷰 (배송완료 주문)
+      const ordersResponse = await fetch(`${API_BASE_URL}/orders`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const orders = data.orders || [];
+      if (ordersResponse.ok) {
+        const ordersData = await ordersResponse.json();
+        const orders = ordersData.orders || [];
 
-        // 배송완료된 주문의 상품들만 추출 (리뷰 작성 가능)
+        // 작성된 리뷰 목록 조회
+        const reviewsResponse = await fetch(`${API_BASE_URL}/reviews/my`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        let writtenReviewsList: WrittenReview[] = [];
+        let writtenProductIds: Set<string> = new Set();
+
+        if (reviewsResponse.ok) {
+          const reviewsData = await reviewsResponse.json();
+          writtenReviewsList = reviewsData.reviews || [];
+          // 이미 리뷰 작성한 상품 ID 수집
+          writtenReviewsList.forEach((r: WrittenReview) => {
+            writtenProductIds.add(r.product_id);
+          });
+          setWrittenReviews(writtenReviewsList);
+        }
+
+        // 배송완료 주문에서 리뷰 미작성 상품만 추출
         const reviewableItems: WritableReview[] = [];
-
         orders.forEach((order: any) => {
-          // 배송완료(delivered) 상태인 주문만
           if (order.status === 'delivered' && order.items) {
             order.items.forEach((item: any) => {
-              reviewableItems.push({
-                id: `${order.id}-${item.product_id}`,
-                orderId: order.id,
-                productId: item.product_id,
-                productName: item.product_name,
-                productImage: item.product_thumbnail || '/placeholder-product.jpg',
-                purchaseDate: new Date(order.created_at).toLocaleDateString('ko-KR', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit'
-                }).replace(/\. /g, '.').replace('.', '.'),
-                price: item.price
-              });
+              // 이미 리뷰 작성한 상품 제외
+              if (!writtenProductIds.has(item.product_id)) {
+                reviewableItems.push({
+                  id: `${order.id}-${item.product_id}`,
+                  orderId: order.id,
+                  productId: item.product_id,
+                  productName: item.product_name,
+                  productImage: item.product_thumbnail || '/placeholder-product.jpg',
+                  purchaseDate: new Date(order.created_at).toLocaleDateString('ko-KR'),
+                  price: item.price
+                });
+              }
             });
           }
         });
@@ -70,39 +95,36 @@ export default function Reviews() {
         setWritableReviews(reviewableItems);
       }
     } catch (error) {
-      console.error('주문 내역 조회 실패:', error);
+      console.error('데이터 조회 실패:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const writtenReviews = [
-    {
-      id: 1,
-      productId: '3',
-      productName: 'Leather Crossbag',
-      productImage: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&q=80',
-      rating: 5,
-      content: '정말 만족스러운 제품입니다. 가죽 재질이 좋고 디자인도 심플해서 어디든 잘 어울려요!',
-      photos: [
-        'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=200&q=80',
-        'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=200&q=80',
-      ],
-      date: '2025.01.05',
-      likes: 12
-    },
-    {
-      id: 2,
-      productId: '4',
-      productName: 'Premium Wallet',
-      productImage: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&q=80',
-      rating: 4,
-      content: '가성비가 좋아요. 다만 조금 더 슬림했으면 좋았을 것 같아요.',
-      photos: [],
-      date: '2024.12.28',
-      likes: 5
-    },
-  ];
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!confirm('리뷰를 삭제하시겠습니까?')) return;
+
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        alert('리뷰가 삭제되었습니다.');
+        fetchData(); // 새로고침
+      } else {
+        const error = await response.json();
+        alert(error.detail || '리뷰 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('리뷰 삭제 실패:', error);
+      alert('리뷰 삭제 중 오류가 발생했습니다.');
+    }
+  };
 
   if (loading) {
     return (
@@ -184,12 +206,12 @@ export default function Reviews() {
                         {item.price.toLocaleString()}원
                       </p>
                     </div>
-                    <button
-                      onClick={() => alert('리뷰 작성 기능은 준비중입니다.')}
+                    <Link
+                      href={`/reviews/write?orderId=${item.orderId}&productId=${item.productId}`}
                       className="mt-2 self-start border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
                     >
                       리뷰 작성
-                    </button>
+                    </Link>
                   </div>
                 </div>
               ))
@@ -217,11 +239,11 @@ export default function Reviews() {
                 >
                   {/* Product Info */}
                   <div className="mb-3 flex gap-3">
-                    <Link href={`/products/${review.productId}`} className="flex-shrink-0">
+                    <Link href={`/products/${review.product_id}`} className="flex-shrink-0">
                       <div className="relative h-12 w-12 overflow-hidden border border-gray-200 dark:border-gray-700">
                         <Image
-                          src={review.productImage}
-                          alt={review.productName}
+                          src={review.product_image || '/placeholder-product.jpg'}
+                          alt={review.product_name}
                           fill
                           className="object-cover"
                           sizes="48px"
@@ -230,10 +252,10 @@ export default function Reviews() {
                     </Link>
                     <div className="flex-1">
                       <Link
-                        href={`/products/${review.productId}`}
+                        href={`/products/${review.product_id}`}
                         className="text-xs font-medium text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400"
                       >
-                        {review.productName}
+                        {review.product_name}
                       </Link>
                       <div className="mt-1 flex items-center gap-1">
                         {[...Array(5)].map((_, i) => (
@@ -251,7 +273,7 @@ export default function Reviews() {
                           </svg>
                         ))}
                         <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
-                          {review.date}
+                          {new Date(review.created_at).toLocaleDateString('ko-KR')}
                         </span>
                       </div>
                     </div>
@@ -262,49 +284,14 @@ export default function Reviews() {
                     {review.content}
                   </p>
 
-                  {/* Review Photos */}
-                  {review.photos.length > 0 && (
-                    <div className="mb-2 flex gap-2">
-                      {review.photos.map((photo, idx) => (
-                        <div
-                          key={idx}
-                          className="relative h-16 w-16 overflow-hidden border border-gray-200 dark:border-gray-700"
-                        >
-                          <Image
-                            src={photo}
-                            alt={`리뷰 사진 ${idx + 1}`}
-                            fill
-                            className="object-cover"
-                            sizes="64px"
-                          />
-                        </div>
-                      ))}
-                      {review.photos.length > 0 && (
-                        <div className="flex items-center">
-                          <span className="bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-950 dark:text-blue-400">
-                            포토리뷰
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {/* Review Actions */}
-                  <div className="flex items-center justify-between border-t border-gray-100 pt-2 dark:border-gray-800">
-                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75A2.25 2.25 0 0116.5 4.5c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-.971a3.75 3.75 0 00-1.156-.18H6.75v-8.25h.133c.356 0 .697.088 1.002.247z" />
-                      </svg>
-                      {review.likes}
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-                        수정
-                      </button>
-                      <button className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-                        삭제
-                      </button>
-                    </div>
+                  <div className="flex items-center justify-end border-t border-gray-100 pt-2 dark:border-gray-800">
+                    <button
+                      onClick={() => handleDeleteReview(review.id)}
+                      className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                    >
+                      삭제
+                    </button>
                   </div>
                 </div>
               ))
