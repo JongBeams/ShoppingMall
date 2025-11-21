@@ -127,6 +127,44 @@ export default function ProductDetailPage() {
   };
 
 
+  // 최근 본 상품 저장 함수
+  const saveToRecentProducts = (productData: DetailedProduct) => {
+    try {
+      const recentProducts = JSON.parse(localStorage.getItem('recentProducts') || '[]');
+
+      // 이미 있는 상품이면 제거
+      const filtered = recentProducts.filter((p: any) => p.id !== productData.id);
+
+      // 새 상품을 맨 앞에 추가
+      const newProduct = {
+        id: productData.id,
+        name: productData.name,
+        price: productData.price,
+        image: productData.thumbnail_url || productData.imageUrl || '/placeholder-product.jpg',
+        brand: productData.vendor_name || '',
+        category: productData.category || productData.category_name || '기타',
+        viewedAt: (() => {
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const hour = String(now.getHours()).padStart(2, '0');
+          const minute = String(now.getMinutes()).padStart(2, '0');
+          return `${year}.${month}.${day} ${hour}:${minute}`;
+        })()
+      };
+
+      filtered.unshift(newProduct);
+
+      // 최대 20개까지만 저장
+      const limited = filtered.slice(0, 20);
+
+      localStorage.setItem('recentProducts', JSON.stringify(limited));
+    } catch (e) {
+      console.error('최근 본 상품 저장 실패:', e);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -143,6 +181,8 @@ export default function ProductDetailPage() {
         const productData = (response?.product ?? response) as DetailedProduct;
         if (mounted) {
           setProduct(productData);
+          // 최근 본 상품에 저장
+          saveToRecentProducts(productData);
         }
       } catch (err: any) {
         console.error('Failed to load product:', err);
