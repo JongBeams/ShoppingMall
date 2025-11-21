@@ -1,30 +1,80 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+interface WritableReview {
+  id: string;
+  orderId: string;
+  productId: string;
+  productName: string;
+  productImage: string;
+  purchaseDate: string;
+  price: number;
+}
+
 export default function Reviews() {
   const [activeFilter, setActiveFilter] = useState<'writable' | 'written'>('writable');
+  const [writableReviews, setWritableReviews] = useState<WritableReview[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const writableReviews = [
-    {
-      id: 1,
-      productId: '1',
-      productName: 'AirPods Pro',
-      productImage: 'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=400&q=80',
-      purchaseDate: '2025.01.15',
-      price: 359000
-    },
-    {
-      id: 2,
-      productId: '2',
-      productName: 'Smart Watch Ultra',
-      productImage: 'https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=400&q=80',
-      purchaseDate: '2025.01.10',
-      price: 1099000
-    },
-  ];
+  useEffect(() => {
+    fetchWritableReviews();
+  }, []);
+
+  const fetchWritableReviews = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const orders = data.orders || [];
+
+        // 배송완료된 주문의 상품들만 추출 (리뷰 작성 가능)
+        const reviewableItems: WritableReview[] = [];
+
+        orders.forEach((order: any) => {
+          // 배송완료(delivered) 상태인 주문만
+          if (order.status === 'delivered' && order.items) {
+            order.items.forEach((item: any) => {
+              reviewableItems.push({
+                id: `${order.id}-${item.product_id}`,
+                orderId: order.id,
+                productId: item.product_id,
+                productName: item.product_name,
+                productImage: item.product_thumbnail || '/placeholder-product.jpg',
+                purchaseDate: new Date(order.created_at).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit'
+                }).replace(/\. /g, '.').replace('.', '.'),
+                price: item.price
+              });
+            });
+          }
+        });
+
+        setWritableReviews(reviewableItems);
+      }
+    } catch (error) {
+      console.error('주문 내역 조회 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const writtenReviews = [
     {
@@ -53,6 +103,14 @@ export default function Reviews() {
       likes: 5
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[300px] items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400">리뷰 정보를 불러오는 중...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
@@ -122,10 +180,13 @@ export default function Reviews() {
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         구매일: {item.purchaseDate}
                       </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {item.price.toLocaleString()}원
+                      </p>
                     </div>
                     <button
-                      onClick={() => window.location.href = `/reviews/write?productId=${item.productId}`}
-                      className="mt-2 self-start border border-gray-900 bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                      onClick={() => alert('리뷰 작성 기능은 준비중입니다.')}
+                      className="mt-2 self-start border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
                     >
                       리뷰 작성
                     </button>
@@ -139,6 +200,9 @@ export default function Reviews() {
                 </svg>
                 <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
                   작성 가능한 리뷰가 없습니다
+                </p>
+                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                  배송 완료된 상품에 대해 리뷰를 작성할 수 있습니다
                 </p>
               </div>
             )}
