@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
 import { CreateProductRequest } from '../../types';
 import { productManagementAPI } from '../../lib/api';
 
@@ -27,14 +28,14 @@ export default function ProductEditPage() {
 
   // 옵션 상태
   interface ProductOptionValue {
-    value: string;  // 옵션 값 (예: "빨강", "파랑")
-    price: string;  // 가격
-    stock: string;  // 재고
+    value: string;
+    price: string;
+    stock: string;
   }
 
   interface ProductOption {
-    customType: string;  // 사용자 정의 옵션 타입 이름
-    values: ProductOptionValue[];  // 옵션 내용 배열 (최대 5개)
+    customType: string;
+    values: ProductOptionValue[];
   }
   const [options, setOptions] = useState<ProductOption[]>([]);
 
@@ -58,14 +59,10 @@ export default function ProductEditPage() {
         return;
       }
 
-      // 신규 상품이 아니면 상품 정보 로드
       if (!isNewProduct) {
         const fetchProduct = async () => {
           try {
-            // 모든 상품 목록 가져오기
             const response = await productManagementAPI.getMyProducts(token);
-
-            // productId로 해당 상품 찾기
             const product = response.products.find(p => p.id === productId);
 
             if (!product) {
@@ -74,24 +71,19 @@ export default function ProductEditPage() {
               return;
             }
 
-            // 폼 필드에 상품 정보 설정
             setName(product.name);
             setMeta_Description(product.meta_description || '');
             setDescription(product.description || '');
             setPrice(product.price.toString());
-            // category_slug 값을 그대로 사용
             setCategory(product.category_slug);
             setStock(product.stock_quantity.toString());
             setlowStock(product.low_stock_threshold.toString());
-            // 태그 설정
             if (product.tags && Array.isArray(product.tags)) {
               setTags(product.tags);
             }
-            // 옵션 설정
             if (product.options && Array.isArray(product.options)) {
               setOptions(product.options);
             }
-            // 기존 이미지 URL 설정 (thumbnail_url 우선, 없으면 images)
             if (product.thumbnail_url) {
               setImagePreviews([product.thumbnail_url]);
             } else if (product.images) {
@@ -120,7 +112,6 @@ export default function ProductEditPage() {
 
     const newFiles = Array.from(files).slice(0, 5 - imageFiles.length);
 
-    // 이미지 파일만 허용
     const validFiles = newFiles.filter(file => {
       if (!file.type.startsWith('image/')) {
         alert('이미지 파일만 업로드 가능합니다.');
@@ -133,7 +124,6 @@ export default function ProductEditPage() {
 
     setImageFiles([...imageFiles, ...validFiles]);
 
-    // 이미지 미리보기 생성
     validFiles.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -148,7 +138,6 @@ export default function ProductEditPage() {
     setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
 
-  // 옵션 추가
   const addOption = () => {
     if (options.length >= 5) {
       alert('옵션은 최대 5개까지 추가할 수 있습니다.');
@@ -157,12 +146,10 @@ export default function ProductEditPage() {
     setOptions([...options, { customType: '', values: [] }]);
   };
 
-  // 옵션 삭제
   const removeOption = (index: number) => {
     setOptions(options.filter((_, i) => i !== index));
   };
 
-  // 옵션 내용 추가
   const addOptionValue = (optionIndex: number) => {
     const newOptions = [...options];
     if (newOptions[optionIndex].values.length >= 5) {
@@ -173,28 +160,24 @@ export default function ProductEditPage() {
     setOptions(newOptions);
   };
 
-  // 옵션 내용 삭제
   const removeOptionValue = (optionIndex: number, valueIndex: number) => {
     const newOptions = [...options];
     newOptions[optionIndex].values = newOptions[optionIndex].values.filter((_, i) => i !== valueIndex);
     setOptions(newOptions);
   };
 
-  // 옵션 값 변경
   const updateOptionValue = (optionIndex: number, valueIndex: number, field: 'value' | 'price' | 'stock', newValue: string) => {
     const newOptions = [...options];
     newOptions[optionIndex].values[valueIndex][field] = newValue;
     setOptions(newOptions);
   };
 
-  // 커스텀 옵션 타입 변경 (기타 선택 시)
   const updateCustomType = (index: number, customType: string) => {
     const newOptions = [...options];
     newOptions[index].customType = customType;
     setOptions(newOptions);
   };
 
-  // 옵션 재고 합계 계산
   const calculateTotalStock = (): number => {
     if (options.length === 0) return 0;
 
@@ -222,7 +205,6 @@ export default function ProductEditPage() {
       return;
     }
 
-    // 가격 검증 (최대 99,999,999.99)
     const priceValue = Number(price);
     if (priceValue <= 0) {
       alert('가격은 0보다 커야 합니다.');
@@ -233,8 +215,6 @@ export default function ProductEditPage() {
       return;
     }
 
-    // 재고 검증 (최대 999,999)
-    // 옵션이 있으면 옵션 재고 합계를, 없으면 일반 재고를 사용
     const stockValue = options.length > 0 ? calculateTotalStock() : Number(stock);
     if (stockValue < 0) {
       alert('재고는 0 이상이어야 합니다.');
@@ -245,7 +225,6 @@ export default function ProductEditPage() {
       return;
     }
 
-    // 재고 부족 알림 수량 검증
     const lowStockValue = Number(lowStock);
     if (lowStockValue < 0) {
       alert('재고 부족 알림 수량은 0 이상이어야 합니다.');
@@ -260,15 +239,10 @@ export default function ProductEditPage() {
       let thumbnailUrl: string | undefined;
       let additionalImageUrls: string[] = [];
 
-      // 이미지 파일들이 있으면 한 번에 업로드
       if (imageFiles.length > 0) {
         try {
-          // 상품 ID가 필요하므로, 신규 상품의 경우 임시 ID 사용
           const uploadId = isNewProduct ? 'temp' : productId;
-
-          // 모든 이미지를 한 번에 업로드
           const imageResponse = await productManagementAPI.uploadImages(uploadId, imageFiles, token);
-
           thumbnailUrl = imageResponse.thumbnail_url;
           additionalImageUrls = imageResponse.image_urls;
         } catch (error: any) {
@@ -278,32 +252,26 @@ export default function ProductEditPage() {
         }
       }
 
-      // CreateProductRequest 인터페이스에 맞춰 데이터 구성
       const productData: CreateProductRequest = {
-        id: productId,  // -1 (신규) 또는 실제 상품 ID
+        id: productId,
         name,
         meta_description,
         description,
         price: Number(price),
         category,
-        // 옵션이 있으면 옵션 재고 합계를, 없으면 일반 재고를 DB에 저장
         stock_quantity: options.length > 0 ? calculateTotalStock() : Number(stock),
         low_stock_threshold: Number(lowStock),
         tags: tags.length > 0 ? tags : undefined,
       };
 
-      // 대표 이미지(thumbnail)와 추가 이미지들을 설정
       if (thumbnailUrl) {
-        (productData as any).image_url = thumbnailUrl; // 첫 번째 이미지를 대표 이미지로 사용
+        (productData as any).image_url = thumbnailUrl;
       }
 
-      // 추가 이미지 URLs 설정 (2번째 이미지부터)
       if (additionalImageUrls.length > 1) {
-        // TypeScript 타입 에러를 피하기 위해 any로 캐스팅
         (productData as any).image_urls = additionalImageUrls.slice(1);
       }
 
-      // 옵션 데이터 추가 (price, stock을 문자열로 변환)
       if (options.length > 0) {
         (productData as any).options = options.map(option => ({
           ...option,
@@ -316,14 +284,10 @@ export default function ProductEditPage() {
       }
 
       if (isNewProduct) {
-        // 상품 등록
-        const response = await productManagementAPI.create(productData, token);
-        console.log('Product created:', response);
+        await productManagementAPI.create(productData, token);
         alert('상품이 등록되었습니다.');
       } else {
-        // 상품 수정
-        const response = await productManagementAPI.update(productId, productData, token);
-        console.log('Product updated:', response);
+        await productManagementAPI.update(productId, productData, token);
         alert('상품이 수정되었습니다.');
       }
       router.push('/mypage#products');
@@ -339,93 +303,102 @@ export default function ProductEditPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-gray-600 dark:text-gray-400">로딩 중...</div>
+      <div className="flex min-h-[400px] items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400">로딩 중...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      <div className="mx-auto max-w-4xl px-6 py-8 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {isNewProduct ? '상품 등록' : '상품 수정'}
-          </h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            {isNewProduct ? '새로운 상품을 등록합니다.' : '상품 정보를 수정합니다.'}
-          </p>
-        </div>
+    <div className="mx-auto max-w-4xl px-4 py-6">
+      {/* 헤더 */}
+      <div className="mb-4 flex items-center justify-between">
+        <Link
+          href="/mypage#products"
+          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+          </svg>
+          상품 관리로 돌아가기
+        </Link>
+      </div>
 
-        <form onSubmit={handleSubmit} className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-          <div className="space-y-4">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+          {isNewProduct ? '상품 등록' : '상품 수정'}
+        </h1>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          {isNewProduct ? '새로운 상품을 등록합니다.' : '상품 정보를 수정합니다.'}
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        {/* 기본 정보 */}
+        <div className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+          <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">기본 정보</h2>
+          </div>
+          <div className="space-y-4 p-5">
             {/* 상품명 */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-900 dark:text-white">
-                상품명 <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
+                상품명 <span className="text-red-600">*</span>
               </label>
               <input
                 type="text"
-                id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+                className="w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
                 placeholder="상품명을 입력하세요"
               />
             </div>
 
             {/* 상품 간단 설명 */}
             <div>
-              <label htmlFor="meta_description" className="block text-sm font-medium text-gray-900 dark:text-white">
-                상품 간단 설명 <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
+                상품 간단 설명 <span className="text-red-600">*</span>
               </label>
-              <textarea
-                id="meta_description"
+              <input
+                type="text"
                 value={meta_description}
                 onChange={(e) => setMeta_Description(e.target.value)}
                 required
-                rows={1}
                 maxLength={20}
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-                placeholder="상품 간단 설명을 20자 이하 입력하세요"
+                className="w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
+                placeholder="상품 간단 설명 (20자 이하)"
               />
-              <div className="flex justify-end text-sm text-gray-600 dark:text-gray-400">
-                <span>{meta_description.length}자 / 최대 20자</span>
-              </div>
+              <p className="mt-1 text-right text-xs text-gray-500">{meta_description.length}/20자</p>
             </div>
 
             {/* 상품 상세 설명 */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-900 dark:text-white">
-                상품 상세 설명 <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
+                상품 상세 설명 <span className="text-red-600">*</span>
               </label>
               <textarea
-                id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required
                 rows={4}
                 minLength={20}
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-                placeholder="상품 상세 설명을 20자 이상 입력하세요"
+                className="w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
+                placeholder="상품 상세 설명 (20자 이상)"
               />
-              <div className="flex justify-end text-sm text-gray-600 dark:text-gray-400">
-                <span>{description.length}자 / 최소 20자</span>
-              </div>
+              <p className="mt-1 text-right text-xs text-gray-500">{description.length}자 (최소 20자)</p>
             </div>
 
             {/* 카테고리 */}
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-900 dark:text-white">
-                카테고리 <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
+                카테고리 <span className="text-red-600">*</span>
               </label>
               <select
-                id="category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 required
-                className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+                className="w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
               >
                 <option value="">카테고리를 선택하세요</option>
                 <option value="electronics">가전/디지털</option>
@@ -438,332 +411,182 @@ export default function ProductEditPage() {
                 <option value="baby">완구</option>
               </select>
             </div>
+          </div>
+        </div>
 
-            {/* 가격 & 재고 */}
-            <div className="grid gap-6">
-              <div>
-                <label htmlFor="price" className="block text-sm font-medium text-gray-900 dark:text-white">
-                  가격 (₩) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="price"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  required
-                  min="0"
-                  max="99999999.99"
-                  step="0.01"
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-                  placeholder="0"
-                />
-              </div>
+        {/* 가격 및 재고 */}
+        <div className="mt-4 border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+          <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">가격 및 재고</h2>
+          </div>
+          <div className="space-y-4 p-5">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
+                가격 (원) <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                required
+                min="0"
+                max="99999999.99"
+                className="w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
+                placeholder="0"
+              />
             </div>
 
-
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label htmlFor="stock" className="block text-sm font-medium text-gray-900 dark:text-white">
-                  총 재고 <span className="text-red-500">*</span>
-                  {options.length > 0 && (
-                    <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
-                      (옵션 재고 합계)
-                    </span>
-                  )}
+                <label className="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
+                  총 재고 <span className="text-red-600">*</span>
+                  {options.length > 0 && <span className="ml-1 text-xs font-normal text-gray-500">(옵션 재고 합계)</span>}
                 </label>
                 <input
                   type="number"
-                  id="stock"
                   value={options.length > 0 ? calculateTotalStock() : stock}
                   onChange={(e) => setStock(e.target.value)}
                   required
                   min="0"
                   max="999999"
                   disabled={options.length > 0}
-                  className={`mt-2 block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400 ${
-                    options.length > 0 ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : 'bg-white'
+                  className={`w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:text-white dark:focus:border-white ${
+                    options.length > 0 ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : 'bg-white dark:bg-gray-800'
                   }`}
                   placeholder="0"
                 />
-                {options.length > 0 && (
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    옵션이 설정되어 있어 직접 수정할 수 없습니다. 옵션별 재고를 수정하세요.
-                  </p>
-                )}
               </div>
               <div>
-                <label htmlFor="stock" className="block text-sm font-medium text-gray-900 dark:text-white">
-                  재고 부족 알림 수량 <span className="text-red-500">*</span>
+                <label className="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
+                  재고 부족 알림 수량 <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="number"
-                  id="low_stock_threshold"
                   value={lowStock}
                   onChange={(e) => setlowStock(e.target.value)}
                   required
                   min="0"
-                  className="mt-2 block w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+                  className="w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
                   placeholder="10"
                 />
               </div>
-
             </div>
+          </div>
+        </div>
 
-            {/* 해시태그 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 dark:text-white">
-                해시태그 (선택)
-              </label>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                검색에 사용될 태그를 입력하세요 (최대 10개)
-              </p>
-              <div className="mt-2 flex gap-2">
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const tag = tagInput.trim();
-                      if (tag && tags.length < 10 && !tags.includes(tag)) {
-                        setTags([...tags, tag]);
-                        setTagInput('');
-                      }
-                    }
-                  }}
-                  className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                  placeholder="태그 입력 후 Enter"
-                  disabled={tags.length >= 10}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
+        {/* 해시태그 */}
+        <div className="mt-4 border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+          <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">해시태그</h2>
+          </div>
+          <div className="p-5">
+            <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">검색에 사용될 태그를 입력하세요 (최대 10개)</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
                     const tag = tagInput.trim();
                     if (tag && tags.length < 10 && !tags.includes(tag)) {
                       setTags([...tags, tag]);
                       setTagInput('');
                     }
-                  }}
-                  disabled={!tagInput.trim() || tags.length >= 10}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                >
-                  추가
-                </button>
-              </div>
-              {tags.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                    >
-                      #{tag}
-                      <button
-                        type="button"
-                        onClick={() => setTags(tags.filter((_, i) => i !== index))}
-                        className="hover:text-blue-600 dark:hover:text-blue-400"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 이미지 파일 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-900 dark:text-white">
-                상품 이미지 (선택)
-              </label>
-              <div className="mb-3 mt-2">
-                <input
-                  type="file"
-                  id="image-upload"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  disabled={imageFiles.length >= 5}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="image-upload"
-                  className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 ${imageFiles.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
-                    }`}
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                  </svg>
-                  사진 선택 ({imageFiles.length}/5)
-                </label>
-              </div>
-              <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                *첫번 째 이미지는 메인 이미지로 등록됩니다.<br />
-                *이미지 파일만 업로드 가능합니다 (JPG, PNG, GIF 등). 최대 5장까지 업로드 가능합니다.
-              </p>
-
-              {/* 이미지 미리보기 */}
-              {imagePreviews.length > 0 && (
-                <div className="flex flex-wrap gap-3">
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative h-24 w-24">
-                      <img
-                        src={preview}
-                        alt={`미리보기 ${index + 1}`}
-                        className="h-full w-full rounded-lg border border-gray-200 object-cover dark:border-gray-700"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 옵션 추가 */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium text-gray-900 dark:text-white">
-                옵션 추가 (선택)
-              </label>
+                  }
+                }}
+                className="flex-1 border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
+                placeholder="태그 입력 후 Enter"
+                disabled={tags.length >= 10}
+              />
               <button
                 type="button"
-                onClick={addOption}
-                disabled={options.length >= 5}
-                className={`inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 ${options.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
-                  }`}
+                onClick={() => {
+                  const tag = tagInput.trim();
+                  if (tag && tags.length < 10 && !tags.includes(tag)) {
+                    setTags([...tags, tag]);
+                    setTagInput('');
+                  }
+                }}
+                disabled={!tagInput.trim() || tags.length >= 10}
+                className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                옵션 추가 ({options.length}/5)
+                추가
               </button>
             </div>
-
-            {/* 옵션 리스트 */}
-            {options.length > 0 && (
-              <div className="space-y-3">
-                {options.map((option, index) => (
-                  <div key={index} className="flex gap-3 items-start p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                    <div className="flex-1 space-y-3">
-                      {/* 옵션 타입 이름 입력 */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          옵션 타입 이름 <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={option.customType}
-                          onChange={(e) => updateCustomType(index, e.target.value)}
-                          placeholder="예: 색상, 무게, 용량, 향, 재질, 사이즈 등"
-                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        />
-                      </div>
-
-                      {/* 옵션 내용 추가 버튼 */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                            옵션 내용
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => addOptionValue(index)}
-                            disabled={option.values.length >= 5}
-                            className={`inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 ${
-                              option.values.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
-                            }`}
-                          >
-                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                            </svg>
-                            옵션 내용 추가 ({option.values.length}/5)
-                          </button>
-                        </div>
-
-                        {/* 옵션 값 입력 리스트 */}
-                        {option.values.length > 0 ? (
-                          <div className="space-y-3">
-                            {option.values.map((optionValue, valueIndex) => (
-                              <div key={valueIndex} className="p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 space-y-2">
-                                {/* 옵션 값 입력 */}
-                                <div className="flex gap-2 items-center">
-                                  <label className="flex-shrink-0 text-xs font-medium text-gray-700 dark:text-gray-300 w-16">
-                                    옵션 값
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={optionValue.value}
-                                    onChange={(e) => updateOptionValue(index, valueIndex, 'value', e.target.value)}
-                                    placeholder={`옵션 ${valueIndex + 1}`}
-                                    className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => removeOptionValue(index, valueIndex)}
-                                    className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 transition"
-                                  >
-                                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
-                                </div>
-
-                                {/* 가격과 재고 입력 */}
-                                <div className="flex gap-2 items-center">
-                                  <label className="flex-shrink-0 text-xs font-medium text-gray-700 dark:text-gray-300 w-16">
-                                    가격 (₩)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={optionValue.price}
-                                    onChange={(e) => updateOptionValue(index, valueIndex, 'price', e.target.value)}
-                                    min="0"
-                                    max="99999999.99"
-                                    step="0.01"
-                                    placeholder="0"
-                                    className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                  />
-                                  <label className="flex-shrink-0 text-xs font-medium text-gray-700 dark:text-gray-300 w-12">
-                                    재고
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={optionValue.stock}
-                                    onChange={(e) => updateOptionValue(index, valueIndex, 'stock', e.target.value)}
-                                    min="0"
-                                    max="999999"
-                                    placeholder="0"
-                                    className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            "옵션 내용 추가" 버튼을 눌러 옵션을 추가하세요.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 삭제 버튼 */}
+            {tags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center gap-1 border border-gray-300 bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                  >
+                    #{tag}
                     <button
                       type="button"
-                      onClick={() => removeOption(index)}
-                      className="flex-shrink-0 mt-6 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 transition"
+                      onClick={() => setTags(tags.filter((_, i) => i !== index))}
+                      className="hover:text-gray-900 dark:hover:text-white"
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 상품 이미지 */}
+        <div className="mt-4 border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+          <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">상품 이미지</h2>
+          </div>
+          <div className="p-5">
+            <input
+              type="file"
+              id="image-upload"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              disabled={imageFiles.length >= 5}
+              className="hidden"
+            />
+            <label
+              htmlFor="image-upload"
+              className={`inline-flex cursor-pointer items-center gap-2 border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800 ${
+                imageFiles.length >= 5 ? 'cursor-not-allowed opacity-50' : ''
+              }`}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+              사진 선택 ({imagePreviews.length}/5)
+            </label>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              * 첫 번째 이미지가 대표 이미지로 사용됩니다. 최대 5장까지 업로드 가능합니다.
+            </p>
+
+            {imagePreviews.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-3">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="relative h-20 w-20">
+                    <img
+                      src={preview}
+                      alt={`미리보기 ${index + 1}`}
+                      className="h-full w-full border border-gray-200 object-cover dark:border-gray-700"
+                    />
+                    {index === 0 && (
+                      <span className="absolute left-0 top-0 bg-gray-900 px-1 py-0.5 text-[10px] text-white dark:bg-white dark:text-gray-900">
+                        대표
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center bg-red-600 text-white hover:bg-red-700"
+                    >
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
@@ -771,32 +594,118 @@ export default function ProductEditPage() {
                 ))}
               </div>
             )}
-
-            {options.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                옵션을 추가하려면 위의 "옵션 추가" 버튼을 클릭하세요.
-              </p>
-            )}
           </div>
+        </div>
 
-          {/* 버튼 */}
-          <div className="mt-8 flex gap-4">
-            <button
-              type="submit"
-              className="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              {isNewProduct ? '등록하기' : '수정하기'}
-            </button>
+        {/* 옵션 */}
+        <div className="mt-4 border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+          <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">옵션 설정</h2>
             <button
               type="button"
-              onClick={handleCancel}
-              className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              onClick={addOption}
+              disabled={options.length >= 5}
+              className="border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              취소
+              + 옵션 추가 ({options.length}/5)
             </button>
           </div>
-        </form>
-      </div>
+          <div className="p-5">
+            {options.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">옵션을 추가하려면 위의 "옵션 추가" 버튼을 클릭하세요.</p>
+            ) : (
+              <div className="space-y-4">
+                {options.map((option, index) => (
+                  <div key={index} className="border border-gray-200 p-4 dark:border-gray-700">
+                    <div className="mb-3 flex items-center justify-between">
+                      <input
+                        type="text"
+                        value={option.customType}
+                        onChange={(e) => updateCustomType(index, e.target.value)}
+                        placeholder="옵션 타입 (예: 색상, 사이즈)"
+                        className="flex-1 border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeOption(index)}
+                        className="ml-2 text-red-600 hover:text-red-700 dark:text-red-400"
+                      >
+                        삭제
+                      </button>
+                    </div>
+
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">옵션 값</span>
+                      <button
+                        type="button"
+                        onClick={() => addOptionValue(index)}
+                        disabled={option.values.length >= 5}
+                        className="text-xs text-gray-600 hover:text-gray-900 disabled:opacity-50 dark:text-gray-400 dark:hover:text-white"
+                      >
+                        + 값 추가 ({option.values.length}/5)
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {option.values.map((optionValue, valueIndex) => (
+                        <div key={valueIndex} className="flex items-center gap-2 border border-gray-100 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800">
+                          <input
+                            type="text"
+                            value={optionValue.value}
+                            onChange={(e) => updateOptionValue(index, valueIndex, 'value', e.target.value)}
+                            placeholder="옵션값"
+                            className="flex-1 border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                          />
+                          <input
+                            type="number"
+                            value={optionValue.price}
+                            onChange={(e) => updateOptionValue(index, valueIndex, 'price', e.target.value)}
+                            placeholder="추가금액"
+                            min="0"
+                            className="w-24 border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                          />
+                          <input
+                            type="number"
+                            value={optionValue.stock}
+                            onChange={(e) => updateOptionValue(index, valueIndex, 'stock', e.target.value)}
+                            placeholder="재고"
+                            min="0"
+                            className="w-20 border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeOptionValue(index, valueIndex)}
+                            className="text-red-600 hover:text-red-700 dark:text-red-400"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 버튼 */}
+        <div className="mt-6 flex gap-3">
+          <button
+            type="submit"
+            className="flex-1 border border-gray-900 bg-gray-900 py-3 text-sm font-bold text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+          >
+            {isNewProduct ? '상품 등록' : '상품 수정'}
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="flex-1 border border-gray-300 bg-white py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            취소
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

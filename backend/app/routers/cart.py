@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from decimal import Decimal
 from uuid import UUID
+from datetime import datetime
 
 router = APIRouter(prefix="/cart", tags=["cart"])
 
@@ -84,7 +85,7 @@ async def get_cart(current_user: dict = Depends(get_current_user)):
         product_ids = [item["product_id"] for item in cart_items]
         products_response = (
             supabase.table("products")
-            .select("id, name, price, thumbnail_url")
+            .select("id, name, price, thumbnail_url, discount_price, discount_start, discount_end")
             .in_("id", product_ids)
             .execute()
         )
@@ -101,8 +102,22 @@ async def get_cart(current_user: dict = Depends(get_current_user)):
             if not product:
                 continue
 
-            # 기본 가격
-            base_price = float(product["price"])
+            # 할인 적용 여부 확인
+            original_price = float(product["price"])
+            discount_price = product.get("discount_price")
+            discount_start = product.get("discount_start")
+            discount_end = product.get("discount_end")
+
+            is_on_sale = False
+            if discount_price and discount_start and discount_end:
+                now = datetime.now()
+                start = datetime.fromisoformat(discount_start.replace('Z', '+00:00')) if isinstance(discount_start, str) else discount_start
+                end = datetime.fromisoformat(discount_end.replace('Z', '+00:00')) if isinstance(discount_end, str) else discount_end
+                if start.replace(tzinfo=None) <= now <= end.replace(tzinfo=None):
+                    is_on_sale = True
+
+            # 기본 가격 (할인 중이면 할인가 적용)
+            base_price = float(discount_price) if is_on_sale else original_price
             option_total_price = 0
 
             # 선택된 옵션 정보 처리
@@ -151,6 +166,8 @@ async def get_cart(current_user: dict = Depends(get_current_user)):
                 "product_id": cart_item["product_id"],
                 "product_name": product["name"],
                 "product_price": base_price,
+                "product_original_price": original_price,
+                "is_on_sale": is_on_sale,
                 "product_thumbnail": product.get("thumbnail_url"),
                 "quantity": cart_item["quantity"],
                 "total_price": item_total,

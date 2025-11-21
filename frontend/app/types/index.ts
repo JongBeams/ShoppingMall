@@ -18,6 +18,10 @@ export interface Product {
   options?: ProductOption[];  // 상품 옵션
   createdAt?: string;
   created_at?: string;
+  // 할인 관련 필드
+  discount_price?: number;
+  discount_start?: string;
+  discount_end?: string;
 }
 
 // Product Option Types

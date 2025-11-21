@@ -120,7 +120,6 @@ class VendorProductResponse(BaseModel):
     category_slug: str
     meta_description: Optional[str] = None
     description: Optional[str] = None
-    meta_description: Optional[str] = None
     price: Decimal
     stock_quantity: int
     low_stock_threshold: int
@@ -136,6 +135,10 @@ class VendorProductResponse(BaseModel):
     options: Optional[list[dict]] = None
     created_at: datetime
     updated_at: datetime
+    # 할인 관련 필드
+    discount_price: Optional[Decimal] = None
+    discount_start: Optional[datetime] = None
+    discount_end: Optional[datetime] = None
 
     class Config:
         from_attributes = True

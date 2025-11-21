@@ -83,12 +83,14 @@ export default function OrderPage() {
       if (directOrderData) {
         try {
           const items = JSON.parse(directOrderData);
-          const cartItemsFromDirect: CartItem[] = items.map((item: any, index: number) => ({
+          const cartItemsFromDirect: any[] = items.map((item: any, index: number) => ({
             id: `direct-${index}`,
             product_id: item.product_id,
             product_name: item.product_name,
             product_thumbnail: item.product_image,
             product_price: item.price,
+            product_original_price: item.original_price || item.price,
+            is_on_sale: item.is_on_sale || false,
             quantity: item.quantity,
             total_price: item.price * item.quantity,
             selected_options: item.selected_options || [],
@@ -367,13 +369,26 @@ export default function OrderPage() {
                             </div>
                           )}
                           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            {item.product_price.toLocaleString()}원 × {item.quantity}개
+                            {(item as any).is_on_sale ? (
+                              <>
+                                <span className="text-blue-600 dark:text-blue-400">{Math.floor(item.product_price).toLocaleString()}원</span>
+                                <span className="ml-1 text-gray-400 line-through">{Math.floor((item as any).product_original_price).toLocaleString()}원</span>
+                              </>
+                            ) : (
+                              <>{Math.floor(item.product_price).toLocaleString()}원</>
+                            )}
+                            {' '}× {item.quantity}개
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-gray-900 dark:text-white">
-                            {item.total_price.toLocaleString()}원
+                          <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                            {Math.floor(item.total_price).toLocaleString()}원
                           </p>
+                          {(item as any).is_on_sale && (
+                            <p className="text-xs text-gray-400 line-through">
+                              {Math.floor((item as any).product_original_price * item.quantity).toLocaleString()}원
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

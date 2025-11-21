@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, File, UploadFile, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 from app.services.supabase import get_supabase_client
 
 router = APIRouter(prefix="/vendors", tags=["Vendors"])
@@ -268,4 +269,154 @@ async def upload_store_banner(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"배너 업로드 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+# ===== 특가/할인 관리 =====
+
+class DiscountRequest(BaseModel):
+    """할인 설정 요청"""
+    product_ids: List[str]
+    discount_percent: Optional[float] = None
+    discount_price: Optional[float] = None
+    discount_start: str
+    discount_end: str
+
+
+@router.post("/products/discount")
+async def set_product_discount(
+    discount_data: DiscountRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """상품에 할인 설정"""
+    from app.services.jwt_auth import verify_token
+    supabase = get_supabase_client()
+
+    try:
+        token = credentials.credentials
+        payload = verify_token(token)
+
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="유효하지 않은 토큰입니다."
+            )
+
+        user_id = payload.get("sub")
+
+        # vendor_id 조회
+        vendor_response = supabase.table("vendors").select("id").eq("user_id", user_id).single().execute()
+        if not vendor_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="판매자 정보를 찾을 수 없습니다."
+            )
+        vendor_id = vendor_response.data["id"]
+
+        # 각 상품에 대해 할인 설정
+        updated_count = 0
+        for product_id in discount_data.product_ids:
+            # 해당 상품이 본인 소유인지 확인
+            product_response = supabase.table("products").select("id, price, vendor_id").eq("id", product_id).single().execute()
+            if not product_response.data:
+                continue
+            if product_response.data["vendor_id"] != vendor_id:
+                continue
+
+            original_price = float(product_response.data["price"])
+
+            # 할인가 계산
+            if discount_data.discount_percent:
+                discount_price = round(original_price * (1 - discount_data.discount_percent / 100))
+            elif discount_data.discount_price:
+                discount_price = discount_data.discount_price
+            else:
+                continue
+
+            # 상품 업데이트
+            supabase.table("products").update({
+                "discount_price": discount_price,
+                "discount_start": discount_data.discount_start,
+                "discount_end": discount_data.discount_end,
+                "updated_at": datetime.utcnow().isoformat()
+            }).eq("id", product_id).execute()
+
+            updated_count += 1
+
+        return {"message": f"{updated_count}개 상품에 할인이 적용되었습니다.", "updated_count": updated_count}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] 할인 설정 오류: {str(e)}")
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"할인 설정 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.delete("/products/{product_id}/discount")
+async def remove_product_discount(
+    product_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """상품 할인 해제"""
+    from app.services.jwt_auth import verify_token
+    supabase = get_supabase_client()
+
+    try:
+        token = credentials.credentials
+        payload = verify_token(token)
+
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="유효하지 않은 토큰입니다."
+            )
+
+        user_id = payload.get("sub")
+
+        # vendor_id 조회
+        vendor_response = supabase.table("vendors").select("id").eq("user_id", user_id).single().execute()
+        if not vendor_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="판매자 정보를 찾을 수 없습니다."
+            )
+        vendor_id = vendor_response.data["id"]
+
+        # 해당 상품이 본인 소유인지 확인
+        product_response = supabase.table("products").select("id, vendor_id").eq("id", product_id).single().execute()
+        if not product_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="상품을 찾을 수 없습니다."
+            )
+        if product_response.data["vendor_id"] != vendor_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="본인 상품만 수정할 수 있습니다."
+            )
+
+        # 할인 정보 초기화
+        supabase.table("products").update({
+            "discount_price": None,
+            "discount_start": None,
+            "discount_end": None,
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", product_id).execute()
+
+        return {"message": "할인이 해제되었습니다."}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] 할인 해제 오류: {str(e)}")
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"할인 해제 중 오류가 발생했습니다: {str(e)}"
         )

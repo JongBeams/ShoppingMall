@@ -217,6 +217,19 @@ export default function ProductDetailPage() {
     return product;
   }, [product]);
 
+  // 할인 중인지 확인
+  const isOnSale = useMemo(() => {
+    if (!displayProduct?.discount_price || !displayProduct?.discount_start || !displayProduct?.discount_end) return false;
+    const now = new Date();
+    return now >= new Date(displayProduct.discount_start) && now <= new Date(displayProduct.discount_end);
+  }, [displayProduct]);
+
+  // 할인율 계산
+  const discountPercent = useMemo(() => {
+    if (!isOnSale || !displayProduct?.discount_price) return 0;
+    return Math.round((1 - displayProduct.discount_price / displayProduct.price) * 100);
+  }, [isOnSale, displayProduct]);
+
   // 이미지 갤러리 처리
   const allImages = useMemo(() => {
     if (!displayProduct) return [];
@@ -386,9 +399,23 @@ export default function ProductDetailPage() {
               <div className="space-y-4">
                 {/* 가격 정보 */}
                 <div className="mb-4 ">
-                  <div className="mb-2 text-xl font-bold text-red-600 dark:text-red-500">
-                    {Number(displayProduct.price || 0).toLocaleString()}원
-                  </div>
+                  {isOnSale ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                        {Math.floor(displayProduct.discount_price || 0).toLocaleString()}원
+                      </span>
+                      <span className="text-sm text-gray-400 line-through">
+                        {Math.floor(displayProduct.price || 0).toLocaleString()}원
+                      </span>
+                      <span className="bg-red-100 px-2 py-0.5 text-sm font-bold text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                        {discountPercent}% OFF
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mb-2 text-xl font-bold text-gray-900 dark:text-white">
+                      {Math.floor(displayProduct.price || 0).toLocaleString()}원
+                    </div>
+                  )}
                 </div>
 
             {/* 수량 선택 */}
@@ -446,11 +473,16 @@ export default function ProductDetailPage() {
                   }
 
                   // 주문 정보를 sessionStorage에 저장하고 주문 페이지로 이동
+                  const actualPrice = isOnSale && displayProduct?.discount_price
+                    ? displayProduct.discount_price
+                    : displayProduct?.price;
                   const orderItem = {
                     product_id: productId,
                     product_name: displayProduct?.name,
                     product_image: displayProduct?.thumbnail_url || displayProduct?.imageUrl,
-                    price: displayProduct?.price,
+                    price: actualPrice,
+                    original_price: displayProduct?.price,
+                    is_on_sale: isOnSale,
                     quantity: quantity,
                     selected_options: Object.entries(selectedOptions).map(([optionId, valueId]) => ({
                       option_id: optionId,

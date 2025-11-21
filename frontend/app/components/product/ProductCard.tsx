@@ -21,6 +21,19 @@ export default function ProductCard({ product }: ProductCardProps) {
     product.category_slug ||
     '기타';
 
+  // 할인 중인지 확인
+  const isOnSale = () => {
+    if (!product.discount_price || !product.discount_start || !product.discount_end) return false;
+    const now = new Date();
+    return now >= new Date(product.discount_start) && now <= new Date(product.discount_end);
+  };
+
+  const onSale = isOnSale();
+  const displayPrice = onSale && product.discount_price ? product.discount_price : product.price;
+  const discountPercent = onSale && product.discount_price
+    ? Math.round((1 - product.discount_price / product.price) * 100)
+    : 0;
+
   return (
     <Link href={`/products/${product.id}`} className="group">
       <div className="flex h-full flex-col border border-gray-200 bg-white transition-all hover:border-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-white">
@@ -59,11 +72,27 @@ export default function ProductCard({ product }: ProductCardProps) {
           </h3>
 
           {/* 가격 */}
-          <div className="flex items-baseline gap-1">
-            <span className="text-sm font-bold text-gray-900 dark:text-white">
-              {product.price.toLocaleString()}
-            </span>
-            <span className="text-xs text-gray-600 dark:text-gray-400">원</span>
+          <div className="flex flex-wrap items-baseline gap-1">
+            {onSale ? (
+              <>
+                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                  {Math.floor(displayPrice).toLocaleString()}원
+                </span>
+                <span className="text-xs text-gray-400 line-through">
+                  {Math.floor(product.price).toLocaleString()}원
+                </span>
+                <span className="bg-red-100 px-1 py-0.5 text-[10px] font-bold text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                  {discountPercent}%
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                  {Math.floor(product.price).toLocaleString()}
+                </span>
+                <span className="text-xs text-gray-600 dark:text-gray-400">원</span>
+              </>
+            )}
           </div>
         </div>
       </div>

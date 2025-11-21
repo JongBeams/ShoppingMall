@@ -164,7 +164,7 @@ async def get_all_products():
     try:
         products_response = (
             supabase.table("products")
-            .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, is_active, created_at")
+            .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, is_active, created_at, discount_price, discount_start, discount_end")
             .eq("is_active", True)
             .order("created_at", desc=True)
             .execute()
@@ -228,6 +228,9 @@ async def get_all_products():
             "category_name": category_info.get("name"),
             "vendor_name": vendor_name,
             "created_at": product.get("created_at"),
+            "discount_price": product.get("discount_price"),
+            "discount_start": product.get("discount_start"),
+            "discount_end": product.get("discount_end"),
         })
 
     return {"products": product_list}

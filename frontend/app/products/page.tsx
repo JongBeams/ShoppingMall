@@ -8,7 +8,7 @@ import Pagination from '../components/common/Pagination';
 import { Product } from '../types';
 import { productAPI } from '../lib/api';
 
-type SortOption = 'ranking' | 'price_low' | 'price_high' | 'sales' | 'latest';
+type SortOption = 'ranking' | 'price_low' | 'price_high' | 'sales' | 'latest' | 'discount';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -109,6 +109,19 @@ export default function ProductsPage() {
       filtered = filtered.filter(p => p.price >= min && p.price <= max);
     }
 
+    // 할인 중인지 확인하는 함수
+    const isOnSale = (product: Product) => {
+      if (!product.discount_price || !product.discount_start || !product.discount_end) return false;
+      const now = new Date();
+      return now >= new Date(product.discount_start) && now <= new Date(product.discount_end);
+    };
+
+    // 할인율 계산
+    const getDiscountPercent = (product: Product) => {
+      if (!isOnSale(product) || !product.discount_price) return 0;
+      return Math.round((1 - product.discount_price / product.price) * 100);
+    };
+
     // 정렬
     const sorted = [...filtered].sort((a, b) => {
       switch (sortBy) {
@@ -122,6 +135,9 @@ export default function ProductsPage() {
         case 'ranking':
           // TODO: 랭킹 정보가 있다면 정렬
           return 0;
+        case 'discount':
+          // 할인율 높은 순 (할인 중인 상품 우선)
+          return getDiscountPercent(b) - getDiscountPercent(a);
         case 'latest':
         default:
           // created_at 기준 최신순 (없으면 id 기준)
@@ -391,6 +407,18 @@ export default function ProductsPage() {
                 >
                   {sortBy === 'price_high' && <span>✓</span>}
                   판매량순
+                </button>
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+                <button
+                  onClick={() => setSortBy('discount')}
+                  className={`flex items-center gap-1 px-3 py-1 text-xs transition-colors ${
+                    sortBy === 'discount'
+                      ? 'font-bold text-blue-600 dark:text-blue-500'
+                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {sortBy === 'discount' && <span>✓</span>}
+                  할인순
                 </button>
                 <span className="text-gray-300 dark:text-gray-600">|</span>
                 <button

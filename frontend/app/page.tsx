@@ -4,8 +4,50 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  thumbnail_url?: string;
+  vendor_name?: string;
+  discount_price?: number;
+  discount_start?: string;
+  discount_end?: string;
+}
+
+interface Order {
+  id: string;
+  status: string;
+  total_amount: number;
+  recipient_name: string;
+  created_at: string;
+  items?: any[];
+}
+
 export default function Home() {
   const [userType, setUserType] = useState<string>('');
+  const [bestProducts, setBestProducts] = useState<Product[]>([]);
+  const [discountProducts, setDiscountProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  // 판매자용 데이터
+  const [myProducts, setMyProducts] = useState<Product[]>([]);
+  const [myOrders, setMyOrders] = useState<Order[]>([]);
+  const [sellerDataLoading, setSellerDataLoading] = useState(true);
+
+  // 할인 중인지 확인하는 함수
+  const isOnSale = (product: Product) => {
+    if (!product.discount_price || !product.discount_start || !product.discount_end) return false;
+    const now = new Date();
+    return now >= new Date(product.discount_start) && now <= new Date(product.discount_end);
+  };
+
+  // 할인율 계산
+  const getDiscountPercent = (product: Product) => {
+    if (!isOnSale(product) || !product.discount_price) return 0;
+    return Math.round((1 - product.discount_price / product.price) * 100);
+  };
 
   // 로그인 상태 확인
   useEffect(() => {
@@ -19,74 +61,86 @@ export default function Home() {
       }
     }
   }, []);
-  const bestProducts = [
-    {
-      id: '1',
-      name: 'AirPods Pro',
-      brand: 'Apple',
-      price: 359000,
-      image: 'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=400&q=80',
-      discount: 10,
-      rating: 4.8,
-      reviews: 1247
-    },
-    {
-      id: '2',
-      name: 'Leather Crossbag',
-      brand: 'Minimal',
-      price: 189000,
-      image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&q=80',
-      discount: null,
-      rating: 4.6,
-      reviews: 892
-    },
-    {
-      id: '3',
-      name: 'Smart Watch Ultra',
-      brand: 'Apple',
-      price: 1099000,
-      image: 'https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=400&q=80',
-      discount: 5,
-      rating: 4.9,
-      reviews: 2341
-    },
-    {
-      id: '4',
-      name: 'Premium Wallet',
-      brand: 'Bellroy',
-      price: 125000,
-      image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&q=80',
-      discount: null,
-      rating: 4.7,
-      reviews: 567
-    },
-    {
-      id: '5',
-      name: 'Wireless Keyboard',
-      brand: 'Logitech',
-      price: 89000,
-      image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&q=80',
-      discount: 15,
-      rating: 4.5,
-      reviews: 432
-    },
-    {
-      id: '6',
-      name: 'USB-C Hub',
-      brand: 'Anker',
-      price: 65000,
-      image: 'https://images.unsplash.com/photo-1625948515291-69613efd103f?w=400&q=80',
-      discount: null,
-      rating: 4.6,
-      reviews: 789
-    },
-  ];
+
+  // 상품 목록 가져오기 (구매자용)
+  useEffect(() => {
+    if (userType === 'seller') return; // 판매자면 스킵
+
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/products`);
+        if (response.ok) {
+          const data = await response.json();
+          const allProducts = data.products || data;
+          setBestProducts(allProducts.slice(0, 6));
+
+          // 특가 상품: 할인 중인 상품만 필터링 후 할인율 높은 순으로 정렬
+          const now = new Date();
+          const onSaleProducts = allProducts
+            .filter((p: Product) => {
+              if (!p.discount_price || !p.discount_start || !p.discount_end) return false;
+              return now >= new Date(p.discount_start) && now <= new Date(p.discount_end);
+            })
+            .sort((a: Product, b: Product) => {
+              const aPercent = a.discount_price ? Math.round((1 - a.discount_price / a.price) * 100) : 0;
+              const bPercent = b.discount_price ? Math.round((1 - b.discount_price / b.price) * 100) : 0;
+              return bPercent - aPercent;
+            })
+            .slice(0, 6);
+          setDiscountProducts(onSaleProducts);
+        }
+      } catch (error) {
+        console.error('상품 로딩 실패:', error);
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [userType]);
+
+  // 판매자용 데이터 가져오기 (내 상품, 내 주문)
+  useEffect(() => {
+    if (userType !== 'seller') return;
+
+    const fetchSellerData = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      setSellerDataLoading(true);
+      try {
+        // 내 상품 가져오기
+        const productsRes = await fetch(`${API_BASE_URL}/vendors/products`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (productsRes.ok) {
+          const data = await productsRes.json();
+          setMyProducts((data.products || data).slice(0, 6));
+        }
+
+        // 내 주문 가져오기
+        const ordersRes = await fetch(`${API_BASE_URL}/vendors/orders`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (ordersRes.ok) {
+          const data = await ordersRes.json();
+          setMyOrders((data.orders || data).slice(0, 4));
+        }
+      } catch (error) {
+        console.error('판매자 데이터 로딩 실패:', error);
+      } finally {
+        setSellerDataLoading(false);
+      }
+    };
+
+    fetchSellerData();
+  }, [userType]);
 
   const [dealPage, setDealPage] = useState(0);
   const [bestPage, setBestPage] = useState(0);
 
   const dealsPerPage = 2;
-  const totalDealPages = Math.ceil(bestProducts.length / dealsPerPage);
+  const totalDealPages = Math.ceil(discountProducts.length / dealsPerPage) || 1;
   const totalBestPages = Math.ceil(bestProducts.length / dealsPerPage);
 
   // 판매자용 홈 화면
@@ -251,7 +305,7 @@ export default function Home() {
                   <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-xs font-bold">24건</span>
+                  <span className="text-xs font-bold">{myOrders.length}건</span>
                 </div>
               </div>
               <Link href="/mypage#delivery" className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400">
@@ -259,37 +313,37 @@ export default function Home() {
               </Link>
             </div>
             <div className="space-y-3">
-              {bestProducts.slice(0, 2).map((product, idx) => (
-                <Link
-                  key={product.id}
-                  href="/mypage#delivery"
-                  className="group flex gap-3"
-                >
-                  <div className="relative h-24 w-24 flex-shrink-0 border border-gray-200 dark:border-gray-700">
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      className="object-cover transition group-hover:scale-105"
-                      sizes="96px"
-                    />
-                    <div className="absolute left-0 top-0 bg-blue-600 px-1.5 py-0.5 text-xs font-bold text-white">
-                      주문
+              {sellerDataLoading ? (
+                <p className="text-center text-xs text-gray-500">로딩 중...</p>
+              ) : myOrders.length === 0 ? (
+                <p className="text-center text-xs text-gray-500">주문이 없습니다.</p>
+              ) : (
+                myOrders.slice(0, 2).map((order) => (
+                  <Link
+                    key={order.id}
+                    href="/mypage#delivery"
+                    className="group flex gap-3"
+                  >
+                    <div className="relative flex h-24 w-24 flex-shrink-0 items-center justify-center border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+                      <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                      </svg>
+                      <div className="absolute left-0 top-0 bg-blue-600 px-1.5 py-0.5 text-xs font-bold text-white">
+                        {order.status === 'pending' ? '대기' : order.status === 'paid' ? '결제' : order.status === 'shipped' ? '배송' : '완료'}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex flex-1 flex-col justify-center">
-                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">고객명</p>
-                    <h3 className="mb-1.5 line-clamp-2 text-sm font-medium text-gray-900 dark:text-white">
-                      {product.name}
-                    </h3>
-                    <div className="flex items-baseline gap-1">
+                    <div className="flex flex-1 flex-col justify-center">
+                      <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{order.recipient_name}</p>
+                      <h3 className="mb-1.5 line-clamp-2 text-sm font-medium text-gray-900 dark:text-white">
+                        주문 #{order.id.slice(0, 8)}
+                      </h3>
                       <span className="text-sm font-bold text-gray-900 dark:text-white">
-                        {product.price.toLocaleString()}원
+                        {Number(order.total_amount).toLocaleString()}원
                       </span>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))
+              )}
             </div>
             {/* Pagination */}
             <div className="mt-4 flex items-center justify-center gap-1">
@@ -324,35 +378,49 @@ export default function Home() {
               </Link>
             </div>
             <div className="space-y-3">
-              {bestProducts.slice(2, 4).map((product, idx) => (
-                <Link
-                  key={product.id}
-                  href="/mypage#products"
-                  className="group flex gap-3"
-                >
-                  <div className="relative h-24 w-24 flex-shrink-0 border border-gray-200 dark:border-gray-700">
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      className="object-cover transition group-hover:scale-105"
-                      sizes="96px"
-                    />
-                    <div className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center bg-gray-900 text-xs font-bold text-white dark:bg-white dark:text-gray-900">
-                      {idx + 1}
+              {sellerDataLoading ? (
+                <p className="text-center text-xs text-gray-500">로딩 중...</p>
+              ) : myProducts.length === 0 ? (
+                <p className="text-center text-xs text-gray-500">상품이 없습니다.</p>
+              ) : (
+                myProducts.slice(0, 2).map((product, idx) => (
+                  <Link
+                    key={product.id}
+                    href="/mypage#products"
+                    className="group flex gap-3"
+                  >
+                    <div className="relative h-24 w-24 flex-shrink-0 border border-gray-200 dark:border-gray-700">
+                      {product.thumbnail_url ? (
+                        <Image
+                          src={product.thumbnail_url}
+                          alt={product.name}
+                          fill
+                          className="object-cover transition group-hover:scale-105"
+                          sizes="96px"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center bg-gray-100 text-gray-400 dark:bg-gray-800">
+                          <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center bg-gray-900 text-xs font-bold text-white dark:bg-white dark:text-gray-900">
+                        {idx + 1}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex flex-1 flex-col justify-center">
-                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{product.brand}</p>
-                    <h3 className="mb-1.5 line-clamp-2 text-sm font-medium text-gray-900 dark:text-white">
-                      {product.name}
-                    </h3>
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">
-                      {product.price.toLocaleString()}원
-                    </span>
-                  </div>
-                </Link>
-              ))}
+                    <div className="flex flex-1 flex-col justify-center">
+                      <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{product.vendor_name || ''}</p>
+                      <h3 className="mb-1.5 line-clamp-2 text-sm font-medium text-gray-900 dark:text-white">
+                        {product.name}
+                      </h3>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">
+                        {Number(product.price).toLocaleString()}원
+                      </span>
+                    </div>
+                  </Link>
+                ))
+              )}
             </div>
             {/* Pagination */}
             <div className="mt-4 flex items-center justify-center gap-1">
@@ -652,50 +720,54 @@ export default function Home() {
             </Link>
           </div>
           <div className="space-y-3">
-            {bestProducts.slice(dealPage * dealsPerPage, (dealPage + 1) * dealsPerPage).map((product) => (
-              <Link
-                key={product.id}
-                href={`/products/${product.id}`}
-                className="group flex gap-3"
-              >
-                <div className="relative h-24 w-24 flex-shrink-0 border border-gray-200 dark:border-gray-700">
-                  <Image
-                    src={product.image}
-                    alt={product.name}
-                    fill
-                    className="object-cover transition group-hover:scale-105"
-                    sizes="96px"
-                  />
-                  {product.discount && (
-                    <div className="absolute left-0 top-0 bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
-                      {product.discount}%
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-1 flex-col justify-center">
-                  <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{product.brand}</p>
-                  <h3 className="mb-1.5 line-clamp-2 text-sm font-medium text-gray-900 dark:text-white">
-                    {product.name}
-                  </h3>
-                  <div className="flex items-baseline gap-1">
-                    {product.discount ? (
-                      <>
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">
-                          {(product.price * (1 - product.discount / 100)).toLocaleString()}원
-                        </span>
-                        <span className="text-xs text-gray-400 line-through">
-                          {product.price.toLocaleString()}
-                        </span>
-                      </>
+            {productsLoading ? (
+              <p className="text-center text-xs text-gray-500">로딩 중...</p>
+            ) : discountProducts.length === 0 ? (
+              <p className="text-center text-xs text-gray-500">특가 상품이 없습니다.</p>
+            ) : (
+              discountProducts.slice(dealPage * dealsPerPage, (dealPage + 1) * dealsPerPage).map((product) => (
+                <Link
+                  key={product.id}
+                  href={`/products/${product.id}`}
+                  className="group flex gap-3"
+                >
+                  <div className="relative h-24 w-24 flex-shrink-0 border border-gray-200 dark:border-gray-700">
+                    {product.thumbnail_url ? (
+                      <Image
+                        src={product.thumbnail_url}
+                        alt={product.name}
+                        fill
+                        className="object-cover transition group-hover:scale-105"
+                        sizes="96px"
+                      />
                     ) : (
-                      <span className="text-sm font-bold text-gray-900 dark:text-white">
-                        {product.price.toLocaleString()}원
-                      </span>
+                      <div className="flex h-full items-center justify-center bg-gray-100 text-gray-400 dark:bg-gray-800">
+                        <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                        </svg>
+                      </div>
                     )}
+                    <span className="absolute left-0 top-0 bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {getDiscountPercent(product)}%
+                    </span>
                   </div>
-                </div>
-              </Link>
-            ))}
+                  <div className="flex flex-1 flex-col justify-center">
+                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{product.vendor_name || ''}</p>
+                    <h3 className="mb-1.5 line-clamp-2 text-sm font-medium text-gray-900 dark:text-white">
+                      {product.name}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                        {Math.floor(product.discount_price || 0).toLocaleString()}원
+                      </span>
+                      <span className="text-xs text-gray-400 line-through">
+                        {Math.floor(product.price).toLocaleString()}원
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
           {/* Pagination */}
           <div className="mt-4 flex items-center justify-center gap-1">
@@ -738,35 +810,49 @@ export default function Home() {
             </Link>
           </div>
           <div className="space-y-3">
-            {bestProducts.slice(bestPage * dealsPerPage, (bestPage + 1) * dealsPerPage).map((product, idx) => (
-              <Link
-                key={product.id}
-                href={`/products/${product.id}`}
-                className="group flex gap-3"
-              >
-                <div className="relative h-24 w-24 flex-shrink-0 border border-gray-200 dark:border-gray-700">
-                  <Image
-                    src={product.image}
-                    alt={product.name}
-                    fill
-                    className="object-cover transition group-hover:scale-105"
-                    sizes="96px"
-                  />
-                  <div className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center bg-gray-900 text-xs font-bold text-white dark:bg-white dark:text-gray-900">
-                    {bestPage * dealsPerPage + idx + 1}
+            {productsLoading ? (
+              <p className="text-center text-xs text-gray-500">로딩 중...</p>
+            ) : bestProducts.length === 0 ? (
+              <p className="text-center text-xs text-gray-500">상품이 없습니다.</p>
+            ) : (
+              bestProducts.slice(bestPage * dealsPerPage, (bestPage + 1) * dealsPerPage).map((product, idx) => (
+                <Link
+                  key={product.id}
+                  href={`/products/${product.id}`}
+                  className="group flex gap-3"
+                >
+                  <div className="relative h-24 w-24 flex-shrink-0 border border-gray-200 dark:border-gray-700">
+                    {product.thumbnail_url ? (
+                      <Image
+                        src={product.thumbnail_url}
+                        alt={product.name}
+                        fill
+                        className="object-cover transition group-hover:scale-105"
+                        sizes="96px"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-gray-100 text-gray-400 dark:bg-gray-800">
+                        <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center bg-gray-900 text-xs font-bold text-white dark:bg-white dark:text-gray-900">
+                      {bestPage * dealsPerPage + idx + 1}
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-1 flex-col justify-center">
-                  <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{product.brand}</p>
-                  <h3 className="mb-1.5 line-clamp-2 text-sm font-medium text-gray-900 dark:text-white">
-                    {product.name}
-                  </h3>
-                  <span className="text-sm font-bold text-gray-900 dark:text-white">
-                    {product.price.toLocaleString()}원
-                  </span>
-                </div>
-              </Link>
-            ))}
+                  <div className="flex flex-1 flex-col justify-center">
+                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{product.vendor_name || ''}</p>
+                    <h3 className="mb-1.5 line-clamp-2 text-sm font-medium text-gray-900 dark:text-white">
+                      {product.name}
+                    </h3>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                      {Number(product.price).toLocaleString()}원
+                    </span>
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
           {/* Pagination */}
           <div className="mt-4 flex items-center justify-center gap-1">

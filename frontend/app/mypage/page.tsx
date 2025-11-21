@@ -18,6 +18,7 @@ import ProductManagement from '../components/mypage/ProductManagement';
 import DeliveryManagement from '../components/mypage/DeliveryManagement';
 import InquiryManagement from '../components/mypage/InquiryManagement';
 import SellerCoupons from '../components/mypage/SellerCoupons';
+import EventManagement from '../components/mypage/EventManagement';
 
 // 임시 더미 데이터(주문 내역)
 const dummyOrders: CartItemType[] = [
@@ -92,6 +93,12 @@ export default function MyPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
 
+  // 탭 변경 시 URL도 업데이트
+  const handleSetActiveTab = (tab: string) => {
+    setActiveTab(tab);
+    router.replace(`/mypage?tab=${tab}`, { scroll: false });
+  };
+
   useEffect(() => {
     // 페이지 로드 시 스크롤 맨 위로
     window.scrollTo(0, 0);
@@ -142,7 +149,7 @@ export default function MyPage() {
         <div className="flex gap-4">
           {/* Sidebar */}
           <div className="w-56 flex-shrink-0">
-            <UserInfo user={user} activeTab={activeTab} setActiveTab={setActiveTab} />
+            <UserInfo user={user} activeTab={activeTab} setActiveTab={handleSetActiveTab} />
           </div>
           {/* Main Content */}
           <div className="flex-1">
@@ -154,6 +161,7 @@ export default function MyPage() {
             {activeTab === 'delivery' && user?.user_type === 'seller' && <DeliveryManagement />}
             {activeTab === 'inquiries' && user?.user_type === 'seller' && <InquiryManagement />}
             {activeTab === 'seller-coupons' && user?.user_type === 'seller' && <SellerCoupons />}
+            {activeTab === 'events' && user?.user_type === 'seller' && <EventManagement />}
             {activeTab === 'wishlist' && user?.user_type !== 'seller' && <Wishlist dummyWishList={dummyWishList} />}
             {activeTab === 'recent' && user?.user_type !== 'seller' && <RecentProducts />}
             {activeTab === 'inquiry' && <Inquiry />}

@@ -133,6 +133,12 @@ export default function CartPage() {
   // 전체 금액 계산 (선택된 상품만)
   const selectedCartItems = cartItems.filter((item) => selectedItems.has(item.id));
   const totalPrice = selectedCartItems.reduce((sum, item) => sum + item.total_price, 0);
+  // 할인 전 원래 가격 합계
+  const totalOriginalPrice = selectedCartItems.reduce((sum, item) => {
+    const originalPrice = (item as any).is_on_sale ? (item as any).product_original_price : item.product_price;
+    return sum + (originalPrice * item.quantity);
+  }, 0);
+  const totalDiscount = totalOriginalPrice - totalPrice;
 
   if (loading) {
     return (
@@ -256,7 +262,17 @@ export default function CartPage() {
                       {item.product_name}
                     </Link>
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {item.product_price.toLocaleString()}원
+                      {(item as any).is_on_sale ? (
+                        <>
+                          <span className="text-blue-600 dark:text-blue-400">{Math.floor(item.product_price).toLocaleString()}원</span>
+                          <span className="ml-1 text-gray-400 line-through">{Math.floor((item as any).product_original_price).toLocaleString()}원</span>
+                          <span className="ml-1 bg-red-100 px-1 py-0.5 text-[10px] font-bold text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                            {Math.round((1 - item.product_price / (item as any).product_original_price) * 100)}%
+                          </span>
+                        </>
+                      ) : (
+                        <>{Math.floor(item.product_price).toLocaleString()}원</>
+                      )}
                     </p>
 
                     {/* 선택된 옵션 표시 */}
@@ -294,9 +310,14 @@ export default function CartPage() {
 
                     {/* 가격 */}
                     <div className="text-right">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">
-                        {item.total_price.toLocaleString()}원
+                      <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                        {Math.floor(item.total_price).toLocaleString()}원
                       </p>
+                      {(item as any).is_on_sale && (
+                        <p className="text-xs text-gray-400 line-through">
+                          {Math.floor((item as any).product_original_price * item.quantity).toLocaleString()}원
+                        </p>
+                      )}
                       <button
                         onClick={() => handleRemoveItem(item.id)}
                         className="mt-1 text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
@@ -318,8 +339,18 @@ export default function CartPage() {
             <div className="space-y-2 border-b border-gray-200 pb-4 dark:border-gray-700">
               <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
                 <span>상품 금액</span>
-                <span>{totalPrice.toLocaleString()}원</span>
+                <span>{totalDiscount > 0 ? (
+                  <span className="text-gray-400 line-through">{Math.floor(totalOriginalPrice).toLocaleString()}원</span>
+                ) : (
+                  <>{Math.floor(totalPrice).toLocaleString()}원</>
+                )}</span>
               </div>
+              {totalDiscount > 0 && (
+                <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
+                  <span>할인 금액</span>
+                  <span>-{Math.floor(totalDiscount).toLocaleString()}원</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
                 <span>배송비</span>
                 <span>무료</span>
@@ -327,7 +358,7 @@ export default function CartPage() {
             </div>
             <div className="mt-4 flex justify-between text-base font-bold text-gray-900 dark:text-white">
               <span>총 금액</span>
-              <span className="text-red-600 dark:text-red-500">{totalPrice.toLocaleString()}원</span>
+              <span className="text-blue-600 dark:text-blue-400">{Math.floor(totalPrice).toLocaleString()}원</span>
             </div>
             <button
               onClick={handleOrder}

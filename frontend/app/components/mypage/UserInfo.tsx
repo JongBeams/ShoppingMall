@@ -119,6 +119,16 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
             >
               쿠폰 발행
             </button>
+            <button
+              onClick={() => handleTabClick('events')}
+              className={`w-full border-b border-gray-200 px-4 py-2.5 text-left text-xs transition dark:border-gray-700 ${
+                activeTab === 'events'
+                  ? 'border-l-2 border-l-gray-900 bg-gray-50 font-bold text-gray-900 dark:border-l-white dark:bg-gray-800 dark:text-white'
+                  : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'
+              }`}
+            >
+              이벤트/특가 관리
+            </button>
           </>
         )}
         {user?.user_type !== 'seller' && (
