@@ -40,6 +40,10 @@ export default function OrderPage() {
     payment_method: 'card',
   });
   const [hasSavedAddress, setHasSavedAddress] = useState(false);
+  const [savedCards, setSavedCards] = useState<any[]>([]);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [savedAccounts, setSavedAccounts] = useState<any[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
   // 사용자 정보 및 장바구니 조회
   useEffect(() => {
@@ -58,6 +62,10 @@ export default function OrderPage() {
 
       // 기본 배송지 API에서 불러오기
       fetchDefaultAddress(token, parsedUser);
+      // 저장된 결제수단 불러오기
+      fetchSavedCards(token);
+      // 저장된 계좌 불러오기
+      fetchSavedAccounts(token);
     } catch (e) {
       console.error('Failed to parse user data:', e);
     }
@@ -99,6 +107,46 @@ export default function OrderPage() {
     // 장바구니 주문인 경우
     fetchCart(token);
   }, [orderType]);
+
+  // 저장된 결제수단 불러오기
+  const fetchSavedCards = async (token: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/payment/methods`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSavedCards(data.payment_methods || []);
+        // 기본 카드가 있으면 선택
+        const defaultCard = (data.payment_methods || []).find((c: any) => c.is_default);
+        if (defaultCard) {
+          setSelectedCardId(defaultCard.id);
+        }
+      }
+    } catch (error) {
+      console.error('저장된 결제수단 조회 실패:', error);
+    }
+  };
+
+  // 저장된 계좌 불러오기
+  const fetchSavedAccounts = async (token: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/payment/refund-accounts`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSavedAccounts(data.refund_accounts || []);
+        // 기본 계좌가 있으면 선택
+        const defaultAccount = (data.refund_accounts || []).find((a: any) => a.is_default);
+        if (defaultAccount) {
+          setSelectedAccountId(defaultAccount.id);
+        }
+      }
+    } catch (error) {
+      console.error('저장된 계좌 조회 실패:', error);
+    }
+  };
 
   // 기본 배송지 API에서 불러오기
   const fetchDefaultAddress = async (token: string, parsedUser: any) => {
@@ -528,17 +576,24 @@ export default function OrderPage() {
                 <h2 className="text-base font-bold text-gray-900 dark:text-white">결제 수단</h2>
               </div>
               <div className="p-5">
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <div className="grid grid-cols-3 gap-3">
                   {[
-                    { value: 'card', label: '신용/체크카드', icon: '💳' },
-                    { value: 'bank', label: '무통장입금', icon: '🏦' },
-                    { value: 'kakao', label: '카카오페이', icon: '💛' },
-                    { value: 'toss', label: '토스페이', icon: '💙' },
+                    { value: 'card', label: '신용/체크카드', icon: '💳', disabled: false },
+                    { value: 'transfer', label: '계좌이체', icon: '🏧', disabled: false },
+                    { value: 'bank', label: '무통장입금', icon: '🏦', disabled: true },
                   ].map((method) => (
                     <label
                       key={method.value}
+                      onClick={(e) => {
+                        if (method.disabled) {
+                          e.preventDefault();
+                          alert('개발 중입니다.');
+                        }
+                      }}
                       className={`flex cursor-pointer flex-col items-center justify-center border p-4 transition ${
-                        orderForm.payment_method === method.value
+                        method.disabled
+                          ? 'cursor-not-allowed border-gray-200 bg-gray-100 opacity-60 dark:border-gray-700 dark:bg-gray-800'
+                          : orderForm.payment_method === method.value
                           ? 'border-gray-900 bg-gray-50 dark:border-white dark:bg-gray-800'
                           : 'border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500'
                       }`}
@@ -549,6 +604,7 @@ export default function OrderPage() {
                         value={method.value}
                         checked={orderForm.payment_method === method.value}
                         onChange={handleInputChange}
+                        disabled={method.disabled}
                         className="sr-only"
                       />
                       <div className="mb-2 text-2xl">{method.icon}</div>
@@ -558,6 +614,70 @@ export default function OrderPage() {
                     </label>
                   ))}
                 </div>
+
+                {/* 저장된 카드 목록 */}
+                {orderForm.payment_method === 'card' && savedCards.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">저장된 카드</p>
+                    {savedCards.map((card) => (
+                      <label
+                        key={card.id}
+                        className={`flex cursor-pointer items-center gap-3 border p-3 transition ${
+                          selectedCardId === card.id
+                            ? 'border-gray-900 bg-gray-50 dark:border-white dark:bg-gray-800'
+                            : 'border-gray-300 hover:border-gray-400 dark:border-gray-600'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="selected_card"
+                          checked={selectedCardId === card.id}
+                          onChange={() => setSelectedCardId(card.id)}
+                          className="h-4 w-4"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {card.card_company}
+                            {card.is_default && <span className="ml-2 text-xs text-blue-600">(기본)</span>}
+                          </p>
+                          <p className="text-xs text-gray-500">{card.card_number}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {/* 저장된 계좌 목록 */}
+                {orderForm.payment_method === 'transfer' && savedAccounts.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">저장된 계좌</p>
+                    {savedAccounts.map((account) => (
+                      <label
+                        key={account.id}
+                        className={`flex cursor-pointer items-center gap-3 border p-3 transition ${
+                          selectedAccountId === account.id
+                            ? 'border-gray-900 bg-gray-50 dark:border-white dark:bg-gray-800'
+                            : 'border-gray-300 hover:border-gray-400 dark:border-gray-600'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="selected_account"
+                          checked={selectedAccountId === account.id}
+                          onChange={() => setSelectedAccountId(account.id)}
+                          className="h-4 w-4"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {account.bank_name}
+                            {account.is_default && <span className="ml-2 text-xs text-blue-600">(기본)</span>}
+                          </p>
+                          <p className="text-xs text-gray-500">{account.account_number} ({account.account_holder})</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
