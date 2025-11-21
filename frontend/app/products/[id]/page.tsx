@@ -426,7 +426,41 @@ export default function ProductDetailPage() {
                 장바구니 담기
               </Button>
               <Button
-                onClick={() => alert('구매 기능은 개발 중입니다')}
+                onClick={() => {
+                  const token = localStorage.getItem('access_token');
+                  if (!token) {
+                    alert('로그인이 필요한 서비스입니다.');
+                    router.push('/login');
+                    return;
+                  }
+
+                  // 옵션 체크
+                  if (displayProduct?.options && displayProduct.options.length > 0) {
+                    const unselectedOptions = displayProduct.options.filter(
+                      option => !selectedOptions[option.id] || selectedOptions[option.id] === ''
+                    );
+                    if (unselectedOptions.length > 0) {
+                      alert('모든 옵션을 선택해주세요.');
+                      return;
+                    }
+                  }
+
+                  // 주문 정보를 sessionStorage에 저장하고 주문 페이지로 이동
+                  const orderItem = {
+                    product_id: productId,
+                    product_name: displayProduct?.name,
+                    product_image: displayProduct?.thumbnail_url || displayProduct?.imageUrl,
+                    price: displayProduct?.price,
+                    quantity: quantity,
+                    selected_options: Object.entries(selectedOptions).map(([optionId, valueId]) => ({
+                      option_id: optionId,
+                      value_id: valueId
+                    })),
+                    vendor_name: displayProduct?.vendor_name
+                  };
+                  sessionStorage.setItem('directOrder', JSON.stringify([orderItem]));
+                  router.push('/order?type=direct');
+                }}
                 className="text-xs px-8"
               >
                 바로 구매

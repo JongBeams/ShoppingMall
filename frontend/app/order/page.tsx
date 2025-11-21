@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cartAPI } from '../lib/api';
@@ -21,7 +21,10 @@ interface OrderForm {
 
 export default function OrderPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const orderType = searchParams.get('type'); // 'direct' = 바로구매
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isDirectOrder, setIsDirectOrder] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,8 +77,41 @@ export default function OrderPage() {
       console.error('Failed to parse user data:', e);
     }
 
+    // 바로구매인 경우
+    if (orderType === 'direct') {
+      const directOrderData = sessionStorage.getItem('directOrder');
+      if (directOrderData) {
+        try {
+          const items = JSON.parse(directOrderData);
+          const cartItemsFromDirect: CartItem[] = items.map((item: any, index: number) => ({
+            id: `direct-${index}`,
+            product_id: item.product_id,
+            product_name: item.product_name,
+            product_thumbnail: item.product_image,
+            product_price: item.price,
+            quantity: item.quantity,
+            total_price: item.price * item.quantity,
+            selected_options: item.selected_options || [],
+            vendor_name: item.vendor_name,
+          }));
+          setCartItems(cartItemsFromDirect);
+          setIsDirectOrder(true);
+          setLoading(false);
+          sessionStorage.removeItem('directOrder');
+          return;
+        } catch (e) {
+          console.error('바로구매 데이터 파싱 실패:', e);
+        }
+      }
+      // 데이터 없으면 장바구니로
+      alert('주문 정보가 없습니다.');
+      router.push('/cart');
+      return;
+    }
+
+    // 장바구니 주문인 경우
     fetchCart(token);
-  }, []);
+  }, [orderType]);
 
   // 배송지 저장
   const saveShippingAddress = () => {
@@ -231,11 +267,12 @@ export default function OrderPage() {
 
       const result = await response.json();
 
-      // 장바구니 비우기
-      await cartAPI.clear(token);
-
-      // 장바구니 업데이트 이벤트 발생 (헤더 카운트 업데이트)
-      window.dispatchEvent(new Event('cartUpdated'));
+      // 장바구니 주문인 경우에만 장바구니 비우기
+      if (!isDirectOrder) {
+        await cartAPI.clear(token);
+        // 장바구니 업데이트 이벤트 발생 (헤더 카운트 업데이트)
+        window.dispatchEvent(new Event('cartUpdated'));
+      }
 
       // 주문 상세 페이지로 이동
       router.push(`/mypage/orders/${result.order_id}`);
