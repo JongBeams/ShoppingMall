@@ -122,6 +122,12 @@ export default function Orders({ user }: OrdersProps) {
                   <span>주문일: {new Date(order.created_at).toLocaleDateString('ko-KR')}</span>
                   <span className="mx-2">|</span>
                   <span className="font-mono">{order.order_number}</span>
+                  {order.status === 'cancelled' && order.cancelled_at && (
+                    <>
+                      <span className="mx-2">|</span>
+                      <span className="text-red-500">취소일: {new Date(order.cancelled_at).toLocaleDateString('ko-KR')}</span>
+                    </>
+                  )}
                 </div>
                 <span className="font-bold text-gray-900 dark:text-white">
                   {order.total.toLocaleString()}원
@@ -201,6 +207,14 @@ export default function Orders({ user }: OrdersProps) {
                 >
                   주문상세
                 </Link>
+                {(order.status === 'shipping' || order.status === 'delivered') && (
+                  <button
+                    onClick={() => alert('배송 조회 기능은 준비중입니다.')}
+                    className="border border-blue-500 bg-blue-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-blue-600"
+                  >
+                    배송조회
+                  </button>
+                )}
                 {(order.status === 'pending' || order.status === 'paid') && (
                   <button
                     onClick={() => handleCancelOrder(order.id)}

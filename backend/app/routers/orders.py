@@ -214,6 +214,78 @@ async def create_order(
         )
 
 
+@router.get("/admin/all", summary="[관리자] 전체 주문 목록 조회")
+async def get_all_orders_admin(
+    limit: int = 100,
+    offset: int = 0
+):
+    """
+    관리자용 전체 주문 목록을 조회합니다.
+    """
+    supabase = get_supabase_admin_client()
+
+    try:
+        # 전체 주문 조회
+        orders_response = (
+            supabase.table("orders")
+            .select("*")
+            .order("created_at", desc=True)
+            .range(offset, offset + limit - 1)
+            .execute()
+        )
+
+        orders = orders_response.data or []
+
+        # 각 주문의 아이템 및 사용자 정보 조회
+        for order in orders:
+            # 주문 아이템 조회
+            order_items_response = (
+                supabase.table("order_items")
+                .select("*")
+                .eq("order_id", order["id"])
+                .execute()
+            )
+            order_items = order_items_response.data or []
+
+            # 각 아이템에 상품 이미지 추가
+            for item in order_items:
+                product_response = (
+                    supabase.table("products")
+                    .select("thumbnail_url")
+                    .eq("id", item["product_id"])
+                    .single()
+                    .execute()
+                )
+                if product_response.data:
+                    item["product_thumbnail"] = product_response.data.get("thumbnail_url")
+
+            order["items"] = order_items
+
+            # 사용자 정보 조회
+            if order.get("buyer_id"):
+                user_response = (
+                    supabase.table("profiles")
+                    .select("full_name, email")
+                    .eq("id", order["buyer_id"])
+                    .single()
+                    .execute()
+                )
+                if user_response.data:
+                    order["user_name"] = user_response.data.get("full_name")
+                    order["user_email"] = user_response.data.get("email")
+
+        return {
+            "orders": orders,
+            "count": len(orders)
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"주문 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
 @router.get("", summary="내 주문 목록 조회")
 async def get_my_orders(
     current_user: dict = Depends(get_current_user),
@@ -430,4 +502,98 @@ async def cancel_order(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"주문 취소 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+# ============================================
+# ADMIN ENDPOINTS
+# ============================================
+
+class UpdateOrderStatusRequest(BaseModel):
+    """주문 상태 변경 요청"""
+    status: str  # paid, preparing, shipping, delivered, cancelled
+
+
+@router.patch("/{order_id}/status", summary="[관리자] 주문 상태 변경")
+async def update_order_status_admin(
+    order_id: str,
+    request: UpdateOrderStatusRequest
+):
+    """
+    관리자가 주문 상태를 변경합니다.
+    """
+    supabase = get_supabase_admin_client()
+
+    valid_statuses = ["paid", "shipping", "delivered", "cancelled"]
+    if request.status not in valid_statuses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"유효하지 않은 상태입니다. ({', '.join(valid_statuses)})"
+        )
+
+    try:
+        # 주문 존재 확인
+        order_response = (
+            supabase.table("orders")
+            .select("id, status")
+            .eq("id", order_id)
+            .single()
+            .execute()
+        )
+
+        if not order_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="주문을 찾을 수 없습니다."
+            )
+
+        old_status = order_response.data["status"]
+
+        # 주문 상태 변경
+        update_data = {"status": request.status}
+
+        # 취소 시 취소 시간 기록
+        if request.status == "cancelled" and old_status != "cancelled":
+            update_data["cancelled_at"] = datetime.now().isoformat()
+
+            # 재고 복구
+            order_items_response = (
+                supabase.table("order_items")
+                .select("product_id, quantity")
+                .eq("order_id", order_id)
+                .execute()
+            )
+
+            for item in order_items_response.data or []:
+                product_response = (
+                    supabase.table("products")
+                    .select("stock_quantity")
+                    .eq("id", item["product_id"])
+                    .single()
+                    .execute()
+                )
+
+                if product_response.data:
+                    current_stock = product_response.data["stock_quantity"]
+                    new_stock = current_stock + item["quantity"]
+
+                    supabase.table("products").update(
+                        {"stock_quantity": new_stock}
+                    ).eq("id", item["product_id"]).execute()
+
+        supabase.table("orders").update(update_data).eq("id", order_id).execute()
+
+        return {
+            "message": "주문 상태가 변경되었습니다.",
+            "order_id": order_id,
+            "old_status": old_status,
+            "new_status": request.status
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"주문 상태 변경 중 오류가 발생했습니다: {str(e)}"
         )
