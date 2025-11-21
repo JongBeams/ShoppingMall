@@ -12,6 +12,7 @@ export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   // 장바구니 조회
   const fetchCart = async () => {
@@ -91,8 +92,47 @@ export default function CartPage() {
     fetchCart();
   }, []);
 
-  // 전체 금액 계산
-  const totalPrice = cartItems.reduce((sum, item) => sum + item.total_price, 0);
+  // 장바구니 로드 후 전체 선택
+  useEffect(() => {
+    if (cartItems.length > 0) {
+      setSelectedItems(new Set(cartItems.map((item) => item.id)));
+    }
+  }, [cartItems]);
+
+  // 전체 선택/해제
+  const handleSelectAll = () => {
+    if (selectedItems.size === cartItems.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(cartItems.map((item) => item.id)));
+    }
+  };
+
+  // 개별 선택/해제
+  const handleSelectItem = (itemId: string) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(itemId)) {
+      newSelected.delete(itemId);
+    } else {
+      newSelected.add(itemId);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  // 선택된 상품으로 주문하기
+  const handleOrder = () => {
+    if (selectedItems.size === 0) {
+      alert('주문할 상품을 선택해주세요.');
+      return;
+    }
+    // 선택된 아이템 ID를 세션에 저장
+    sessionStorage.setItem('selectedCartItems', JSON.stringify([...selectedItems]));
+    router.push('/order');
+  };
+
+  // 전체 금액 계산 (선택된 상품만)
+  const selectedCartItems = cartItems.filter((item) => selectedItems.has(item.id));
+  const totalPrice = selectedCartItems.reduce((sum, item) => sum + item.total_price, 0);
 
   if (loading) {
     return (
@@ -142,7 +182,18 @@ export default function CartPage() {
   return (
     <div className="max-w-5xl">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">장바구니</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">장바구니</h1>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <input
+              type="checkbox"
+              checked={selectedItems.size === cartItems.length && cartItems.length > 0}
+              onChange={handleSelectAll}
+              className="h-4 w-4 cursor-pointer accent-blue-600 dark:accent-blue-500"
+            />
+            전체선택 ({selectedItems.size}/{cartItems.length})
+          </label>
+        </div>
         <button
           onClick={handleClearCart}
           className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
@@ -157,9 +208,22 @@ export default function CartPage() {
           {cartItems.map((item) => (
             <div
               key={item.id}
-              className="border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
+              className={`border bg-white p-4 dark:bg-gray-900 ${
+                selectedItems.has(item.id)
+                  ? 'border-blue-500 dark:border-blue-400'
+                  : 'border-gray-200 dark:border-gray-700'
+              }`}
             >
               <div className="flex gap-4">
+                {/* 체크박스 */}
+                <div className="flex items-start pt-1">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.has(item.id)}
+                    onChange={() => handleSelectItem(item.id)}
+                    className="h-5 w-5 cursor-pointer accent-blue-600 dark:accent-blue-500"
+                  />
+                </div>
                 {/* 상품 이미지 */}
                 <Link
                   href={`/products/${item.product_id}`}
@@ -265,12 +329,13 @@ export default function CartPage() {
               <span>총 금액</span>
               <span className="text-red-600 dark:text-red-500">{totalPrice.toLocaleString()}원</span>
             </div>
-            <Link
-              href="/order"
-              className="mt-4 block w-full border border-gray-900 bg-gray-900 py-2.5 text-center text-sm font-bold text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+            <button
+              onClick={handleOrder}
+              disabled={selectedItems.size === 0}
+              className="mt-4 block w-full border border-blue-600 bg-blue-600 py-2.5 text-center text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600"
             >
-              주문하기
-            </Link>
+              {selectedItems.size > 0 ? `선택상품 주문하기 (${selectedItems.size})` : '상품을 선택해주세요'}
+            </button>
             <Link
               href="/products"
               className="mt-2 block w-full border border-gray-300 bg-white py-2.5 text-center text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { CartItem as CartItemType, Product } from '../types';
 import UserInfo from '../components/mypage/UserInfo';
 import Profile from '../components/mypage/Profile';
@@ -86,12 +86,16 @@ const dummyWishList: Product[] = [
 
 export default function MyPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [vendor, setVendor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
 
   useEffect(() => {
+    // 페이지 로드 시 스크롤 맨 위로
+    window.scrollTo(0, 0);
+
     const token = localStorage.getItem('access_token');
     const userData = localStorage.getItem('user');
     const vendorData = localStorage.getItem('vendor');
@@ -114,13 +118,13 @@ export default function MyPage() {
     }
   }, [router]);
 
-  // URL 해시에 따라 활성 섹션 설정
+  // URL 쿼리 파라미터에 따라 활성 탭 설정
   useEffect(() => {
-    const hash = window.location.hash.replace('#', '');
-    if (hash) {
-      setActiveTab(hash);
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
     }
-  }, []);
+  }, [searchParams]);
 
   if (loading) {
     return (

@@ -14,11 +14,21 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 # REQUEST/RESPONSE MODELS
 # ============================================
 
+class SelectedOption(BaseModel):
+    """선택된 옵션"""
+    option_id: Optional[str] = None
+    option_name: str
+    value_id: Optional[str] = None
+    value_name: str
+    price: float = 0
+
+
 class OrderItemRequest(BaseModel):
     """주문 아이템 요청"""
     product_id: str
     quantity: int
     price: float
+    selected_options: Optional[List[dict]] = []
 
 
 class CreateOrderRequest(BaseModel):
@@ -102,20 +112,26 @@ async def create_order(
                     detail=f"재고가 부족합니다. ({product['name']}, 현재 재고: {product['stock_quantity']}개)"
                 )
 
-        # 주문 생성
+        # 주문 생성 (기존 DB 스키마에 맞춤)
         order_data = {
-            "user_id": user_id,
+            "buyer_id": user_id,  # user_id -> buyer_id
             "order_number": order_number,
-            "status": "pending",  # pending, paid, preparing, shipping, delivered, cancelled
-            "total_amount": request.total_amount,
-            "recipient_name": request.recipient_name,
-            "recipient_phone": request.recipient_phone,
-            "postal_code": request.postal_code,
-            "address": request.address,
-            "address_detail": request.address_detail,
-            "delivery_message": request.delivery_message,
+            "status": "paid",  # 주문과 동시에 결제 완료 처리
+            "subtotal": request.total_amount,
+            "shipping_fee": 0,
+            "tax": 0,
+            "discount": 0,
+            "total": request.total_amount,  # total_amount -> total
+            "shipping_address": {  # JSONB 형식으로 변경
+                "recipient_name": request.recipient_name,
+                "recipient_phone": request.recipient_phone,
+                "postal_code": request.postal_code,
+                "address": request.address,
+                "address_detail": request.address_detail,
+            },
+            "notes": request.delivery_message,  # delivery_message -> notes
             "payment_method": request.payment_method,
-            "payment_status": "pending",  # pending, completed, failed, refunded
+            "payment_status": "completed",  # 결제 완료 상태로 변경
         }
 
         order_response = (
@@ -139,7 +155,7 @@ async def create_order(
             # 상품 정보 다시 조회 (최신 정보)
             product_response = (
                 supabase.table("products")
-                .select("id, name, seller_id")
+                .select("id, name, vendor_id")  # seller_id -> vendor_id
                 .eq("id", item.product_id)
                 .single()
                 .execute()
@@ -151,10 +167,15 @@ async def create_order(
                 "order_id": order_id,
                 "product_id": item.product_id,
                 "product_name": product["name"],
-                "seller_id": product["seller_id"],
+                "vendor_id": product["vendor_id"],  # seller_id -> vendor_id
                 "quantity": item.quantity,
                 "price": item.price,
-                "total_price": item.price * item.quantity,
+                "subtotal": item.price * item.quantity,  # total_price -> subtotal
+                "commission_rate": 0.1,  # 10% 수수료
+                "commission_amount": item.price * item.quantity * 0.1,
+                "vendor_payout": item.price * item.quantity * 0.9,
+                "status": "pending",
+                "selected_options": item.selected_options or [],  # 선택 옵션 저장
             })
 
         # 주문 아이템 일괄 삽입
@@ -206,11 +227,11 @@ async def get_my_orders(
     user_id = current_user["id"]
 
     try:
-        # 주문 조회
+        # 주문 조회 (buyer_id 사용)
         orders_response = (
             supabase.table("orders")
             .select("*")
-            .eq("user_id", user_id)
+            .eq("buyer_id", user_id)  # user_id -> buyer_id
             .order("created_at", desc=True)
             .range(offset, offset + limit - 1)
             .execute()
@@ -218,7 +239,7 @@ async def get_my_orders(
 
         orders = orders_response.data or []
 
-        # 각 주문의 아이템 조회
+        # 각 주문의 아이템 조회 및 상품 이미지 추가
         for order in orders:
             order_items_response = (
                 supabase.table("order_items")
@@ -226,7 +247,21 @@ async def get_my_orders(
                 .eq("order_id", order["id"])
                 .execute()
             )
-            order["items"] = order_items_response.data or []
+            order_items = order_items_response.data or []
+
+            # 각 아이템에 상품 이미지 추가
+            for item in order_items:
+                product_response = (
+                    supabase.table("products")
+                    .select("thumbnail_url")
+                    .eq("id", item["product_id"])
+                    .single()
+                    .execute()
+                )
+                if product_response.data:
+                    item["product_thumbnail"] = product_response.data.get("thumbnail_url")
+
+            order["items"] = order_items
 
         return {
             "orders": orders,
@@ -269,8 +304,8 @@ async def get_order(
 
         order = order_response.data
 
-        # 본인 주문인지 확인
-        if order["user_id"] != user_id:
+        # 본인 주문인지 확인 (buyer_id 사용)
+        if order["buyer_id"] != user_id:  # user_id -> buyer_id
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="본인의 주문만 조회할 수 있습니다."
@@ -283,7 +318,21 @@ async def get_order(
             .eq("order_id", order_id)
             .execute()
         )
-        order["items"] = order_items_response.data or []
+        order_items = order_items_response.data or []
+
+        # 각 아이템에 상품 이미지 추가
+        for item in order_items:
+            product_response = (
+                supabase.table("products")
+                .select("thumbnail_url")
+                .eq("id", item["product_id"])
+                .single()
+                .execute()
+            )
+            if product_response.data:
+                item["product_thumbnail"] = product_response.data.get("thumbnail_url")
+
+        order["items"] = order_items
 
         return order
 
@@ -325,8 +374,8 @@ async def cancel_order(
 
         order = order_response.data
 
-        # 본인 주문인지 확인
-        if order["user_id"] != user_id:
+        # 본인 주문인지 확인 (buyer_id 사용)
+        if order["buyer_id"] != user_id:  # user_id -> buyer_id
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="본인의 주문만 취소할 수 있습니다."
