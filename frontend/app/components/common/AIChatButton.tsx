@@ -21,6 +21,7 @@ export default function AIChatButton() {
   const [isLoading, setIsLoading] = useState(false);
   const [showDocSearchSuggestion, setShowDocSearchSuggestion] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // 메시지가 업데이트될 때마다 스크롤 아래로
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function AIChatButton() {
   }, [input]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim()) return;
 
     const userMessage = input.trim();
     setInput('');
@@ -212,6 +213,8 @@ export default function AIChatButton() {
       }]);
     } finally {
       setIsLoading(false);
+      // 응답 완료 후 입력창에 포커스 유지
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
 
@@ -377,7 +380,7 @@ export default function AIChatButton() {
                     </div>
                   </div>
                 ) : (
-                  messages.map((msg, idx) => (
+                  messages.filter(msg => msg.content).map((msg, idx) => (
                     <div
                       key={idx}
                       className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
@@ -459,12 +462,13 @@ export default function AIChatButton() {
                   </button>
                   <div className="relative flex-1">
                     <input
+                      ref={inputRef}
                       type="text"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleSend()}
                       placeholder="메시지 입력..."
-                      disabled={isLoading}
+                      autoFocus
                       className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm placeholder:text-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white dark:focus:ring-white"
                       style={input.includes('@내부문서') ? {
                         color: 'transparent',
@@ -480,7 +484,7 @@ export default function AIChatButton() {
                   </div>
                   <button
                     onClick={handleSend}
-                    disabled={!input.trim() || isLoading}
+                    disabled={!input.trim()}
                     className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900 text-white transition hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                   >
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

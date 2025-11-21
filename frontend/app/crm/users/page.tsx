@@ -293,12 +293,15 @@ export default function UsersManagementPage() {
                 <th className="px-4 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300">
                   가입일
                 </th>
+                <th className="px-4 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                  관리
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-xs text-gray-500 dark:text-gray-400">
+                  <td colSpan={7} className="px-4 py-6 text-center text-xs text-gray-500 dark:text-gray-400">
                     {error ? error : '검색 결과가 없습니다.'}
                   </td>
                 </tr>
@@ -338,6 +341,14 @@ export default function UsersManagementPage() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
                       {formatDate(user.created_at)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <button
+                        onClick={() => window.location.href = `/crm/users/${user.id}`}
+                        className="px-3 py-1.5 text-xs font-medium bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100 transition"
+                      >
+                        상세
+                      </button>
                     </td>
                   </tr>
                 ))

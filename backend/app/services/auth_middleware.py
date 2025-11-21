@@ -131,7 +131,7 @@ async def get_current_user(
         if not user.get("is_active", True):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="비활성화된 계정입니다.",
+                detail="비활성화된 계정입니다. 관리자에게 문의해주세요. (wwhow2003@naver.com)",
             )
 
         return user

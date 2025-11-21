@@ -348,6 +348,13 @@ async def login(credentials: UserLoginRequest):
 
         profile = profile_response.data[0]
 
+        # 계정 활성화 상태 확인
+        if not profile.get("is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="비활성화된 계정입니다. 관리자에게 문의해주세요. (wwhow2003@naver.com)"
+            )
+
         # 3. seller인 경우 vendors 테이블에서 판매자 정보 조회
         vendor = None
         if profile["user_type"] == "seller":

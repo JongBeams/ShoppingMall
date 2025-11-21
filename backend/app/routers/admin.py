@@ -327,3 +327,133 @@ async def get_users_list(current_admin: dict = Depends(get_current_admin)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"사용자 목록 조회 중 오류가 발생했습니다: {str(e)}"
         )
+
+
+class UserDetailResponse(BaseModel):
+    id: str
+    email: str
+    full_name: str
+    phone: Optional[str]
+    user_type: str
+    is_active: bool
+    created_at: str
+    updated_at: Optional[str] = None
+    vendor_status: Optional[str] = None
+    address: Optional[str] = None
+    business_number: Optional[str] = None
+    store_name: Optional[str] = None
+
+
+@router.get("/users/{user_id}", response_model=UserDetailResponse)
+async def get_user_detail(user_id: str, current_admin: dict = Depends(get_current_admin)):
+    """사용자 상세 조회"""
+    supabase_admin = get_supabase_admin_client()
+
+    try:
+        response = supabase_admin.table("profiles").select("*").eq("id", user_id).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="사용자를 찾을 수 없습니다."
+            )
+
+        user = response.data[0]
+        return UserDetailResponse(
+            id=user["id"],
+            email=user["email"],
+            full_name=user["full_name"],
+            phone=user.get("phone"),
+            user_type=user["user_type"],
+            is_active=user.get("is_active", True),
+            created_at=user["created_at"],
+            updated_at=user.get("updated_at"),
+            vendor_status=user.get("vendor_status") if user["user_type"] == "seller" else None,
+            address=user.get("address"),
+            business_number=user.get("business_number"),
+            store_name=user.get("store_name"),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"사용자 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+class UserUpdateRequest(BaseModel):
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+
+
+@router.patch("/users/{user_id}", response_model=MessageResponse)
+async def update_user(user_id: str, request: UserUpdateRequest, current_admin: dict = Depends(get_current_admin)):
+    """사용자 정보 수정 (이메일, 전화번호)"""
+    supabase_admin = get_supabase_admin_client()
+
+    try:
+        # 사용자 존재 확인
+        existing = supabase_admin.table("profiles").select("id").eq("id", user_id).execute()
+        if not existing.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="사용자를 찾을 수 없습니다."
+            )
+
+        # 업데이트할 데이터 구성
+        update_data = {"updated_at": datetime.utcnow().isoformat()}
+        if request.email is not None:
+            update_data["email"] = request.email
+        if request.phone is not None:
+            update_data["phone"] = request.phone
+
+        # 정보 업데이트
+        supabase_admin.table("profiles").update(update_data).eq("id", user_id).execute()
+
+        return MessageResponse(message="사용자 정보가 수정되었습니다.")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"사용자 정보 수정 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+class UserStatusUpdateRequest(BaseModel):
+    is_active: bool
+
+
+@router.patch("/users/{user_id}/status", response_model=MessageResponse)
+async def update_user_status(user_id: str, request: UserStatusUpdateRequest, current_admin: dict = Depends(get_current_admin)):
+    """사용자 활성화/비활성화"""
+    supabase_admin = get_supabase_admin_client()
+
+    try:
+        # 사용자 존재 확인
+        existing = supabase_admin.table("profiles").select("id").eq("id", user_id).execute()
+        if not existing.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="사용자를 찾을 수 없습니다."
+            )
+
+        # 상태 업데이트
+        response = supabase_admin.table("profiles").update({
+            "is_active": request.is_active,
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", user_id).execute()
+
+        status_text = "활성화" if request.is_active else "비활성화"
+        return MessageResponse(message=f"사용자가 {status_text}되었습니다.")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"사용자 상태 변경 중 오류가 발생했습니다: {str(e)}"
+        )

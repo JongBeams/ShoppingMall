@@ -34,6 +34,18 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
+
+    // 비활성화된 계정 (403) - 자동 로그아웃
+    if (response.status === 403 && error.detail?.includes('비활성화된 계정')) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('vendor');
+      alert('비활성화된 계정입니다. 관리자에게 문의해주세요. (wwhow2003@naver.com)');
+      window.location.href = '/login';
+      throw new Error(error.detail);
+    }
+
     // FastAPI는 detail 필드를 사용
     const errorMessage = error.detail || error.message || `API Error: ${response.status}`;
     const errorObj = new Error(errorMessage);
