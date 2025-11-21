@@ -304,21 +304,13 @@ export default function Sales() {
                       {hoveredIndex === i && (
                         <>
                           <circle cx={x} cy={y} r="4" fill="#1d4ed8" />
-                          <rect
-                            x={x - 45}
-                            y={y - 35}
-                            width="90"
-                            height="24"
-                            rx="4"
-                            fill="#1f2937"
-                          />
                           <text
                             x={x}
-                            y={y - 18}
+                            y={y - 12}
                             textAnchor="middle"
-                            fill="white"
+                            fill="#111827"
                             fontSize="11"
-                            fontWeight="500"
+                            fontWeight="600"
                           >
                             ₩{data.amount.toLocaleString()}
                           </text>
