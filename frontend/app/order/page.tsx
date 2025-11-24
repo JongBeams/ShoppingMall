@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { cartAPI } from '../lib/api';
 import { CartItem } from '../types';
+import PaymentWidget from '../components/payment-widget/PaymentWidget';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -44,6 +45,7 @@ export default function OrderPage() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [savedAccounts, setSavedAccounts] = useState<any[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [showPaymentWidget, setShowPaymentWidget] = useState(false);
 
   // 사용자 정보 및 장바구니 조회
   useEffect(() => {
@@ -258,7 +260,7 @@ export default function OrderPage() {
     }).open();
   };
 
-  // 주문하기
+  // 주문하기 (결제 위젯 표시)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -268,6 +270,19 @@ export default function OrderPage() {
       return;
     }
 
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert('로그인이 필요합니다.');
+      router.push('/login');
+      return;
+    }
+
+    // 결제 위젯 표시
+    setShowPaymentWidget(true);
+  };
+
+  // 결제 완료 후 주문 처리
+  const handlePaymentSuccess = async (paymentResult: any) => {
     const token = localStorage.getItem('access_token');
     if (!token) {
       alert('로그인이 필요합니다.');
@@ -739,6 +754,16 @@ export default function OrderPage() {
           </div>
         </div>
       </form>
+
+      {/* 결제 위젯 */}
+      {showPaymentWidget && (
+        <PaymentWidget
+          amount={finalPrice}
+          orderData={orderForm}
+          onSuccess={handlePaymentSuccess}
+          onCancel={() => setShowPaymentWidget(false)}
+        />
+      )}
     </div>
   );
 }
