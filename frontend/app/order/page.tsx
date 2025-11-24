@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cartAPI } from '../lib/api';
 import { CartItem } from '../types';
-import PaymentWidget from '../components/payment-widget/PaymentWidget';
+import Checkout from '../components/payment-widget/checkout';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -46,6 +47,7 @@ export default function OrderPage() {
   const [savedAccounts, setSavedAccounts] = useState<any[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showPaymentWidget, setShowPaymentWidget] = useState(false);
+  const [queryClient] = useState(() => new QueryClient());
 
   // 사용자 정보 및 장바구니 조회
   useEffect(() => {
@@ -755,14 +757,28 @@ export default function OrderPage() {
         </div>
       </form>
 
-      {/* 결제 위젯 */}
+      {/* 결제 위젯 (토스 결제 위젯) */}
       {showPaymentWidget && (
-        <PaymentWidget
-          amount={finalPrice}
-          orderData={orderForm}
-          onSuccess={handlePaymentSuccess}
-          onCancel={() => setShowPaymentWidget(false)}
-        />
+        <div className="fixed inset-0 z-50 bg-black/60 p-4">
+          <div className="relative mx-auto h-[90vh] max-w-3xl overflow-y-auto rounded-lg bg-white p-4 shadow-2xl dark:bg-gray-900">
+            <button
+              type="button"
+              onClick={() => setShowPaymentWidget(false)}
+              className="absolute right-3 top-3 text-gray-500 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <span className="sr-only">닫기</span>
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <QueryClientProvider client={queryClient}>
+              <div className="payment-widget-theme" style={{ backgroundColor: '#e8f3ff' }}>
+                <Checkout />
+              </div>
+            </QueryClientProvider>
+          </div>
+        </div>
       )}
     </div>
   );

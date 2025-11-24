@@ -1,15 +1,18 @@
+'use client';
+
 import { useEffect, useRef, useState } from "react";
 import { PaymentWidgetInstance, loadPaymentWidget, ANONYMOUS } from "@tosspayments/payment-widget-sdk";
 import { nanoid } from "nanoid";
 import { useQuery } from "@tanstack/react-query";
+import styles from "./style.module.css";
 
 // TODO: clientKey는 개발자센터의 결제위젯 연동 키 > 클라이언트 키로 바꾸세요.
 // TODO: customerKey는 구매자와 1:1 관계로 무작위한 고유값을 생성하세요.
 // @docs https://docs.tosspayments.com/reference/using-api/api-keys
-const clientKey = "test_ck_E92LAa5PVbJBv2N0wMKZV7YmpXyJ";
+const clientKey = "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm";
 const customerKey = nanoid();
 
-export default function Home() {
+export default function Checkout() {
   const { data: paymentWidget } = usePaymentWidget(clientKey, customerKey);
   // const { data: paymentWidget } = usePaymentWidget(clientKey, ANONYMOUS); // 비회원 결제
   const paymentMethodsWidgetRef = useRef<ReturnType<PaymentWidgetInstance["renderPaymentMethods"]> | null>(null);
@@ -53,16 +56,16 @@ export default function Home() {
 
   return (
     <main>
-      <div className="wrapper">
-        <div className="box_section">
+      <div className={styles.wrapper}>
+        <div className={styles.box_section}>
           <div id="payment-widget" style={{ width: "100%" }} />
           <div id="agreement" style={{ width: "100%" }} />
           <div style={{ paddingLeft: "24px" }}>
-            <div className="checkable typography--p">
-              <label htmlFor="coupon-box" className="checkable__label typography--regular">
+            <div className={`${styles.checkable} ${styles["typography--p"]}`}>
+              <label htmlFor="coupon-box" className={`${styles["checkable__label"]} ${styles["typography--regular"]}`}>
                 <input
                   id="coupon-box"
-                  className="checkable__input"
+                  className={styles["checkable__input"]}
                   type="checkbox"
                   aria-checked="true"
                   disabled={!paymentMethodsWidgetReady}
@@ -70,13 +73,13 @@ export default function Home() {
                     setPrice(event.target.checked ? price - 5_000 : price + 5_000);
                   }}
                 />
-                <span className="checkable__label-text">5,000원 쿠폰 적용</span>
+                <span className={styles["checkable__label-text"]}>5,000원 쿠폰 적용</span>
               </label>
             </div>
           </div>
 
           <button
-            className="button"
+            className={styles.button}
             style={{ marginTop: "30px" }}
             disabled={!paymentMethodsWidgetReady}
             onClick={async () => {
