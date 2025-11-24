@@ -290,13 +290,30 @@ def extract_keywords_from_query(query: str) -> List[str]:
     Returns:
         추출된 키워드 리스트
     """
-    # 불용어 제거
-    stopwords = ['추천', '해줘', '알려줘', '뭐', '있어', '좀', '해', '주세요', '요', '가', '이', '을', '를', '은', '는', '의', '에']
+    # 불용어 제거 (질문 관련 단어들)
+    stopwords = [
+        '추천', '해줘', '알려줘', '뭐', '있어', '좀', '해', '주세요', '요', '가', '이', '을', '를', '은', '는', '의', '에',
+        '상품', '제품', '뭐야', '뭔데', '어디', '어떤', '어떻게', '중에서', '중에', '가장', '제일', '가져와',
+        '인기', '인기많은', '인기있는', '인기많은게', '많은', '많이', '좋은', '좋은거', '괜찮은', '괜찮은거',
+        '베스트', '베스트셀러', '신상', '신상품', '새로운', '새로', '나온', '평점', '리뷰', '후기',
+        '잘', '팔리는', '팔린', '판매', '판매량', '구매', '구입', '사고', '싶어', '싶은', '주문',
+        '보여줘', '찾아줘', '검색', '뭐있어', '뭐야', '뭐지', '뭔가', '있나', '있나요', '있어요', '주문'
+    ]
 
     # 공백으로 분리
     words = query.split()
 
     # 불용어 제거 및 2글자 이상 키워드만 추출
-    keywords = [word for word in words if word not in stopwords and len(word) >= 2]
+    keywords = []
+    for word in words:
+        # 불용어 체크 (포함 관계도 확인)
+        is_stopword = False
+        for stopword in stopwords:
+            if stopword in word or word in stopword:
+                is_stopword = True
+                break
+
+        if not is_stopword and len(word) >= 2:
+            keywords.append(word)
 
     return keywords

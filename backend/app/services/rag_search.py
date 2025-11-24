@@ -250,25 +250,53 @@ def rag_search_with_products(
     intent, confidence = classify_intent(query)
     print(f"[Intent] {intent} (confidence: {confidence:.3f})")
 
-    # 3. 키워드 추출 (keyword_search용)
+    # 3. 키워드 추출
     keywords = extract_keywords_from_query(query)
+    print(f"[Keywords] {keywords}")
 
-    # 4. 상품 검색 전략 결정 (의도 기반)
+    # 4. 상품 검색 전략 결정
     products = []
     product_context = ""
 
-    if intent == 'bestseller':
-        # 베스트셀러 조회
+    # 키워드가 있으면 먼저 태그로 필터링, 없으면 전체 조회
+    if keywords:
+        # 키워드로 먼저 필터링
+        products = search_by_tags(keywords, limit=30)
+
+        if not products:
+            product_context = f"'{', '.join(keywords)}' 관련 상품을 찾을 수 없습니다."
+        else:
+            # Intent에 따라 정렬
+            if intent == 'bestseller':
+                products.sort(key=lambda x: (x.get('sale_count', 0), x.get('rating', 0)), reverse=True)
+                products = products[:10]
+                product_context = f"'{', '.join(keywords)}' 관련 베스트셀러:\n{format_products_for_llm(products)}"
+
+            elif intent == 'top_rated':
+                products.sort(key=lambda x: (x.get('rating', 0), x.get('review_count', 0)), reverse=True)
+                products = products[:10]
+                product_context = f"'{', '.join(keywords)}' 관련 고평점 상품:\n{format_products_for_llm(products)}"
+
+            elif intent == 'new_arrival':
+                products.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+                products = products[:10]
+                product_context = f"'{', '.join(keywords)}' 관련 신상품:\n{format_products_for_llm(products)}"
+
+            else:
+                # keyword_search
+                products = products[:10]
+                product_context = f"'{', '.join(keywords)}' 관련 상품:\n{format_products_for_llm(products)}"
+
+    # 키워드가 없을 때만 전체 조회
+    elif intent == 'bestseller':
         products = get_bestsellers(limit=10)
         product_context = f"베스트셀러 상품:\n{format_products_for_llm(products)}"
 
     elif intent == 'top_rated':
-        # 고평점 상품 조회
         products = get_top_rated(limit=10)
         product_context = f"고평점 상품:\n{format_products_for_llm(products)}"
 
     elif intent == 'new_arrival':
-        # 신상품 조회
         products = get_new_arrivals(limit=10)
         product_context = f"신상품:\n{format_products_for_llm(products)}"
 
@@ -292,19 +320,6 @@ def rag_search_with_products(
                 product_context = f"고객님의 구매 이력:\n{format_products_for_llm(purchase_history)}"
         else:
             product_context = "구매 이력이 없습니다."
-
-    elif intent == 'keyword_search' or keywords:
-        # 키워드로 상품 검색 (태그 + 상품명)
-        products = search_by_keyword(query, limit=10)
-
-        if not products and keywords:
-            # 태그로 재검색
-            products = search_by_tags(keywords, limit=10)
-
-        if products:
-            product_context = f"'{query}' 관련 상품:\n{format_products_for_llm(products)}"
-        else:
-            product_context = f"'{query}' 관련 상품을 찾을 수 없습니다."
 
     # 4. 결과 구성
     result = {
