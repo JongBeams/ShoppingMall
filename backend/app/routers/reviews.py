@@ -122,6 +122,24 @@ async def create_review(
                 detail="리뷰 저장에 실패했습니다."
             )
 
+        # 상품의 review_count와 rating 업데이트
+        # 해당 상품의 모든 리뷰 조회
+        all_reviews = (
+            supabase.table("reviews")
+            .select("rating")
+            .eq("product_id", request.product_id)
+            .execute()
+        )
+
+        total_reviews = len(all_reviews.data)
+        avg_rating = sum(r["rating"] for r in all_reviews.data) / total_reviews if total_reviews > 0 else 0
+
+        # 상품 정보 업데이트
+        supabase.table("products").update({
+            "review_count": total_reviews,
+            "rating": round(avg_rating, 1)
+        }).eq("id", request.product_id).execute()
+
         return {
             "message": "리뷰가 등록되었습니다.",
             "review_id": review_response.data[0]["id"]

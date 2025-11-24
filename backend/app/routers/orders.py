@@ -181,22 +181,25 @@ async def create_order(
         # 주문 아이템 일괄 삽입
         supabase.table("order_items").insert(order_items).execute()
 
-        # 재고 차감
+        # 재고 차감 및 판매량 증가
         for item in request.items:
             product_response = (
                 supabase.table("products")
-                .select("stock_quantity")
+                .select("stock_quantity, sale_count")
                 .eq("id", item.product_id)
                 .single()
                 .execute()
             )
 
             current_stock = product_response.data["stock_quantity"]
+            current_sale_count = product_response.data.get("sale_count", 0) or 0
             new_stock = current_stock - item.quantity
+            new_sale_count = current_sale_count + item.quantity
 
-            supabase.table("products").update(
-                {"stock_quantity": new_stock}
-            ).eq("id", item.product_id).execute()
+            supabase.table("products").update({
+                "stock_quantity": new_stock,
+                "sale_count": new_sale_count
+            }).eq("id", item.product_id).execute()
 
         return {
             "message": "주문이 완료되었습니다.",
