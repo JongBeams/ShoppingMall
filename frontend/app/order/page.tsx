@@ -4,10 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cartAPI } from '../lib/api';
 import { CartItem } from '../types';
-import Checkout from '../components/payment-widget/checkout';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -26,7 +24,6 @@ export default function OrderPage() {
   const searchParams = useSearchParams();
   const orderType = searchParams.get('type'); // 'direct' = 바로구매
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isDirectOrder, setIsDirectOrder] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,8 +43,7 @@ export default function OrderPage() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [savedAccounts, setSavedAccounts] = useState<any[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const [showPaymentWidget, setShowPaymentWidget] = useState(false);
-  const [queryClient] = useState(() => new QueryClient());
+  const [paymentPopup, setPaymentPopup] = useState<Window | null>(null);
 
   // 사용자 정보 및 장바구니 조회
   useEffect(() => {
@@ -94,7 +90,6 @@ export default function OrderPage() {
             vendor_name: item.vendor_name,
           }));
           setCartItems(cartItemsFromDirect);
-          setIsDirectOrder(true);
           setLoading(false);
           sessionStorage.removeItem('directOrder');
           return;
@@ -111,6 +106,29 @@ export default function OrderPage() {
     // 장바구니 주문인 경우
     fetchCart(token);
   }, [orderType]);
+
+  // 결제 팝업에서 postMessage 받기 (실패 시에만 사용)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // 보안을 위해 origin 확인
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      // 결제 실패 메시지만 처리 (성공은 success 페이지에서 직접 처리)
+      if (event.data.type === 'PAYMENT_FAILURE') {
+        console.log('결제 실패:', event.data.data);
+        alert(`결제 실패: ${event.data.data.message}`);
+        setSubmitting(false);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
 
   // 저장된 결제수단 불러오기
   const fetchSavedCards = async (token: string) => {
@@ -262,7 +280,7 @@ export default function OrderPage() {
     }).open();
   };
 
-  // 주문하기 (결제 위젯 표시)
+  // 주문하기 (결제 팝업 열기)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -279,71 +297,27 @@ export default function OrderPage() {
       return;
     }
 
-    // 결제 위젯 표시
-    setShowPaymentWidget(true);
+    // sessionStorage에 주문 데이터 저장
+    const checkoutData = {
+      amount: finalPrice,
+      orderName: cartItems.length > 1
+        ? `${cartItems[0].product_name} 외 ${cartItems.length - 1}건`
+        : cartItems[0].product_name,
+      ...orderForm,
+      email: user?.email || '',
+      items: cartItems,
+    };
+    sessionStorage.setItem('checkoutData', JSON.stringify(checkoutData));
+
+    // 결제 팝업 열기 (800x700 크기)
+    const popup = window.open(
+      '/order/checkout',
+      'payment',
+      'width=800,height=700,left=100,top=100'
+    );
+    setPaymentPopup(popup);
   };
 
-  // 결제 완료 후 주문 처리
-  const handlePaymentSuccess = async (paymentResult: any) => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      alert('로그인이 필요합니다.');
-      router.push('/login');
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      const orderData = {
-        items: cartItems.map((item) => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-          price: item.product_price,
-          selected_options: item.selected_options || [],
-        })),
-        total_amount: totalPrice + deliveryFee,
-        recipient_name: orderForm.recipient_name,
-        recipient_phone: orderForm.recipient_phone,
-        postal_code: orderForm.postal_code,
-        address: orderForm.address,
-        address_detail: orderForm.address_detail,
-        delivery_message: orderForm.delivery_message,
-        payment_method: orderForm.payment_method,
-      };
-
-      const response = await fetch(`${API_BASE_URL}/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(orderData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || '주문에 실패했습니다.');
-      }
-
-      const result = await response.json();
-
-      // 장바구니 주문인 경우에만 장바구니 비우기
-      if (!isDirectOrder) {
-        await cartAPI.clear(token);
-        // 장바구니 업데이트 이벤트 발생 (헤더 카운트 업데이트)
-        window.dispatchEvent(new Event('cartUpdated'));
-      }
-
-      // 주문 상세 페이지로 이동
-      router.push(`/mypage/orders/${result.order_id}`);
-    } catch (err: any) {
-      console.error('주문 실패:', err);
-      alert(err.message || '주문 중 오류가 발생했습니다.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   // 금액 계산
   const totalPrice = cartItems.reduce((sum, item) => sum + item.total_price, 0);
@@ -468,6 +442,7 @@ export default function OrderPage() {
                   )}
                 </div>
               </div>
+              
               <div className="space-y-4 p-5">
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-gray-900 dark:text-white">
@@ -757,29 +732,6 @@ export default function OrderPage() {
         </div>
       </form>
 
-      {/* 결제 위젯 (토스 결제 위젯) */}
-      {showPaymentWidget && (
-        <div className="fixed inset-0 z-50 bg-black/60 p-4">
-          <div className="relative mx-auto h-[90vh] max-w-3xl overflow-y-auto rounded-lg bg-white p-4 shadow-2xl dark:bg-gray-900">
-            <button
-              type="button"
-              onClick={() => setShowPaymentWidget(false)}
-              className="absolute right-3 top-3 text-gray-500 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <span className="sr-only">닫기</span>
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <QueryClientProvider client={queryClient}>
-              <div className="payment-widget-theme" style={{ backgroundColor: '#e8f3ff' }}>
-                <Checkout />
-              </div>
-            </QueryClientProvider>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
