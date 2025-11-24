@@ -110,7 +110,7 @@ export default function Home() {
       setSellerDataLoading(true);
       try {
         // 내 상품 가져오기
-        const productsRes = await fetch(`${API_BASE_URL}/vendors/products`, {
+        const productsRes = await fetch(`${API_BASE_URL}/products/management`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (productsRes.ok) {
