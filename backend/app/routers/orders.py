@@ -376,14 +376,7 @@ async def get_order(
 
         order = order_response.data
 
-        # 본인 주문인지 확인 (buyer_id 사용)
-        if order["buyer_id"] != user_id:  # user_id -> buyer_id
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="본인의 주문만 조회할 수 있습니다."
-            )
-
-        # 주문 아이템 조회
+        # 주문 아이템 먼저 조회 (권한 확인에 사용)
         order_items_response = (
             supabase.table("order_items")
             .select("*")
@@ -391,6 +384,57 @@ async def get_order(
             .execute()
         )
         order_items = order_items_response.data or []
+
+        # 본인 주문인지 확인 (구매자 또는 판매자)
+        is_buyer = order["buyer_id"] == user_id
+        is_seller_with_items = False
+        seller_vendor_id = None
+
+        # 구매자가 아닌 경우, 판매자 권한 확인
+        if not is_buyer:
+            user_type = current_user.get("user_type")
+
+            if user_type == "seller":
+                # 판매자의 vendor_id 조회
+                vendor_response = (
+                    supabase.table("vendors")
+                    .select("id")
+                    .eq("user_id", user_id)
+                    .single()
+                    .execute()
+                )
+
+                if vendor_response.data:
+                    seller_vendor_id = vendor_response.data["id"]
+
+                    # order_items 중 하나라도 이 판매자의 상품이 있는지 확인
+                    for item in order_items:
+                        if item.get("vendor_id") == seller_vendor_id:
+                            is_seller_with_items = True
+                            break
+
+        # 구매자도 아니고 관련 판매자도 아닌 경우 403
+        if not is_buyer and not is_seller_with_items:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="본인의 주문 또는 본인 상품이 포함된 주문만 조회할 수 있습니다."
+            )
+
+        # 판매자인 경우, 자신의 상품만 필터링
+        if is_seller_with_items and seller_vendor_id:
+            order_items = [item for item in order_items if item.get("vendor_id") == seller_vendor_id]
+
+            # 필터링된 상품들의 총액 재계산
+            try:
+                filtered_total = 0
+                for item in order_items:
+                    subtotal = item.get("subtotal", 0)
+                    if subtotal:
+                        filtered_total += float(subtotal)
+                order["total_amount"] = filtered_total
+            except Exception as e:
+                print(f"❌ 필터링된 총액 계산 오류: {str(e)}")
+                # 오류 발생 시 원래 총액 유지
 
         # 각 아이템에 상품 이미지 추가
         for item in order_items:
@@ -597,3 +641,12 @@ async def update_order_status_admin(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"주문 상태 변경 중 오류가 발생했습니다: {str(e)}"
         )
+
+
+
+
+# ============================================
+# VENDOR ENDPOINTS
+# ============================================
+
+

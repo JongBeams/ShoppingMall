@@ -16,11 +16,18 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [writtenReviewProductIds, setWrittenReviewProductIds] = useState<Set<string>>(new Set());
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     if (!orderId) {
       router.push('/');
       return;
+    }
+
+    // Load user from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
 
     fetchOrderDetails();
@@ -138,6 +145,13 @@ export default function OrderDetailPage() {
     );
   }
 
+  // 판매자인 경우: 필터링된 상품들의 금액으로 order.subtotal과 order.total 재계산
+  if (user?.user_type === 'seller') {
+    const filteredSubtotal = order.items.reduce((sum: number, item: any) => sum + item.subtotal, 0);
+    order.subtotal = filteredSubtotal;
+    order.total = filteredSubtotal + order.shipping_fee;
+  }
+
   return (
     <div className="max-w-4xl">
       {/* 헤더 */}
@@ -231,7 +245,7 @@ export default function OrderDetailPage() {
                     <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                       {item.price.toLocaleString()}원 × {item.quantity}개
                     </p>
-                    {order.status === 'delivered' && (
+                    {order.status === 'delivered' && user?.user_type === 'buyer' && (
                       writtenReviewProductIds.has(item.product_id) ? (
                         <span className="mt-2 inline-block border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
                           리뷰작성완료
