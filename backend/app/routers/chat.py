@@ -356,3 +356,40 @@ async def general_chat(request: GeneralChatRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"채팅 중 오류 발생: {str(e)}")
+
+
+# 상품 추천 RAG API
+class SmartChatRequest(BaseModel):
+    message: str
+    user_id: Optional[str] = None
+
+@router.post("/smart")
+async def smart_chat(request: SmartChatRequest):
+    """
+    상품 추천이 통합된 AI 채팅 (RAG + 상품 통계)
+    사용자 질문에 따라 문서 검색, 상품 추천, 통계 정보를 활용하여 답변 생성
+    """
+    from app.services.rag_search import rag_search_with_products
+
+    try:
+        # RAG 검색 + 상품 추천
+        result = rag_search_with_products(
+            query=request.message,
+            user_id=request.user_id,
+            search_limit=3,
+            use_ollama=True
+        )
+
+        return {
+            "message": request.message,
+            "answer": result.get("answer", "답변을 생성할 수 없습니다."),
+            "documents": result.get("documents", []),
+            "products": result.get("products", []),
+            "query": result.get("query", "")
+        }
+
+    except Exception as e:
+        print(f"Smart chat error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"채팅 중 오류 발생: {str(e)}")

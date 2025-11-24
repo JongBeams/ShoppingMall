@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import LiveChat from '../chat/LiveChat';
 
-type ChatMode = 'select' | 'ai' | 'agent';
+type ChatMode = 'select' | 'document' | 'general' | 'shopping' | 'agent';
 
 interface Message {
   role: 'user' | 'ai';
@@ -19,7 +19,6 @@ export default function AIChatButton() {
   const [messages, setMessages] = useState<Array<Message>>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showDocSearchSuggestion, setShowDocSearchSuggestion] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -27,15 +26,6 @@ export default function AIChatButton() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // 입력값 변경 감지하여 @내 입력 시 제안 표시
-  useEffect(() => {
-    if (input.startsWith('@내') && !input.startsWith('@내부문서 ')) {
-      setShowDocSearchSuggestion(true);
-    } else {
-      setShowDocSearchSuggestion(false);
-    }
-  }, [input]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -48,11 +38,9 @@ export default function AIChatButton() {
     setIsLoading(true);
 
     try {
-      // @내부문서 모드 체크 (어디든 포함되어 있으면 검색 모드)
-      const isDocSearch = userMessage.includes('@내부문서');
-      const actualQuery = isDocSearch ? userMessage.replace('@내부문서', '').trim() : userMessage;
-
-      if (isDocSearch) {
+      // 모드별 API 선택
+      if (chatMode === 'document') {
+        // 📄 AI 규정문서 모드 - 기존 @내부문서 로직
         // 내부 문서 검색 모드 (스트리밍)
         const response = await fetch(`${API_BASE_URL}/documents/search`, {
           method: 'POST',
@@ -60,7 +48,7 @@ export default function AIChatButton() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            query: actualQuery,
+            query: userMessage,
             limit: 3,
             use_ollama: true
           })
@@ -136,8 +124,8 @@ export default function AIChatButton() {
             return newMessages;
           });
         }
-      } else {
-        // 일반 대화 모드 - Ollama 스트리밍
+      } else if (chatMode === 'general') {
+        // 💬 AI 일반대화 모드 - Ollama 스트리밍
         const response = await fetch(`${API_BASE_URL}/chat/general`, {
           method: 'POST',
           headers: {
@@ -202,6 +190,41 @@ export default function AIChatButton() {
             return newMessages;
           });
         }
+      } else if (chatMode === 'shopping') {
+        // 🛍️ AI 쇼핑추천 모드 - /chat/smart API 호출 (non-streaming)
+        const user = localStorage.getItem('user');
+        let userId = null;
+        if (user) {
+          try {
+            const userData = JSON.parse(user);
+            userId = userData.id;
+          } catch (e) {
+            console.error('Failed to parse user data:', e);
+          }
+        }
+
+        const response = await fetch(`${API_BASE_URL}/chat/smart`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: userMessage,
+            user_id: userId
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('쇼핑 추천 실패');
+        }
+
+        const data = await response.json();
+
+        // AI 답변 추가
+        setMessages(prev => [...prev, {
+          role: 'ai',
+          content: data.answer || '죄송합니다. 상품을 찾을 수 없습니다.'
+        }]);
       }
 
     } catch (error) {
@@ -218,7 +241,7 @@ export default function AIChatButton() {
     }
   };
 
-  const handleModeSelect = (mode: 'ai' | 'agent') => {
+  const handleModeSelect = (mode: 'document' | 'general' | 'shopping' | 'agent') => {
     setChatMode(mode);
     setMessages([]);
   };
@@ -271,10 +294,14 @@ export default function AIChatButton() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {chatMode === 'select' ? '상담' : chatMode === 'ai' ? 'AI 도우미' : '상담사'}
+                  {chatMode === 'select' ? '상담' :
+                   chatMode === 'document' ? '📄 AI 규정문서' :
+                   chatMode === 'general' ? '💬 AI 일반대화' :
+                   chatMode === 'shopping' ? '🛍️ AI 쇼핑추천' : '👤 상담사'}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {chatMode === 'agent' ? '연결 중...' : chatMode === 'ai' ? '즉시 응답' : '상담 방식 선택'}
+                  {chatMode === 'select' ? '상담 방식 선택' :
+                   chatMode === 'agent' ? '연결 중...' : 'AI 즉시 응답'}
                 </p>
               </div>
             </div>
@@ -290,8 +317,8 @@ export default function AIChatButton() {
 
           {/* 선택 화면 */}
           {chatMode === 'select' && (
-            <div className="flex flex-1 flex-col justify-center gap-3 p-6">
-              <div className="mb-2 text-center">
+            <div className="flex flex-1 flex-col justify-center gap-2.5 p-5">
+              <div className="mb-1 text-center">
                 <h3 className="mb-1 text-base font-semibold text-gray-900 dark:text-white">
                   무엇을 도와드릴까요?
                 </h3>
@@ -300,20 +327,45 @@ export default function AIChatButton() {
                 </p>
               </div>
 
-              {/* AI 챗봇 버튼 */}
+              {/* 규정문서 버튼 */}
               <button
-                onClick={() => handleModeSelect('ai')}
-                className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white p-4 text-left transition hover:border-gray-900 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-white"
+                onClick={() => handleModeSelect('document')}
+                className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white p-3.5 text-left transition hover:border-gray-900 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-white"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
-                    <svg className="h-6 w-6 text-gray-700 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30">
+                    <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
                   <div className="flex-1">
                     <h4 className="mb-0.5 text-sm font-semibold text-gray-900 dark:text-white">
-                      AI 챗봇
+                      📄 AI 규정문서
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      환불/배송 정책 안내
+                    </p>
+                  </div>
+                  <svg className="h-5 w-5 text-gray-400 transition group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+
+              {/* 일반대화 버튼 */}
+              <button
+                onClick={() => handleModeSelect('general')}
+                className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white p-3.5 text-left transition hover:border-gray-900 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-white"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-green-50 dark:bg-green-900/30">
+                    <svg className="h-5 w-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="mb-0.5 text-sm font-semibold text-gray-900 dark:text-white">
+                      💬 AI 일반대화
                     </h4>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       24시간 자동 응답
@@ -325,20 +377,45 @@ export default function AIChatButton() {
                 </div>
               </button>
 
+              {/* 쇼핑추천 버튼 */}
+              <button
+                onClick={() => handleModeSelect('shopping')}
+                className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white p-3.5 text-left transition hover:border-gray-900 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-white"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-purple-50 dark:bg-purple-900/30">
+                    <svg className="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="mb-0.5 text-sm font-semibold text-gray-900 dark:text-white">
+                      🛍️ AI 쇼핑추천
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      상품 추천 및 검색
+                    </p>
+                  </div>
+                  <svg className="h-5 w-5 text-gray-400 transition group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+
               {/* 상담사 연결 버튼 */}
               <button
                 onClick={() => handleModeSelect('agent')}
-                className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white p-4 text-left transition hover:border-gray-900 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-white"
+                className="group relative overflow-hidden rounded-lg border border-gray-200 bg-white p-3.5 text-left transition hover:border-gray-900 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-white"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
-                    <svg className="h-6 w-6 text-gray-700 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-orange-50 dark:bg-orange-900/30">
+                    <svg className="h-5 w-5 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
                   <div className="flex-1">
                     <h4 className="mb-0.5 text-sm font-semibold text-gray-900 dark:text-white">
-                      상담사 연결
+                      👤 상담사 연결
                     </h4>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       실시간 1:1 상담
@@ -360,8 +437,8 @@ export default function AIChatButton() {
             }} />
           )}
 
-          {/* AI 챗봇 모드 */}
-          {chatMode === 'ai' && (
+          {/* AI 챗봇 모드 (document, general, shopping) */}
+          {(chatMode === 'document' || chatMode === 'general' || chatMode === 'shopping') && (
             <>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {messages.length === 0 ? (
@@ -429,25 +506,6 @@ export default function AIChatButton() {
 
               {/* 입력 영역 */}
               <div className="border-t border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900">
-                {/* @내부문서 제안 */}
-                {showDocSearchSuggestion && (
-                  <div className="border-b border-gray-200 px-4 py-2 dark:border-gray-700">
-                    <button
-                      onClick={() => {
-                        setInput('@내부문서 ');
-                        setShowDocSearchSuggestion(false);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg bg-white px-3 py-2 text-left text-sm transition hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"
-                    >
-                      <svg className="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span className="font-medium text-gray-900 dark:text-white">@내부문서</span>
-                      <span className="text-gray-500 dark:text-gray-400">내부 문서에서 검색</span>
-                    </button>
-                  </div>
-                )}
-
                 <div className="flex gap-2 p-4">
                   <button
                     onClick={() => {
@@ -470,17 +528,7 @@ export default function AIChatButton() {
                       placeholder="메시지 입력..."
                       autoFocus
                       className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm placeholder:text-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white dark:focus:ring-white"
-                      style={input.includes('@내부문서') ? {
-                        color: 'transparent',
-                        caretColor: '#1f2937'
-                      } : {}}
                     />
-                    {input.includes('@내부문서') && (
-                      <div className="pointer-events-none absolute inset-0 flex items-center px-3.5 py-2 text-sm">
-                        <span className="font-medium text-blue-600 dark:text-blue-400">@내부문서</span>
-                        <span className="text-gray-900 dark:text-white">{input.replace('@내부문서', '')}</span>
-                      </div>
-                    )}
                   </div>
                   <button
                     onClick={handleSend}
