@@ -17,6 +17,7 @@ from app.services.product_statistics import (
     extract_keywords_from_query
 )
 from app.services.intent_classifier import classify_intent
+import json
 
 # 전역 임베딩 모델
 _embedding_model: Optional[SentenceTransformer] = None
@@ -108,6 +109,89 @@ def fallback_search(query_embedding: List[float], limit: int) -> List[Dict]:
     except Exception as e:
         print(f"Fallback search error: {e}")
         return []
+
+
+def generate_answer_with_ollama_streaming(
+    query: str,
+    context_docs: List[Dict],
+    product_context: str = "",
+    model: str = "qwen2.5:14b",
+    ollama_host: str = "http://localhost:11435"
+):
+    """
+    Ollama로 스트리밍 답변 생성 (상품 추천 포함)
+
+    Yields:
+        dict: {"token": str} 또는 {"done": bool}
+    """
+    # 1. 문서 컨텍스트 생성
+    doc_context = "\n\n".join([
+        f"문서 {i+1}:\n{doc.get('content', '')}"
+        for i, doc in enumerate(context_docs)
+    ])
+
+    # 2. 프롬프트 생성 (상품 정보 추가)
+    if product_context:
+        prompt = f"""당신은 쇼핑몰 AI 어시스턴트입니다. 사용자의 질문을 정확히 분석하고 아래 상품 목록에서 적합한 상품을 직접 선택하여 추천하세요.
+
+참고 문서:
+{doc_context}
+
+상품 목록:
+{product_context}
+
+사용자 질문: {query}
+
+지침:
+1. 사용자가 요청한 조건을 정확히 파악하세요 (예: "리뷰 많은", "판매량 높은", "평점 좋은", "top 3", "상위 5개" 등)
+2. 상품 목록에서 해당 조건에 맞는 상품을 직접 선택하세요
+3. 사용자가 개수를 지정했다면 (예: "3개만", "top 5") 정확히 그 개수만 추천하세요
+4. 리뷰가 없는 상품(review_count: 0)은 "리뷰 많은" 질문에서 제외하세요
+5. 추천 이유를 간결하게 설명하세요 (판매량, 평점, 리뷰 등 근거 제시)
+6. 상품명을 정확히 언급하세요
+
+답변:"""
+    else:
+        prompt = f"""당신은 쇼핑몰 AI 어시스턴트입니다. 아래 문서를 참고하여 질문에 답변하세요.
+
+참고 문서:
+{doc_context}
+
+사용자 질문: {query}
+
+답변: (문서 내용을 바탕으로 간결하고 정확하게 답변하세요. 문서에 없는 내용은 "문서에서 찾을 수 없습니다"라고 답변하세요.)"""
+
+    # 3. Ollama API 스트리밍 호출
+    try:
+        response = requests.post(
+            f"{ollama_host}/api/generate",
+            json={
+                "model": model,
+                "prompt": prompt,
+                "stream": True
+            },
+            stream=True,
+            timeout=120
+        )
+
+        if response.status_code == 200:
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        chunk = json.loads(line)
+                        if chunk.get("response"):
+                            yield {"token": chunk["response"]}
+                        if chunk.get("done"):
+                            yield {"done": True}
+                            break
+                    except json.JSONDecodeError:
+                        continue
+        else:
+            yield {"error": f"Ollama 오류: {response.status_code}"}
+
+    except Exception as e:
+        print(f"Ollama streaming error: {e}")
+        yield {"error": f"답변 생성 중 오류 발생: {str(e)}"}
 
 
 def generate_answer_with_ollama(
@@ -318,12 +402,17 @@ def rag_search_with_products(
                     # LLM 답변에 상품명이 포함되어 있으면 해당 상품 포함
                     if product['name'] in answer:
                         mentioned_products.append(product)
+                        print(f"[Matched Product] {product['name']}")
+
+                print(f"[Total Mentioned] {len(mentioned_products)} out of {len(products)}")
 
                 # LLM이 언급한 상품이 있으면 해당 상품만, 없으면 상위 5개
                 if mentioned_products:
                     result["products"] = mentioned_products[:10]  # 최대 10개
+                    print(f"[Returning] {len(result['products'])} mentioned products")
                 else:
                     result["products"] = products[:5]  # fallback: 상위 5개
+                    print(f"[Returning] {len(result['products'])} fallback products (no mentions found)")
         else:
             result["answer"] = "관련 정보를 찾을 수 없습니다."
     else:
