@@ -5,10 +5,22 @@ import LiveChat from '../chat/LiveChat';
 
 type ChatMode = 'select' | 'document' | 'general' | 'shopping' | 'agent';
 
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  thumbnail_url: string | null;
+  sale_count: number;
+  rating: number;
+  review_count: number;
+  tags?: string[];
+}
+
 interface Message {
   role: 'user' | 'ai';
   content: string;
   sources?: Array<{document_id: string; filename: string}>;
+  products?: Product[];
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
@@ -220,10 +232,11 @@ export default function AIChatButton() {
 
         const data = await response.json();
 
-        // AI 답변 추가
+        // AI 답변 + 상품 정보 추가
         setMessages(prev => [...prev, {
           role: 'ai',
-          content: data.answer || '죄송합니다. 상품을 찾을 수 없습니다.'
+          content: data.answer || '죄송합니다. 상품을 찾을 수 없습니다.',
+          products: data.products && data.products.length > 0 ? data.products : undefined
         }]);
       }
 
@@ -483,6 +496,60 @@ export default function AIChatButton() {
                             <span key={sidx} className="text-xs text-blue-600 dark:text-blue-400">
                               {source.filename}{sidx < msg.sources!.length - 1 ? ', ' : ''}
                             </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 상품 카드 (쇼핑 모드 AI 메시지에만) */}
+                      {msg.role === 'ai' && msg.products && msg.products.length > 0 && (
+                        <div className="mt-2 w-full max-w-[340px] space-y-2">
+                          {msg.products.slice(0, 5).map((product) => (
+                            <a
+                              key={product.id}
+                              href={`/products/${product.id}`}
+                              className="block rounded-lg border border-gray-200 bg-white p-2.5 transition hover:border-gray-400 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-500"
+                            >
+                              <div className="flex gap-3">
+                                {/* 상품 이미지 */}
+                                <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-700">
+                                  {product.thumbnail_url ? (
+                                    <img
+                                      src={product.thumbnail_url}
+                                      alt={product.name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center">
+                                      <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* 상품 정보 */}
+                                <div className="flex flex-1 flex-col justify-between overflow-hidden">
+                                  <div>
+                                    <h4 className="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                                      {product.name}
+                                    </h4>
+                                    <p className="mt-0.5 text-base font-bold text-gray-900 dark:text-white">
+                                      {product.price.toLocaleString()}원
+                                    </p>
+                                  </div>
+                                  <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                    <span className="flex items-center gap-0.5">
+                                      <svg className="h-3.5 w-3.5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                      </svg>
+                                      {product.rating.toFixed(1)} ({product.review_count})
+                                    </span>
+                                    <span>•</span>
+                                    <span>판매 {product.sale_count}개</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </a>
                           ))}
                         </div>
                       )}

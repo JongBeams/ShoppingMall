@@ -138,17 +138,25 @@ def generate_answer_with_ollama(
 
     # 2. 프롬프트 생성 (상품 정보 추가)
     if product_context:
-        prompt = f"""당신은 쇼핑몰 AI 어시스턴트입니다. 아래 정보를 참고하여 질문에 답변하세요.
+        prompt = f"""당신은 쇼핑몰 AI 어시스턴트입니다. 사용자의 질문을 정확히 분석하고 아래 상품 목록에서 적합한 상품을 직접 선택하여 추천하세요.
 
 참고 문서:
 {doc_context}
 
-추천 상품 정보:
+상품 목록:
 {product_context}
 
 사용자 질문: {query}
 
-답변: (위 정보를 바탕으로 사용자에게 유용한 상품을 추천하거나 질문에 답변하세요. 판매량, 평점, 리뷰 수 등을 고려하여 구체적으로 추천해주세요.)"""
+지침:
+1. 사용자가 요청한 조건을 정확히 파악하세요 (예: "리뷰 많은", "판매량 높은", "평점 좋은", "top 3", "상위 5개" 등)
+2. 상품 목록에서 해당 조건에 맞는 상품을 직접 선택하세요
+3. 사용자가 개수를 지정했다면 (예: "3개만", "top 5") 정확히 그 개수만 추천하세요
+4. 리뷰가 없는 상품(review_count: 0)은 "리뷰 많은" 질문에서 제외하세요
+5. 추천 이유를 간결하게 설명하세요 (판매량, 평점, 리뷰 등 근거 제시)
+6. 상품명을 정확히 언급하세요
+
+답변:"""
     else:
         prompt = f"""당신은 쇼핑몰 AI 어시스턴트입니다. 아래 문서를 참고하여 질문에 답변하세요.
 
@@ -246,80 +254,49 @@ def rag_search_with_products(
     # 1. 기존 문서 검색
     documents = search_documents(query, limit=search_limit)
 
-    # 2. 벡터 기반 의도 분류
-    intent, confidence = classify_intent(query)
-    print(f"[Intent] {intent} (confidence: {confidence:.3f})")
-
-    # 3. 키워드 추출
+    # 2. 키워드 추출 (태그 필터링용)
     keywords = extract_keywords_from_query(query)
     print(f"[Keywords] {keywords}")
 
-    # 4. 상품 검색 전략 결정
+    # 3. 상품 데이터 가져오기 (필터링 없이 LLM이 판단하도록)
     products = []
     product_context = ""
 
-    # 키워드가 있으면 먼저 태그로 필터링, 없으면 전체 조회
     if keywords:
-        # 키워드로 먼저 필터링
-        products = search_by_tags(keywords, limit=30)
+        # 키워드가 있으면 태그로 필터링 (넉넉하게 50개)
+        products = search_by_tags(keywords, limit=50)
 
         if not products:
             product_context = f"'{', '.join(keywords)}' 관련 상품을 찾을 수 없습니다."
         else:
-            # Intent에 따라 정렬
-            if intent == 'bestseller':
-                products.sort(key=lambda x: (x.get('sale_count', 0), x.get('rating', 0)), reverse=True)
-                products = products[:10]
-                product_context = f"'{', '.join(keywords)}' 관련 베스트셀러:\n{format_products_for_llm(products)}"
+            # 정렬 없이 모든 상품 정보를 LLM에게 전달
+            product_context = f"'{', '.join(keywords)}' 관련 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
 
-            elif intent == 'top_rated':
-                products.sort(key=lambda x: (x.get('rating', 0), x.get('review_count', 0)), reverse=True)
-                products = products[:10]
-                product_context = f"'{', '.join(keywords)}' 관련 고평점 상품:\n{format_products_for_llm(products)}"
-
-            elif intent == 'new_arrival':
-                products.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-                products = products[:10]
-                product_context = f"'{', '.join(keywords)}' 관련 신상품:\n{format_products_for_llm(products)}"
-
-            else:
-                # keyword_search
-                products = products[:10]
-                product_context = f"'{', '.join(keywords)}' 관련 상품:\n{format_products_for_llm(products)}"
-
-    # 키워드가 없을 때만 전체 조회
-    elif intent == 'bestseller':
-        products = get_bestsellers(limit=10)
-        product_context = f"베스트셀러 상품:\n{format_products_for_llm(products)}"
-
-    elif intent == 'top_rated':
-        products = get_top_rated(limit=10)
-        product_context = f"고평점 상품:\n{format_products_for_llm(products)}"
-
-    elif intent == 'new_arrival':
-        products = get_new_arrivals(limit=10)
-        product_context = f"신상품:\n{format_products_for_llm(products)}"
-
-    elif intent == 'personal' and user_id:
-        # 사용자 구매 이력 기반 추천
+    elif user_id:
+        # 개인화: 구매 이력 기반 유사 상품
         purchase_history = get_user_purchase_history(user_id, limit=5)
 
         if purchase_history:
-            # 구매한 상품의 태그 수집
             all_tags = []
             for product in purchase_history:
                 if product.get('tags'):
                     all_tags.extend(product['tags'])
 
-            # 유사 상품 검색
             if all_tags:
-                products = search_by_tags(all_tags, limit=10)
-                product_context = f"고객님의 구매 이력:\n{format_products_for_llm(purchase_history)}\n\n비슷한 상품:\n{format_products_for_llm(products)}"
+                products = search_by_tags(all_tags, limit=50)
+                product_context = f"고객님의 구매 이력:\n{format_products_for_llm(purchase_history, include_reviews=False)}\n\n비슷한 상품:\n{format_products_for_llm(products, include_reviews=True)}"
             else:
                 products = purchase_history
-                product_context = f"고객님의 구매 이력:\n{format_products_for_llm(purchase_history)}"
+                product_context = f"고객님의 구매 이력:\n{format_products_for_llm(purchase_history, include_reviews=False)}"
         else:
-            product_context = "구매 이력이 없습니다."
+            # 전체 상품 (최근 등록 순으로 50개)
+            products = get_new_arrivals(limit=50)
+            product_context = f"전체 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
+
+    else:
+        # 키워드도 없고 로그인도 안 한 경우: 전체 상품 제공
+        products = get_new_arrivals(limit=50)
+        product_context = f"전체 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
 
     # 4. 결과 구성
     result = {
@@ -333,6 +310,20 @@ def rag_search_with_products(
         if documents or product_context:
             answer = generate_answer_with_ollama(query, documents, product_context)
             result["answer"] = answer
+
+            # 6. LLM이 언급한 상품만 필터링 (상품명 기준)
+            if answer and products:
+                mentioned_products = []
+                for product in products:
+                    # LLM 답변에 상품명이 포함되어 있으면 해당 상품 포함
+                    if product['name'] in answer:
+                        mentioned_products.append(product)
+
+                # LLM이 언급한 상품이 있으면 해당 상품만, 없으면 상위 5개
+                if mentioned_products:
+                    result["products"] = mentioned_products[:10]  # 최대 10개
+                else:
+                    result["products"] = products[:5]  # fallback: 상위 5개
         else:
             result["answer"] = "관련 정보를 찾을 수 없습니다."
     else:
