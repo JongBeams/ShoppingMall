@@ -203,7 +203,7 @@ export default function AIChatButton() {
           });
         }
       } else if (chatMode === 'shopping') {
-        // 🛍️ AI 쇼핑추천 모드 - /chat/smart API 호출 (non-streaming)
+        // 🛍️ AI 쇼핑추천 모드 - /chat/smart API 호출 (streaming)
         const user = localStorage.getItem('user');
         let userId = null;
         if (user) {
@@ -230,14 +230,82 @@ export default function AIChatButton() {
           throw new Error('쇼핑 추천 실패');
         }
 
-        const data = await response.json();
+        // 스트리밍 응답 처리
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let aiResponse = '';
+        let finalProducts: Product[] = [];
 
-        // AI 답변 + 상품 정보 추가
-        setMessages(prev => [...prev, {
-          role: 'ai',
-          content: data.answer || '죄송합니다. 상품을 찾을 수 없습니다.',
-          products: data.products && data.products.length > 0 ? data.products : undefined
-        }]);
+        // AI 메시지 placeholder 추가
+        setMessages(prev => [...prev, { role: 'ai', content: '' }]);
+
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+
+                  if (data.type === 'token') {
+                    // 토큰 추가
+                    aiResponse += data.token;
+                    setMessages(prev => {
+                      const newMessages = [...prev];
+                      newMessages[newMessages.length - 1] = {
+                        role: 'ai',
+                        content: aiResponse
+                      };
+                      return newMessages;
+                    });
+                  } else if (data.type === 'products_final') {
+                    // 최종 상품 목록
+                    finalProducts = data.products;
+                  } else if (data.type === 'done') {
+                    // 완료 - 최종 상품 추가
+                    setMessages(prev => {
+                      const newMessages = [...prev];
+                      newMessages[newMessages.length - 1] = {
+                        role: 'ai',
+                        content: aiResponse || '죄송합니다. 상품을 찾을 수 없습니다.',
+                        products: finalProducts.length > 0 ? finalProducts : undefined
+                      };
+                      return newMessages;
+                    });
+                  } else if (data.type === 'error') {
+                    // 에러
+                    setMessages(prev => {
+                      const newMessages = [...prev];
+                      newMessages[newMessages.length - 1] = {
+                        role: 'ai',
+                        content: '죄송합니다. 오류가 발생했습니다.'
+                      };
+                      return newMessages;
+                    });
+                  }
+                } catch (e) {
+                  // JSON 파싱 실패 무시
+                }
+              }
+            }
+          }
+        }
+
+        if (!aiResponse) {
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1] = {
+              role: 'ai',
+              content: '죄송합니다. 답변을 생성할 수 없습니다.'
+            };
+            return newMessages;
+          });
+        }
       }
 
     } catch (error) {
@@ -285,7 +353,7 @@ export default function AIChatButton() {
 
       {/* 채팅 모달 */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 flex h-[520px] w-[380px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+        <div className="fixed bottom-24 right-6 z-50 flex h-[700px] w-[480px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
           {/* 헤더 */}
           <div className="flex items-center justify-between border-b border-gray-200 bg-white px-5 py-4 dark:border-gray-700 dark:bg-gray-800">
             <div className="flex items-center gap-3">

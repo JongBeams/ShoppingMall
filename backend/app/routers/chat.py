@@ -366,27 +366,78 @@ class SmartChatRequest(BaseModel):
 @router.post("/smart")
 async def smart_chat(request: SmartChatRequest):
     """
-    상품 추천이 통합된 AI 채팅 (RAG + 상품 통계)
+    상품 추천이 통합된 AI 채팅 (RAG + 상품 통계) - 스트리밍
     사용자 질문에 따라 문서 검색, 상품 추천, 통계 정보를 활용하여 답변 생성
     """
-    from app.services.rag_search import rag_search_with_products
+    from app.services.rag_search import search_documents, generate_answer_with_ollama_streaming
+    from app.services.product_statistics import (
+        get_new_arrivals,
+        search_by_tags,
+        get_user_purchase_history,
+        format_products_for_llm,
+        extract_keywords_from_query
+    )
+    from fastapi.responses import StreamingResponse
 
     try:
-        # RAG 검색 + 상품 추천
-        result = rag_search_with_products(
-            query=request.message,
-            user_id=request.user_id,
-            search_limit=3,
-            use_ollama=True
-        )
+        # 1. 문서 검색
+        documents = search_documents(request.message, limit=3)
 
-        return {
-            "message": request.message,
-            "answer": result.get("answer", "답변을 생성할 수 없습니다."),
-            "documents": result.get("documents", []),
-            "products": result.get("products", []),
-            "query": result.get("query", "")
-        }
+        # 2. 키워드 추출
+        keywords = extract_keywords_from_query(request.message)
+
+        # 3. 상품 데이터 가져오기
+        products = []
+        product_context = ""
+
+        if keywords:
+            products = search_by_tags(keywords, limit=50)
+            if products:
+                product_context = f"'{', '.join(keywords)}' 관련 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
+        elif request.user_id:
+            purchase_history = get_user_purchase_history(request.user_id, limit=5)
+            if purchase_history:
+                all_tags = []
+                for product in purchase_history:
+                    if product.get('tags'):
+                        all_tags.extend(product['tags'])
+                if all_tags:
+                    products = search_by_tags(all_tags, limit=50)
+                    product_context = f"고객님의 구매 이력:\n{format_products_for_llm(purchase_history, include_reviews=False)}\n\n비슷한 상품:\n{format_products_for_llm(products, include_reviews=True)}"
+            else:
+                products = get_new_arrivals(limit=50)
+                product_context = f"전체 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
+        else:
+            products = get_new_arrivals(limit=50)
+            product_context = f"전체 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
+
+        # 4. 스트리밍 생성 함수
+        def generate():
+            full_answer = ""
+
+            # 상품 정보 먼저 전송
+            yield f"data: {json.dumps({'type': 'products', 'products': products})}\n\n"
+
+            # 스트리밍 답변 생성
+            for chunk in generate_answer_with_ollama_streaming(request.message, documents, product_context):
+                if "token" in chunk:
+                    full_answer += chunk["token"]
+                    yield f"data: {json.dumps({'type': 'token', 'token': chunk['token']})}\n\n"
+                elif "done" in chunk:
+                    # 스트리밍 완료 후 LLM이 언급한 상품만 필터링
+                    mentioned_products = []
+                    for product in products:
+                        if product['name'] in full_answer:
+                            mentioned_products.append(product)
+
+                    # 최종 상품 목록 전송
+                    final_products = mentioned_products[:10] if mentioned_products else products[:5]
+                    yield f"data: {json.dumps({'type': 'products_final', 'products': final_products})}\n\n"
+                    yield f"data: {json.dumps({'type': 'done', 'done': True})}\n\n"
+                elif "error" in chunk:
+                    yield f"data: {json.dumps({'type': 'error', 'error': chunk['error']})}\n\n"
+
+        return StreamingResponse(generate(), media_type="text/event-stream")
 
     except Exception as e:
         print(f"Smart chat error: {e}")
