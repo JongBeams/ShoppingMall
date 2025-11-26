@@ -29,16 +29,6 @@ class Settings(BaseSettings):
     # CORS
     NEXT_PUBLIC_URL: str = "http://localhost:3000"
 
-    # Toss Payments
-    TOSS_SECRET_KEY: str | None = None
-    TOSS_AUTH_KEY: str | None = None
-    TOSS_CLIENT_KEY: str | None = None
-
-    # Toss Payments
-    TOSS_SECRET_KEY: str | None = None
-    TOSS_AUTH_KEY: str | None = None
-    TOSS_CLIENT_KEY: str | None = None
-
     # AI Models
     OLLAMA_HOST: str = "http://localhost:11435"
     OLLAMA_MODEL: str = "qwen2.5:14b"
