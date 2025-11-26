@@ -436,7 +436,7 @@ async def get_order(
                         filtered_total += float(subtotal)
                 order["total_amount"] = filtered_total
             except Exception as e:
-                print(f"❌ 필터링된 총액 계산 오류: {str(e)}")
+                print(f"필터링된 총액 계산 오류: {str(e)}")
                 # 오류 발생 시 원래 총액 유지
 
         # 각 아이템에 상품 이미지 추가

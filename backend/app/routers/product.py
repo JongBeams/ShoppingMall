@@ -105,7 +105,7 @@ async def search_products(q: str = ""):
             for vendor in vendors_response.data or []:
                 vendor_map[vendor["id"]] = vendor.get("store_name")
         except Exception as e:
-            print(f"❌ Error fetching vendors: {str(e)}")
+            print(f"Error fetching vendors: {str(e)}")
             vendor_map = {}
 
     product_list = []
@@ -210,7 +210,7 @@ async def get_all_products():
             for vendor in vendors_response.data or []:
                 vendor_map[vendor["id"]] = vendor.get("store_name")
         except Exception as e:
-            print(f"❌ Error fetching vendors: {str(e)}")
+            print(f"Error fetching vendors: {str(e)}")
             vendor_map = {}
 
     product_list = []
@@ -322,7 +322,7 @@ async def get_product(product_id: str):
             if vendor_response.data and len(vendor_response.data) > 0:
                 vendor_name = vendor_response.data[0].get("store_name")
                 vendor_address = vendor_response.data[0].get("business_address")
-                print(f"✅ Vendor found by id: {vendor_name}, {vendor_address}")
+                print(f"Vendor found by id: {vendor_name}, {vendor_address}")
             else:
                 # id로 못 찾으면 user_id로 시도
                 vendor_response = (
@@ -331,13 +331,13 @@ async def get_product(product_id: str):
                     .eq("user_id", vendor_id)
                     .execute()
                 )
-                print(f"🔍 Vendor response (by user_id): {vendor_response.data}")
+                print(f"Vendor response (by user_id): {vendor_response.data}")
                 if vendor_response.data and len(vendor_response.data) > 0:
                     vendor_name = vendor_response.data[0].get("store_name")
                     vendor_address = vendor_response.data[0].get("business_address")
-                    print(f"✅ Vendor found by user_id: {vendor_name}, {vendor_address}")
+                    print(f"Vendor found by user_id: {vendor_name}, {vendor_address}")
         except Exception as e:
-            print(f"❌ Error fetching vendor: {str(e)}")
+            print(f"Error fetching vendor: {str(e)}")
             vendor_name = None
             vendor_address = None
 

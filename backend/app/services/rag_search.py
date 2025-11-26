@@ -17,7 +17,14 @@ from app.services.product_statistics import (
     extract_keywords_from_query
 )
 from app.services.intent_classifier import classify_intent
+from app.services.personalized_recommendation import (
+    get_personalized_recommendations,
+    format_personalized_recommendations_for_llm
+)
+from app.config import get_settings
 import json
+
+settings = get_settings()
 
 # 전역 임베딩 모델
 _embedding_model: Optional[SentenceTransformer] = None
@@ -26,8 +33,9 @@ def get_embedding_model() -> SentenceTransformer:
     """임베딩 모델 싱글톤"""
     global _embedding_model
     if _embedding_model is None:
-        print("Loading embedding model: BAAI/bge-m3...")
-        _embedding_model = SentenceTransformer('BAAI/bge-m3')
+        model_name = settings.EMBEDDING_MODEL
+        print(f"Loading embedding model: {model_name}...")
+        _embedding_model = SentenceTransformer(model_name)
     return _embedding_model
 
 
@@ -115,8 +123,8 @@ def generate_answer_with_ollama_streaming(
     query: str,
     context_docs: List[Dict],
     product_context: str = "",
-    model: str = "qwen2.5:14b",
-    ollama_host: str = "http://localhost:11435"
+    model: str = None,
+    ollama_host: str = None
 ):
     """
     Ollama로 스트리밍 답변 생성 (상품 추천 포함)
@@ -124,6 +132,12 @@ def generate_answer_with_ollama_streaming(
     Yields:
         dict: {"token": str} 또는 {"done": bool}
     """
+    # 설정값 사용
+    if model is None:
+        model = settings.OLLAMA_MODEL
+    if ollama_host is None:
+        ollama_host = settings.OLLAMA_HOST
+
     # 1. 문서 컨텍스트 생성
     doc_context = "\n\n".join([
         f"문서 {i+1}:\n{doc.get('content', '')}"
@@ -132,7 +146,30 @@ def generate_answer_with_ollama_streaming(
 
     # 2. 프롬프트 생성 (상품 정보 추가)
     if product_context:
-        prompt = f"""당신은 쇼핑몰 AI 어시스턴트입니다. 사용자의 질문을 정확히 분석하고 아래 상품 목록에서 적합한 상품을 직접 선택하여 추천하세요.
+        # 개인화 추천인지 확인 (구매 패턴 분석 포함 여부)
+        is_personalized = "고객 구매 패턴 분석" in product_context
+
+        if is_personalized:
+            prompt = f"""당신은 쇼핑몰의 개인 맞춤 AI 쇼핑 어시스턴트입니다. 고객의 구매 이력을 분석하여 취향에 딱 맞는 상품을 추천하세요.
+
+참고 문서:
+{doc_context}
+
+{product_context}
+
+사용자 질문: {query}
+
+지침:
+1. 고객의 구매 패턴(선호 태그, 가격대, 구매 주기 등)을 근거로 추천하세요
+2. "고객님께서 평소 XX를 선호하시는데, 이 상품은..." 같은 개인화된 멘트를 사용하세요
+3. 재구매 상품이 있다면 "지난번 구매하신 XX와 비슷한..." 처럼 언급하세요
+4. 추천 이유를 구체적으로 설명하세요 (고객 취향 일치, 매칭 점수 등)
+5. 상품명을 정확히 언급하세요
+6. 친근하고 신뢰감 있는 톤으로 작성하세요
+
+답변:"""
+        else:
+            prompt = f"""당신은 쇼핑몰 AI 어시스턴트입니다. 사용자의 질문을 정확히 분석하고 아래 상품 목록에서 적합한 상품을 직접 선택하여 추천하세요.
 
 참고 문서:
 {doc_context}
@@ -171,7 +208,7 @@ def generate_answer_with_ollama_streaming(
                 "stream": True
             },
             stream=True,
-            timeout=120
+            timeout=settings.OLLAMA_TIMEOUT
         )
 
         if response.status_code == 200:
@@ -198,8 +235,8 @@ def generate_answer_with_ollama(
     query: str,
     context_docs: List[Dict],
     product_context: str = "",
-    model: str = "qwen2.5:14b",
-    ollama_host: str = "http://localhost:11435"
+    model: str = None,
+    ollama_host: str = None
 ) -> str:
     """
     Ollama로 답변 생성 (상품 추천 포함)
@@ -214,6 +251,12 @@ def generate_answer_with_ollama(
     Returns:
         생성된 답변
     """
+    # 설정값 사용
+    if model is None:
+        model = settings.OLLAMA_MODEL
+    if ollama_host is None:
+        ollama_host = settings.OLLAMA_HOST
+
     # 1. 문서 컨텍스트 생성
     doc_context = "\n\n".join([
         f"문서 {i+1}:\n{doc.get('content', '')}"
@@ -260,7 +303,7 @@ def generate_answer_with_ollama(
                 "prompt": prompt,
                 "stream": False
             },
-            timeout=60
+            timeout=settings.OLLAMA_TIMEOUT
         )
 
         if response.status_code == 200:
@@ -357,25 +400,32 @@ def rag_search_with_products(
             product_context = f"'{', '.join(keywords)}' 관련 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
 
     elif user_id:
-        # 개인화: 구매 이력 기반 유사 상품
-        purchase_history = get_user_purchase_history(user_id, limit=5)
+        # ⭐ 개인화 추천: 구매 패턴 분석 기반 맞춤 상품
+        personalized = get_personalized_recommendations(user_id, limit=50)
 
-        if purchase_history:
-            all_tags = []
-            for product in purchase_history:
-                if product.get('tags'):
-                    all_tags.extend(product['tags'])
-
-            if all_tags:
-                products = search_by_tags(all_tags, limit=50)
-                product_context = f"고객님의 구매 이력:\n{format_products_for_llm(purchase_history, include_reviews=False)}\n\n비슷한 상품:\n{format_products_for_llm(products, include_reviews=True)}"
-            else:
-                products = purchase_history
-                product_context = f"고객님의 구매 이력:\n{format_products_for_llm(purchase_history, include_reviews=False)}"
+        if personalized['recommendations']:
+            products = personalized['recommendations']
+            product_context = format_personalized_recommendations_for_llm(personalized)
         else:
-            # 전체 상품 (최근 등록 순으로 50개)
-            products = get_new_arrivals(limit=50)
-            product_context = f"전체 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
+            # fallback: 구매 이력 기반 유사 상품
+            purchase_history = get_user_purchase_history(user_id, limit=5)
+
+            if purchase_history:
+                all_tags = []
+                for product in purchase_history:
+                    if product.get('tags'):
+                        all_tags.extend(product['tags'])
+
+                if all_tags:
+                    products = search_by_tags(all_tags, limit=50)
+                    product_context = f"고객님의 구매 이력:\n{format_products_for_llm(purchase_history, include_reviews=False)}\n\n비슷한 상품:\n{format_products_for_llm(products, include_reviews=True)}"
+                else:
+                    products = purchase_history
+                    product_context = f"고객님의 구매 이력:\n{format_products_for_llm(purchase_history, include_reviews=False)}"
+            else:
+                # 전체 상품 (최근 등록 순으로 50개)
+                products = get_new_arrivals(limit=50)
+                product_context = f"전체 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
 
     else:
         # 키워드도 없고 로그인도 안 한 경우: 전체 상품 제공

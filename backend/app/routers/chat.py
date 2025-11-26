@@ -6,6 +6,10 @@ import json
 import requests
 
 from app.services.supabase import supabase
+from app.config import get_settings
+from app.config.constants import RECOMMENDATION_KEYWORDS
+
+settings = get_settings()
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -28,14 +32,14 @@ class ConnectionManager:
             self.active_connections[room_id] = []
         self.active_connections[room_id].append(websocket)
         self.user_info[websocket] = user_info
-        print(f"✅ User {user_info.get('user_id')} connected to room {room_id}")
+        print(f"User {user_info.get('user_id')} connected to room {room_id}")
 
     def disconnect(self, websocket: WebSocket, room_id: str):
         if room_id in self.active_connections:
             if websocket in self.active_connections[room_id]:
                 self.active_connections[room_id].remove(websocket)
                 user_info = self.user_info.get(websocket, {})
-                print(f"❌ User {user_info.get('user_id')} disconnected from room {room_id}")
+                print(f"User {user_info.get('user_id')} disconnected from room {room_id}")
             if not self.active_connections[room_id]:
                 del self.active_connections[room_id]
         if websocket in self.user_info:
@@ -198,22 +202,22 @@ async def close_chat_room(room_id: str):
 @router.websocket("/ws/{room_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str):
     """사용자/관리자 WebSocket 연결"""
-    print(f"🔌 WebSocket 연결 요청: room_id={room_id}")
+    print(f"WebSocket 연결 요청: room_id={room_id}")
     print(f"Origin: {websocket.headers.get('origin')}")
 
     try:
         # 직접 accept (Origin 검증 없이)
         await websocket.accept()
-        print(f"✅ WebSocket accept 성공")
+        print(f"WebSocket accept 성공")
 
         # ConnectionManager에 수동 등록
         if room_id not in manager.active_connections:
             manager.active_connections[room_id] = []
         manager.active_connections[room_id].append(websocket)
         manager.user_info[websocket] = {"room_id": room_id, "user_id": "user"}
-        print(f"✅ ConnectionManager 등록 성공: room_id={room_id}")
+        print(f"ConnectionManager 등록 성공: room_id={room_id}")
     except Exception as e:
-        print(f"❌ WebSocket 연결 실패: {e}")
+        print(f"WebSocket 연결 실패: {e}")
         import traceback
         traceback.print_exc()
         raise
@@ -320,13 +324,11 @@ async def general_chat(request: GeneralChatRequest):
     from fastapi.responses import StreamingResponse
 
     try:
-        ollama_host = "http://localhost:11435"
-
         def generate():
             response = requests.post(
-                f"{ollama_host}/api/generate",
+                f"{settings.OLLAMA_HOST}/api/generate",
                 json={
-                    "model": "qwen2.5:14b",
+                    "model": settings.OLLAMA_MODEL,
                     "prompt": f"""당신은 친절한 쇼핑몰 AI 어시스턴트입니다. 사용자의 질문에 자연스럽고 도움이 되도록 답변하세요.
 
 사용자 질문: {request.message}
@@ -335,7 +337,7 @@ async def general_chat(request: GeneralChatRequest):
                     "stream": True
                 },
                 stream=True,
-                timeout=60
+                timeout=settings.OLLAMA_TIMEOUT
             )
 
             for line in response.iter_lines():
@@ -366,16 +368,19 @@ class SmartChatRequest(BaseModel):
 @router.post("/smart")
 async def smart_chat(request: SmartChatRequest):
     """
-    상품 추천이 통합된 AI 채팅 (RAG + 상품 통계) - 스트리밍
-    사용자 질문에 따라 문서 검색, 상품 추천, 통계 정보를 활용하여 답변 생성
+    상품 추천이 통합된 AI 채팅 (RAG + 개인화 추천) - 스트리밍
+    사용자 질문에 따라 문서 검색, 구매 패턴 분석, 맞춤 상품 추천
     """
     from app.services.rag_search import search_documents, generate_answer_with_ollama_streaming
     from app.services.product_statistics import (
         get_new_arrivals,
         search_by_tags,
-        get_user_purchase_history,
         format_products_for_llm,
         extract_keywords_from_query
+    )
+    from app.services.personalized_recommendation import (
+        get_personalized_recommendations,
+        format_personalized_recommendations_for_llm
     )
     from fastapi.responses import StreamingResponse
 
@@ -386,28 +391,31 @@ async def smart_chat(request: SmartChatRequest):
         # 2. 키워드 추출
         keywords = extract_keywords_from_query(request.message)
 
-        # 3. 상품 데이터 가져오기
+        # 3. 상품 데이터 가져오기 - 개인화 우선
         products = []
         product_context = ""
 
+        # 추천 관련 키워드 감지
+        is_recommendation_query = any(kw in request.message for kw in RECOMMENDATION_KEYWORDS)
+
         if keywords:
+            # 특정 키워드가 있으면 키워드 검색 우선
             products = search_by_tags(keywords, limit=50)
             if products:
                 product_context = f"'{', '.join(keywords)}' 관련 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
-        elif request.user_id:
-            purchase_history = get_user_purchase_history(request.user_id, limit=5)
-            if purchase_history:
-                all_tags = []
-                for product in purchase_history:
-                    if product.get('tags'):
-                        all_tags.extend(product['tags'])
-                if all_tags:
-                    products = search_by_tags(all_tags, limit=50)
-                    product_context = f"고객님의 구매 이력:\n{format_products_for_llm(purchase_history, include_reviews=False)}\n\n비슷한 상품:\n{format_products_for_llm(products, include_reviews=True)}"
+        elif request.user_id and is_recommendation_query:
+            # ⭐ 개인화 추천: "추천해줘" 같은 질문에 구매 패턴 분석 기반 추천
+            personalized = get_personalized_recommendations(request.user_id, limit=50)
+
+            if personalized['recommendations']:
+                products = personalized['recommendations']
+                product_context = format_personalized_recommendations_for_llm(personalized)
             else:
+                # fallback: 베스트셀러
                 products = get_new_arrivals(limit=50)
                 product_context = f"전체 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
         else:
+            # 기본: 신상품
             products = get_new_arrivals(limit=50)
             product_context = f"전체 상품 목록 (총 {len(products)}개):\n{format_products_for_llm(products, include_reviews=True)}"
 
