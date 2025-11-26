@@ -5,6 +5,10 @@
 
 from typing import List, Dict, Optional
 from app.services.supabase import supabase
+from app.config import get_settings
+from app.config.constants import STOPWORDS
+
+settings = get_settings()
 
 
 def get_bestsellers(limit: int = 10) -> List[Dict]:
@@ -282,7 +286,7 @@ def format_products_for_llm(products: List[Dict], include_reviews: bool = True) 
 
 def extract_keywords_from_query(query: str) -> List[str]:
     """
-    사용자 질문에서 키워드 추출 (간단한 구현)
+    사용자 질문에서 키워드 추출
 
     Args:
         query: 사용자 질문
@@ -290,30 +294,21 @@ def extract_keywords_from_query(query: str) -> List[str]:
     Returns:
         추출된 키워드 리스트
     """
-    # 불용어 제거 (질문 관련 단어들)
-    stopwords = [
-        '추천', '해줘', '알려줘', '뭐', '있어', '좀', '해', '주세요', '요', '가', '이', '을', '를', '은', '는', '의', '에',
-        '상품', '제품', '뭐야', '뭔데', '어디', '어떤', '어떻게', '중에서', '중에', '가장', '제일', '가져와',
-        '인기', '인기많은', '인기있는', '인기많은게', '많은', '많이', '좋은', '좋은거', '괜찮은', '괜찮은거',
-        '베스트', '베스트셀러', '신상', '신상품', '새로운', '새로', '나온', '평점', '리뷰', '후기',
-        '잘', '팔리는', '팔린', '판매', '판매량', '구매', '구입', '사고', '싶어', '싶은', '주문',
-        '보여줘', '찾아줘', '검색', '뭐있어', '뭐야', '뭐지', '뭔가', '있나', '있나요', '있어요', '주문'
-    ]
-
     # 공백으로 분리
     words = query.split()
 
-    # 불용어 제거 및 2글자 이상 키워드만 추출
+    # 불용어 제거 및 최소 길이 이상 키워드만 추출
+    min_length = settings.SEARCH_MIN_KEYWORD_LENGTH
     keywords = []
     for word in words:
         # 불용어 체크 (포함 관계도 확인)
         is_stopword = False
-        for stopword in stopwords:
+        for stopword in STOPWORDS:
             if stopword in word or word in stopword:
                 is_stopword = True
                 break
 
-        if not is_stopword and len(word) >= 2:
+        if not is_stopword and len(word) >= min_length:
             keywords.append(word)
 
     return keywords

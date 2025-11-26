@@ -6,6 +6,9 @@
 from typing import Dict, List
 from sentence_transformers import SentenceTransformer
 import numpy as np
+from app.config import get_settings
+
+settings = get_settings()
 
 # 의도별 대표 문장들
 INTENT_EXAMPLES = {
@@ -53,8 +56,10 @@ INTENT_EXAMPLES = {
 
 
 class IntentClassifier:
-    def __init__(self, model_name='BAAI/bge-m3'):
+    def __init__(self, model_name: str = None):
         """벡터 기반 의도 분류기 초기화"""
+        if model_name is None:
+            model_name = settings.EMBEDDING_MODEL
         self.model = SentenceTransformer(model_name)
         self.intent_embeddings = self._create_intent_embeddings()
 

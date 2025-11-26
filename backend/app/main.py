@@ -47,9 +47,9 @@ async def health_check():
 from fastapi import WebSocket
 @app.websocket("/test-ws")
 async def test_websocket(websocket: WebSocket):
-    print("🔌 테스트 WebSocket 연결 요청!")
+    print("테스트 WebSocket 연결 요청!")
     await websocket.accept()
-    print("✅ 테스트 WebSocket 연결 성공!")
+    print("테스트 WebSocket 연결 성공!")
     await websocket.send_text("Hello from WebSocket!")
     await websocket.close()
 

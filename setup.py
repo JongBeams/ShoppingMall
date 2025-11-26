@@ -357,6 +357,24 @@ NEXT_PUBLIC_URL=http://localhost:{self.env_vars['frontend']['FRONTEND_PORT']}
 
 # API Server Configuration
 BACKEND_PORT={self.env_vars['backend']['BACKEND_PORT']}
+
+# AI Models Configuration (자동 설정)
+OLLAMA_HOST=http://localhost:11435
+OLLAMA_MODEL=qwen2.5:14b
+EMBEDDING_MODEL=BAAI/bge-m3
+OLLAMA_TIMEOUT=120
+
+# Recommendation System Settings (자동 설정)
+RECOMMENDATION_ANALYSIS_MONTHS=6
+RECOMMENDATION_MIN_REVIEWS=3
+RECOMMENDATION_PRICE_TOLERANCE=0.3
+RECOMMENDATION_DEFAULT_LIMIT=50
+RECOMMENDATION_EXCLUDE_PURCHASED=true
+
+# Search Settings (자동 설정)
+SEARCH_DOCUMENT_LIMIT=3
+SEARCH_PRODUCT_LIMIT=50
+SEARCH_MIN_KEYWORD_LENGTH=2
 """
 
         # Frontend .env.local

@@ -105,7 +105,7 @@ async def search_products(q: str = ""):
             for vendor in vendors_response.data or []:
                 vendor_map[vendor["id"]] = vendor.get("store_name")
         except Exception as e:
-            print(f"❌ Error fetching vendors: {str(e)}")
+            print(f"Error fetching vendors: {str(e)}")
             vendor_map = {}
 
     product_list = []
@@ -210,7 +210,7 @@ async def get_all_products():
             for vendor in vendors_response.data or []:
                 vendor_map[vendor["id"]] = vendor.get("store_name")
         except Exception as e:
-            print(f"❌ Error fetching vendors: {str(e)}")
+            print(f"Error fetching vendors: {str(e)}")
             vendor_map = {}
 
     product_list = []
