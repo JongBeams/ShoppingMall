@@ -80,24 +80,6 @@ function CheckoutContent() {
           <div id="payment-widget" style={{ width: "100%" }} />
           <div id="agreement" style={{ width: "100%" }} />
 
-          <div style={{ paddingLeft: "24px" }}>
-            <div className={`${styles.checkable} ${styles["typography--p"]}`}>
-              <label htmlFor="coupon-box" className={`${styles["checkable__label"]} ${styles["typography--regular"]}`}>
-                <input
-                  id="coupon-box"
-                  className={styles["checkable__input"]}
-                  type="checkbox"
-                  aria-checked="true"
-                  disabled={!paymentMethodsWidgetReady}
-                  onChange={(event) => {
-                    setPrice(event.target.checked ? price - 5_000 : price + 5_000);
-                  }}
-                />
-                <span className={styles["checkable__label-text"]}>5,000원 쿠폰 적용</span>
-              </label>
-            </div>
-          </div>
-
           <button
             className={styles.button}
             style={{ marginTop: "30px" }}
