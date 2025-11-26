@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.services.auth_middleware import get_current_user
 from app.services.supabase import get_supabase_admin_client
-from app.services.payments import process_payment_success
+from app.services.payments import process_payment_success, cancel_toss_payment
 from pydantic import BaseModel
 from typing import List, Optional
 from decimal import Decimal
@@ -484,6 +484,13 @@ async def cancel_order(
 
         order = order_response.data
 
+        # 디버깅: 주문 취소 요청 정보
+        print(f"=== 주문 취소 요청 ===")
+        print(f"주문 ID: {order.get('id')}")
+        print(f"주문 상태 (status): {order.get('status')}")
+        print(f"결제 상태 (payment_status): {order.get('payment_status')}")
+        print(f"payment_id: {order.get('payment_id')}")
+
         # 본인 주문인지 확인 (buyer_id 사용)
         if order["buyer_id"] != user_id:  # user_id -> buyer_id
             raise HTTPException(
@@ -498,10 +505,27 @@ async def cancel_order(
                 detail="배송 준비 중이거나 배송 완료된 주문은 취소할 수 없습니다."
             )
 
+        # 결제가 완료된 경우 토스페이먼츠 결제 취소 처리
+        if order["status"] == "paid" and order.get("payment_id"):
+            try:
+                # 토스페이먼츠 결제 취소 API 호출
+                cancel_result = await cancel_toss_payment(
+                    payment_key=order["payment_id"],
+                    cancel_amount=None  # 전액 취소
+                )
+                print(f"토스페이먼츠 결제 취소 성공: {cancel_result}")
+            except HTTPException as e:
+                # 결제 취소 실패 시 에러 반환
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"결제 취소 실패: {e.detail}"
+                )
+
         # 주문 상태 변경
         supabase.table("orders").update({
             "status": "cancelled",
-            "cancelled_at": datetime.now().isoformat()
+            "cancelled_at": datetime.now().isoformat(),
+            "payment_status": "cancelled"  # 결제 상태도 cancelled로 변경
         }).eq("id", order_id).execute()
 
         # 재고 복구
@@ -669,3 +693,4 @@ async def success_payment(
 
     return result
 
+#주문 결제 취소는 주문 취소 안에 포함 

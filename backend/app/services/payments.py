@@ -228,17 +228,66 @@ async def process_payment_success(
     }
 
 
+async def cancel_toss_payment(payment_key: str, cancel_amount: int = None) -> Dict[str, Any]:
+    """
+    토스페이먼츠 결제 취소 API 호출
 
-#paymentkey로 결제 조회 테스트용 로직
-import http.client
+    Args:
+        payment_key: 토스 결제 키
+        cancel_amount: 취소할 금액 (None이면 전액 취소)
 
-conn = http.client.HTTPSConnection("api.tosspayments.com")
+    Returns:
+        토스페이먼츠 취소 응답 데이터
 
-headers = { 'Authorization': "Basic dGVzdF9za19lcVJHZ1lPMXI1NDZhSzZQeUdqNFZRbk4yRXlhOg==" }
+    Raises:
+        HTTPException: 토스 API 호출 실패 시
+    """
+    if not TOSS_SECRET_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="TOSS_SECRET_KEY가 설정되지 않았습니다."
+        )
 
-conn.request("GET", "/v1/payments/5EnNZRJGvaBX7zk2yd8ydw26XvwXkLrx9POLqKQjmAw4b0e1", headers=headers)
+    # 1. 토스페이먼츠 API 호출 준비
+    url = f"https://api.tosspayments.com/v1/payments/{payment_key}/cancel"
+    auth_string = f"{TOSS_SECRET_KEY}:"
+    encoded_auth = base64.b64encode(auth_string.encode()).decode()
 
-res = conn.getresponse()
-data = res.read()
+    headers = {
+        "Authorization": f"Basic {encoded_auth}",
+        "Content-Type": "application/json"
+    }
 
-print(data.decode("utf-8"))
+    # 2. 요청 바디 구성 (취소 사유는 고정값)
+    payload = {
+        "cancelReason": "환불 취소(Not null 값이라 취소 시 환불사유 작성 UI 및 기능 추가 필요)"
+    }
+
+    # 부분 취소인 경우 금액 추가
+    if cancel_amount is not None:
+        payload["cancelAmount"] = cancel_amount
+
+    # 3. 토스페이먼츠 API 호출
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, json=payload, headers=headers, timeout=10.0)
+
+            if response.status_code != 200:
+                error_data = response.json()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"토스페이먼츠 결제 취소 실패: {error_data.get('message', '알 수 없는 오류')}"
+                )
+
+            return response.json()
+
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="토스페이먼츠 API 타임아웃"
+            )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"토스페이먼츠 API 연결 실패: {str(e)}"
+            )

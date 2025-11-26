@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 """
@@ -94,3 +94,23 @@ class OrderWithPaymentInfo(BaseModel):
     paid_at: Optional[str]             # 결제 승인 시각
     total_amount: float                # 주문 총액
     created_at: str                    # 주문 생성 시각
+
+
+class RefundReceiveAccount(BaseModel):
+    """환불 계좌 정보 (가상계좌 결제 취소 시 필수)"""
+    bank: str = Field(..., description="은행 코드")
+    accountNumber: str = Field(..., description="계좌번호 (- 없이 숫자만)")
+    holderName: str = Field(..., description="예금주명")
+
+
+class CancelPaymentRequest(BaseModel):
+    """토스페이먼츠 결제 취소 요청"""
+    cancelReason: str = Field(..., description="결제 취소 사유 (최대 200자)", max_length=200)
+    cancelAmount: Optional[int] = Field(None, description="취소할 금액 (없으면 전액 취소)")
+    cancelRequestId: Optional[str] = Field(None, description="취소 요청 ID (멱등키)")
+    currency: Optional[str] = Field(None, description="취소 통화 (KRW, USD, JPY)")
+    dividedPayment: Optional[bool] = Field(None, description="분할 결제 여부")
+    refundReceiveAccount: Optional[RefundReceiveAccount] = Field(None, description="환불 계좌 정보 (가상계좌만)")
+    taxAmount: Optional[int] = Field(None, description="과세 금액")
+    taxExemptionAmount: Optional[int] = Field(None, description="과세 제외 금액")
+    taxFreeAmount: Optional[int] = Field(None, description="면세 금액")
