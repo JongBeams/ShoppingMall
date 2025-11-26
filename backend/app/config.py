@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     # CORS
     NEXT_PUBLIC_URL: str = "http://localhost:3000"
 
+    # Toss Payments
+    TOSS_SECRET_KEY: str | None = None
+    TOSS_AUTH_KEY: str | None = None
+    TOSS_CLIENT_KEY: str | None = None
+
     class Config:
         env_file = ".env"
         case_sensitive = True

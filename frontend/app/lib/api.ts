@@ -234,3 +234,54 @@ export const productManagementAPI = {
     return response.json();
   },
 };
+
+
+
+
+// Payment API Types
+interface PaymentSuccessResponse {
+  message: string;
+  order_id: string;
+  order_number: string;
+  payment_key: string;
+  payment_status: string;
+  total_amount: number;
+  approved_at: string | null;
+}
+
+// Payment API
+export const paymentAPI = {
+  /**
+   * 토스페이먼츠 결제 승인 및 DB 업데이트
+   *
+   * @param paymentKey - 토스페이먼츠에서 전달받은 결제 키
+   * @param orderId - 주문 번호 (orderId)
+   * @param amount - 결제 금액
+   * @param token - 인증 토큰
+   * @returns 결제 승인 결과
+   */
+  confirmTossPayment: (
+    paymentKey: string,
+    orderId: string,
+    amount: number,
+    token: string
+  ): Promise<PaymentSuccessResponse> =>
+    fetchAPI('/orders/success', {
+      method: 'POST',
+      body: JSON.stringify({
+        paymentKey,
+        orderId,
+        amount,
+      }),
+      token,
+    }),
+};
+
+// order payments 결제관련 (기존 API - 향후 통합 가능)
+export const orderPaymentsAPI = {
+  getPayments: (token: string): Promise<{ message: string; products: GetVendorProductRequest[] }> =>
+    fetchAPI('/orders/checkout', {
+      method: 'GET',
+      token,
+    }),
+};

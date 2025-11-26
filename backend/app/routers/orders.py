@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.services.auth_middleware import get_current_user
 from app.services.supabase import get_supabase_admin_client
+from app.services.payments import process_payment_success
 from pydantic import BaseModel
 from typing import List, Optional
 from decimal import Decimal
@@ -42,6 +43,7 @@ class CreateOrderRequest(BaseModel):
     address_detail: Optional[str] = ""
     delivery_message: Optional[str] = ""
     payment_method: str  # card, bank, kakao, toss
+    toss_order_id: Optional[str] = None  # 토스페이먼츠에서 전달한 orderId (nanoid)
 
 
 class OrderResponse(BaseModel):
@@ -112,11 +114,12 @@ async def create_order(
                     detail=f"재고가 부족합니다. ({product['name']}, 현재 재고: {product['stock_quantity']}개)"
                 )
 
-        # 주문 생성 (기존 DB 스키마에 맞춤)
+        # 주문 생성 (결제 대기 상태)
         order_data = {
             "buyer_id": user_id,  # user_id -> buyer_id
             "order_number": order_number,
-            "status": "paid",  # 주문과 동시에 결제 완료 처리
+            "toss_order_id": request.toss_order_id,  # 토스 orderId (nanoid) 저장
+            "status": "pending",  # 결제 대기 상태
             "subtotal": request.total_amount,
             "shipping_fee": 0,
             "tax": 0,
@@ -131,7 +134,7 @@ async def create_order(
             },
             "notes": request.delivery_message,  # delivery_message -> notes
             "payment_method": request.payment_method,
-            "payment_status": "completed",  # 결제 완료 상태로 변경
+            "payment_status": None,  # 결제 대기 (아직 결제되지 않음)
         }
 
         order_response = (
@@ -181,28 +184,10 @@ async def create_order(
         # 주문 아이템 일괄 삽입
         supabase.table("order_items").insert(order_items).execute()
 
-        # 재고 차감 및 판매량 증가
-        for item in request.items:
-            product_response = (
-                supabase.table("products")
-                .select("stock_quantity, sale_count")
-                .eq("id", item.product_id)
-                .single()
-                .execute()
-            )
-
-            current_stock = product_response.data["stock_quantity"]
-            current_sale_count = product_response.data.get("sale_count", 0) or 0
-            new_stock = current_stock - item.quantity
-            new_sale_count = current_sale_count + item.quantity
-
-            supabase.table("products").update({
-                "stock_quantity": new_stock,
-                "sale_count": new_sale_count
-            }).eq("id", item.product_id).execute()
+        # 재고 차감은 결제 승인 성공 시 수행 (process_payment_success에서 처리)
 
         return {
-            "message": "주문이 완료되었습니다.",
+            "message": "주문이 생성되었습니다. 결제를 진행해주세요.",
             "order_id": order_id,
             "order_number": order_number,
             "total_amount": request.total_amount,
@@ -453,6 +438,12 @@ async def get_order(
 
         order["items"] = order_items
 
+        # 디버깅: 주문 데이터 확인
+        print(f"주문 ID: {order.get('id')}")
+        print(f"payment_id: {order.get('payment_id')}")
+        print(f"payment_status: {order.get('payment_status')}")
+        print(f"toss_order_id: {order.get('toss_order_id')}")
+
         return order
 
     except HTTPException:
@@ -649,7 +640,32 @@ async def update_order_status_admin(
 
 
 # ============================================
-# VENDOR ENDPOINTS
+# PAYMENTS ENDPOINTS
 # ============================================
 
+class PaymentSuccessRequest(BaseModel):
+    paymentKey: str
+    orderId: str
+    amount: int
+
+@router.post("/success", summary="주문 결제 성공 처리")
+async def success_payment(
+    req: PaymentSuccessRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    결제 성공 시 토스페이먼츠 승인 + DB 업데이트
+
+    - 토스 /v1/payments/confirm 호출
+    - 금액 검증 (프론트/서버/토스 3중 검증)
+    - orders 테이블에 payment_id, payment_status, paid_at 등 업데이트
+    """
+    result = await process_payment_success(
+        payment_key=req.paymentKey,
+        order_id=req.orderId,
+        amount=req.amount,
+        user_id=current_user["id"]
+    )
+
+    return result
 

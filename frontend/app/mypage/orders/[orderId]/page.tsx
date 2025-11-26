@@ -34,6 +34,32 @@ export default function OrderDetailPage() {
     fetchWrittenReviews();
   }, [orderId]);
 
+  // paymentKey로 토스페이먼츠 결제 정보 조회
+  const fetchTossPaymentInfo = async (paymentKey: string) => {
+    try {
+      // 토스페이먼츠 시크릿 키 (테스트용)
+      const secretKey = 'test_gsk_docs_OaPz8L5KdmQXkzRz3y47BMw6';
+      const encodedKey = btoa(secretKey + ':');
+
+      const response = await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${encodedKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const paymentData = await response.json();
+        console.log('토스페이먼츠 결제 정보:', paymentData);
+      } else {
+        console.error('토스페이먼츠 결제 조회 실패:', response.status);
+      }
+    } catch (error) {
+      console.error('토스페이먼츠 API 호출 오류:', error);
+    }
+  };
+
   const fetchWrittenReviews = async () => {
     const token = localStorage.getItem('access_token');
     if (!token) return;
@@ -76,6 +102,12 @@ export default function OrderDetailPage() {
 
       const data = await response.json();
       setOrder(data);
+
+      // payment_id(paymentKey)가 있으면 토스페이먼츠 결제 정보 조회
+      if (data.payment_id) {
+        console.log('주문에 paymentKey가 존재합니다:', data.payment_id);
+        await fetchTossPaymentInfo(data.payment_id);
+      }
     } catch (err: any) {
       console.error('주문 상세 조회 실패:', err);
       setError(err.message || '주문 정보를 불러오는 중 오류가 발생했습니다.');

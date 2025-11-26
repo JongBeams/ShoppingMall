@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { paymentAPI } from '@/app/lib/api';
+import { cartAPI } from '@/app/lib/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -42,9 +44,9 @@ export default function PaymentSuccessPage() {
       }
 
       try {
+        // 1단계: 주문 생성 (order_number 생성)
         setMessage('주문 생성 중...');
 
-        // 백엔드에 주문 생성 요청
         const orderData = {
           items: checkoutData.items.map((item: any) => ({
             product_id: item.product_id,
@@ -60,11 +62,10 @@ export default function PaymentSuccessPage() {
           address_detail: checkoutData.address_detail,
           delivery_message: checkoutData.delivery_message,
           payment_method: checkoutData.payment_method,
-          payment_key: paymentKey,
-          toss_order_id: orderId,
+          toss_order_id: orderId,  // 토스가 전달한 nanoid 저장
         };
 
-        const response = await fetch(`${API_BASE_URL}/orders`, {
+        const orderResponse = await fetch(`${API_BASE_URL}/orders`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -73,44 +74,63 @@ export default function PaymentSuccessPage() {
           body: JSON.stringify(orderData),
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || '주문에 실패했습니다.');
+        if (!orderResponse.ok) {
+          const errorData = await orderResponse.json();
+          throw new Error(errorData.detail || '주문 생성에 실패했습니다.');
         }
 
-        const result = await response.json();
+        const orderResult = await orderResponse.json();
+        console.log('주문 생성 완료:', orderResult);
 
-        // 장바구니 비우기
+        // 2단계: 토스페이먼츠 결제 승인 + DB 업데이트
+        // 중요: 생성된 order_number를 사용 (토스가 전달한 orderId가 아님)
+        setMessage('결제 승인 처리 중...');
+
+        const paymentResult = await paymentAPI.confirmTossPayment(
+          paymentKey,
+          orderId,  // 토스가 전달한 원본 orderId 사용 (nanoid)
+          parseInt(amount),
+          token
+        );
+
+        console.log('==================== Payment 객체 정보 ====================');
+        console.log('📦 결제 승인 완료:', paymentResult);
+        console.log('✅ 주문 ID:', paymentResult.order_id);
+        console.log('✅ 주문 번호:', paymentResult.order_number);
+        console.log('✅ 결제 키:', paymentResult.payment_key);
+        console.log('✅ 결제 상태:', paymentResult.payment_status);
+        console.log('✅ 결제 금액:', paymentResult.total_amount);
+        console.log('✅ 승인 시각:', paymentResult.approved_at);
+        console.log('==========================================================');
+
+        // 3단계: 장바구니 비우기
+        setMessage('주문 완료 처리 중...');
         try {
-          await fetch(`${API_BASE_URL}/cart/clear`, {
-            method: 'DELETE',
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          await cartAPI.clear(token);
           // 장바구니 업데이트 이벤트 발생
           if (window.opener) {
             window.opener.dispatchEvent(new Event('cartUpdated'));
           }
         } catch (err) {
           console.error('장바구니 비우기 실패:', err);
+          // 장바구니 비우기 실패는 무시 (결제는 이미 완료됨)
         }
 
         // sessionStorage 정리
         sessionStorage.removeItem('checkoutData');
 
         setStatus('success');
-        setMessage('주문이 완료되었습니다!');
+        setMessage('결제가 완료되었습니다!');
 
         // 2초 후 주문 상세 페이지로 이동
         setTimeout(() => {
           if (window.opener) {
             // 부모 창을 주문 상세 페이지로 이동
-            window.opener.location.href = `/mypage/orders/${result.order_id}`;
+            window.opener.location.href = `/mypage/orders/${paymentResult.order_id}`;
             window.close();
           } else {
             // opener가 없으면 현재 창에서 이동
-            router.push(`/mypage/orders/${result.order_id}`);
+            router.push(`/mypage/orders/${paymentResult.order_id}`);
           }
         }, 2000);
 
