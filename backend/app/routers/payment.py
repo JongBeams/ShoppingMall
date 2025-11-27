@@ -1,33 +1,20 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from pydantic import BaseModel
-from typing import Optional, List
 from app.services.supabase import get_supabase_client
 from app.services.auth_middleware import get_current_user
+from app.models.payments import (
+    PaymentMethodCreate,
+    PaymentMethodResponse,
+    PaymentMethodListResponse,
+    RefundAccountCreate,
+    RefundAccountResponse,
+    RefundAccountListResponse,
+    AddressCreate,
+    AddressUpdate,
+    AddressResponse,
+    AddressListResponse,
+)
 
 router = APIRouter(prefix="/payment", tags=["Payment"])
-
-
-# ========== 결제수단 ==========
-class PaymentMethodCreate(BaseModel):
-    card_company: str  # 카드사 (신한, 삼성, 현대 등)
-    card_number: str   # 카드번호 (마스킹된 형태로 저장)
-    card_holder: str   # 카드 소유자명
-    expiry_date: str   # 유효기간 (MM/YY)
-    is_default: bool = False
-
-
-class PaymentMethodResponse(BaseModel):
-    id: str
-    card_company: str
-    card_number: str
-    card_holder: str
-    expiry_date: str
-    is_default: bool
-    created_at: str
-
-
-class PaymentMethodListResponse(BaseModel):
-    payment_methods: List[PaymentMethodResponse]
 
 
 @router.get("/methods", response_model=PaymentMethodListResponse)
@@ -134,26 +121,6 @@ async def set_default_payment_method(
 
 
 # ========== 환불계좌 ==========
-class RefundAccountCreate(BaseModel):
-    bank_name: str      # 은행명
-    account_number: str # 계좌번호
-    account_holder: str # 예금주
-    is_default: bool = False
-
-
-class RefundAccountResponse(BaseModel):
-    id: str
-    bank_name: str
-    account_number: str
-    account_holder: str
-    is_default: bool
-    created_at: str
-
-
-class RefundAccountListResponse(BaseModel):
-    refund_accounts: List[RefundAccountResponse]
-
-
 @router.get("/refund-accounts", response_model=RefundAccountListResponse)
 async def get_refund_accounts(current_user: dict = Depends(get_current_user)):
     """환불계좌 목록 조회"""
@@ -253,42 +220,6 @@ async def set_default_refund_account(
 
 
 # ========== 배송지 ==========
-class AddressCreate(BaseModel):
-    name: str           # 배송지명 (자택, 회사 등)
-    recipient: str      # 수령인
-    phone: str          # 연락처
-    postal_code: str    # 우편번호
-    address: str        # 기본주소
-    detail_address: str = ""  # 상세주소
-    is_default: bool = False
-
-
-class AddressUpdate(BaseModel):
-    name: Optional[str] = None
-    recipient: Optional[str] = None
-    phone: Optional[str] = None
-    postal_code: Optional[str] = None
-    address: Optional[str] = None
-    detail_address: Optional[str] = None
-    is_default: Optional[bool] = None
-
-
-class AddressResponse(BaseModel):
-    id: str
-    name: str
-    recipient: str
-    phone: str
-    postal_code: str
-    address: str
-    detail_address: str
-    is_default: bool
-    created_at: str
-
-
-class AddressListResponse(BaseModel):
-    addresses: List[AddressResponse]
-
-
 @router.get("/addresses", response_model=AddressListResponse)
 async def get_addresses(current_user: dict = Depends(get_current_user)):
     """배송지 목록 조회"""

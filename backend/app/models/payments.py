@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 
 """
 Orders 테이블 - 토스페이먼츠 필드 매핑:
@@ -114,3 +114,94 @@ class CancelPaymentRequest(BaseModel):
     taxAmount: Optional[int] = Field(None, description="과세 금액")
     taxExemptionAmount: Optional[int] = Field(None, description="과세 제외 금액")
     taxFreeAmount: Optional[int] = Field(None, description="면세 금액")
+
+
+# ========== 결제수단 모델 ==========
+class PaymentMethodCreate(BaseModel):
+    """결제수단 생성 요청"""
+    card_company: str  # 카드사 (신한, 삼성, 현대 등)
+    card_number: str   # 카드번호 (마스킹된 형태로 저장)
+    card_holder: str   # 카드 소유자명
+    expiry_date: str   # 유효기간 (MM/YY)
+    is_default: bool = False
+
+
+class PaymentMethodResponse(BaseModel):
+    """결제수단 응답"""
+    id: str
+    card_company: str
+    card_number: str
+    card_holder: str
+    expiry_date: str
+    is_default: bool
+    created_at: str
+
+
+class PaymentMethodListResponse(BaseModel):
+    """결제수단 목록 응답"""
+    payment_methods: List[PaymentMethodResponse]
+
+
+# ========== 환불계좌 모델 ==========
+class RefundAccountCreate(BaseModel):
+    """환불계좌 생성 요청"""
+    bank_name: str      # 은행명
+    account_number: str # 계좌번호
+    account_holder: str # 예금주
+    is_default: bool = False
+
+
+class RefundAccountResponse(BaseModel):
+    """환불계좌 응답"""
+    id: str
+    bank_name: str
+    account_number: str
+    account_holder: str
+    is_default: bool
+    created_at: str
+
+
+class RefundAccountListResponse(BaseModel):
+    """환불계좌 목록 응답"""
+    refund_accounts: List[RefundAccountResponse]
+
+
+# ========== 배송지 모델 ==========
+class AddressCreate(BaseModel):
+    """배송지 생성 요청"""
+    name: str           # 배송지명 (자택, 회사 등)
+    recipient: str      # 수령인
+    phone: str          # 연락처
+    postal_code: str    # 우편번호
+    address: str        # 기본주소
+    detail_address: str = ""  # 상세주소
+    is_default: bool = False
+
+
+class AddressUpdate(BaseModel):
+    """배송지 수정 요청"""
+    name: Optional[str] = None
+    recipient: Optional[str] = None
+    phone: Optional[str] = None
+    postal_code: Optional[str] = None
+    address: Optional[str] = None
+    detail_address: Optional[str] = None
+    is_default: Optional[bool] = None
+
+
+class AddressResponse(BaseModel):
+    """배송지 응답"""
+    id: str
+    name: str
+    recipient: str
+    phone: str
+    postal_code: str
+    address: str
+    detail_address: str
+    is_default: bool
+    created_at: str
+
+
+class AddressListResponse(BaseModel):
+    """배송지 목록 응답"""
+    addresses: List[AddressResponse]

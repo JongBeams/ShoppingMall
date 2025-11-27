@@ -11,7 +11,7 @@ load_dotenv()
 
 TOSS_SECRET_KEY = os.getenv("TOSS_SECRET_KEY")
 
-
+#토스 결제 승인 API 호출
 async def confirm_toss_payment(payment_key: str, order_id: str, amount: int) -> Dict[str, Any]:
     """
     토스페이먼츠 결제 승인 API 호출
@@ -64,6 +64,7 @@ async def confirm_toss_payment(payment_key: str, order_id: str, amount: int) -> 
         )
 
 
+#주문 성공 로직 (토스 결제 승인 로직 포함)
 async def process_payment_success(
     payment_key: str,
     order_id: str,
@@ -228,6 +229,7 @@ async def process_payment_success(
     }
 
 
+#토스 결제 취소 API 로직
 async def cancel_toss_payment(payment_key: str, cancel_amount: int = None) -> Dict[str, Any]:
     """
     토스페이먼츠 결제 취소 API 호출
