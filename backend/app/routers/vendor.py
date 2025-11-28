@@ -29,6 +29,7 @@ class VendorResponse(BaseModel):
     subscription_plan: str
     is_active: bool
     is_verified: bool
+    approval_status: str  # pending, approved, rejected
     rating: float
     review_count: int
     created_at: str
@@ -76,6 +77,7 @@ async def get_my_vendor_info(credentials: HTTPAuthorizationCredentials = Depends
             subscription_plan=vendor["subscription_plan"],
             is_active=vendor["is_active"],
             is_verified=vendor["is_verified"],
+            approval_status=vendor.get("approval_status", "pending"),
             rating=float(vendor["rating"]),
             review_count=vendor["review_count"],
             created_at=vendor["created_at"],
@@ -151,6 +153,7 @@ async def update_my_vendor_info(
             subscription_plan=vendor["subscription_plan"],
             is_active=vendor["is_active"],
             is_verified=vendor["is_verified"],
+            approval_status=vendor.get("approval_status", "pending"),
             rating=float(vendor["rating"]),
             review_count=vendor["review_count"],
             created_at=vendor["created_at"],

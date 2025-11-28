@@ -39,6 +39,7 @@ export default function RegisterForm() {
     businessAddress: '',
     storeName: '',
     storeDescription: '',
+    category: '',
   });
 
   const [error, setError] = useState('');
@@ -210,7 +211,7 @@ export default function RegisterForm() {
 
     // 사업자 회원가입 시 필수 필드 검증
     if (userType === 'seller') {
-      if (!formData.businessName || !formData.businessNumber || !formData.businessAddress || !formData.storeName) {
+      if (!formData.businessName || !formData.businessNumber || !formData.businessAddress || !formData.storeName || !formData.category) {
         setError('사업자 정보를 모두 입력해주세요.');
         return;
       }
@@ -231,6 +232,7 @@ export default function RegisterForm() {
           business_address: formData.businessAddress,
           store_name: formData.storeName,
           store_description: formData.storeDescription || undefined,
+          category: formData.category,
         }),
       };
 
@@ -477,6 +479,30 @@ export default function RegisterForm() {
                     required={userType === 'seller'}
                     className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
                   />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    판매 카테고리 <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    required={userType === 'seller'}
+                    className="w-full border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
+                  >
+                    <option value="">카테고리를 선택해주세요</option>
+                    <option value="식품">식품</option>
+                    <option value="전자제품">전자제품</option>
+                    <option value="의류">의류</option>
+                    <option value="생활용품">생활용품</option>
+                    <option value="건강식품">건강식품</option>
+                    <option value="화장품">화장품</option>
+                    <option value="도서">도서</option>
+                    <option value="스포츠">스포츠</option>
+                    <option value="완구">완구</option>
+                    <option value="기타">기타</option>
+                  </select>
                 </div>
 
                 <div>

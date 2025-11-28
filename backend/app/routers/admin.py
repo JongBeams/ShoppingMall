@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr
 from app.services.supabase import get_supabase_admin_client
-from app.services.email import send_otp_email
+from app.services.email import send_otp_email, send_vendor_approval_email
 from app.services.otp_store import get_otp_store
 from app.services.auth_middleware import get_current_admin
 import bcrypt
@@ -9,6 +9,9 @@ from typing import Optional
 from datetime import datetime
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
+
+# Supabase 클라이언트 초기화
+supabase = get_supabase_admin_client()
 
 
 class AdminSendOTPRequest(BaseModel):
@@ -456,4 +459,248 @@ async def update_user_status(user_id: str, request: UserStatusUpdateRequest, cur
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"사용자 상태 변경 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+# ========== 판매자 관리 ==========
+
+@router.get("/vendors")
+async def get_all_vendors(
+    status: Optional[str] = None,  # pending, approved, rejected
+    search: Optional[str] = None,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """관리자용 - 전체 판매자 목록 조회"""
+    try:
+        # 기본 쿼리
+        query = supabase.table("vendors").select(
+            "id, user_id, business_name, business_number, owner_name, "
+            "phone, email, category, approval_status, created_at, updated_at, "
+            "approved_at, rejected_at, rejection_reason"
+        )
+
+        # 상태 필터
+        if status:
+            query = query.eq("approval_status", status)
+
+        # 검색 필터 (상호명, 대표자명, 사업자번호)
+        if search:
+            query = query.or_(
+                f"business_name.ilike.%{search}%,"
+                f"owner_name.ilike.%{search}%,"
+                f"business_number.ilike.%{search}%"
+            )
+
+        # 최신순 정렬
+        query = query.order("created_at", desc=True)
+
+        response = query.execute()
+        return response.data
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"판매자 목록 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.patch("/vendors/{vendor_id}/approve")
+async def approve_vendor(
+    vendor_id: str,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """판매자 승인"""
+    try:
+        # 판매자 존재 확인
+        vendor_response = supabase.table("vendors").select("*").eq("id", vendor_id).execute()
+
+        if not vendor_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="판매자를 찾을 수 없습니다."
+            )
+
+        vendor = vendor_response.data[0]
+
+        # 이미 승인된 경우
+        if vendor["approval_status"] == "approved":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 승인된 판매자입니다."
+            )
+
+        # 승인 처리
+        from datetime import datetime, timezone
+        update_response = supabase.table("vendors").update({
+            "approval_status": "approved",
+            "is_active": True,  # 승인 시 활성화
+            "is_verified": True,  # 승인 시 검증됨으로 표시
+            "approved_at": datetime.now(timezone.utc).isoformat(),
+            "rejected_at": None,
+            "rejection_reason": None
+        }).eq("id", vendor_id).execute()
+
+        # 승인 완료 이메일 발송
+        try:
+            if vendor.get("email") and vendor.get("owner_name"):
+                await send_vendor_approval_email(
+                    to_email=vendor["email"],
+                    vendor_name=vendor["owner_name"]
+                )
+                print(f"[INFO] 판매자 승인 이메일 발송 완료: {vendor['email']}")
+        except Exception as e:
+            print(f"[ERROR] 판매자 승인 이메일 발송 실패: {str(e)}")
+            # 이메일 실패해도 승인은 진행
+
+        return MessageResponse(message="판매자가 승인되었습니다.")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"판매자 승인 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.patch("/vendors/{vendor_id}/reject")
+async def reject_vendor(
+    vendor_id: str,
+    rejection_reason: Optional[str] = None,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """판매자 반려"""
+    try:
+        # 판매자 존재 확인
+        vendor_response = supabase.table("vendors").select("*").eq("id", vendor_id).execute()
+
+        if not vendor_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="판매자를 찾을 수 없습니다."
+            )
+
+        vendor = vendor_response.data[0]
+
+        # 이미 반려된 경우
+        if vendor["approval_status"] == "rejected":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 반려된 판매자입니다."
+            )
+
+        # 반려 처리
+        from datetime import datetime, timezone
+        update_response = supabase.table("vendors").update({
+            "approval_status": "rejected",
+            "rejected_at": datetime.now(timezone.utc).isoformat(),
+            "approved_at": None,
+            "rejection_reason": rejection_reason
+        }).eq("id", vendor_id).execute()
+
+        return MessageResponse(message="판매자 신청이 반려되었습니다.")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"판매자 반려 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.patch("/vendors/{vendor_id}/cancel-approval")
+async def cancel_vendor_approval(
+    vendor_id: str,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """판매자 승인 취소"""
+    try:
+        # 판매자 존재 확인
+        vendor_response = supabase.table("vendors").select("*").eq("id", vendor_id).execute()
+
+        if not vendor_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="판매자를 찾을 수 없습니다."
+            )
+
+        vendor = vendor_response.data[0]
+
+        # 승인된 상태가 아닌 경우
+        if vendor["approval_status"] != "approved":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="승인된 판매자만 승인 취소할 수 있습니다."
+            )
+
+        # 승인 취소 처리 - pending 상태로 되돌림
+        update_response = supabase.table("vendors").update({
+            "approval_status": "pending",
+            "is_active": False,
+            "is_verified": False,
+            "approved_at": None
+        }).eq("id", vendor_id).execute()
+
+        return MessageResponse(message="판매자 승인이 취소되었습니다.")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"판매자 승인 취소 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.post("/vendors/migrate-existing")
+async def migrate_existing_vendors(
+    current_admin: dict = Depends(get_current_admin)
+):
+    """기존 판매자 데이터 마이그레이션 (1회성 실행용)"""
+    try:
+        # 모든 vendors 조회
+        vendors_response = supabase.table("vendors").select("*").execute()
+
+        if not vendors_response.data:
+            return MessageResponse(message="마이그레이션할 판매자가 없습니다.")
+
+        updated_count = 0
+
+        for vendor in vendors_response.data:
+            # 이미 업데이트된 경우 스킵
+            if vendor.get("approval_status") and vendor.get("email"):
+                continue
+
+            # profiles에서 사용자 정보 조회
+            profile_response = supabase.table("profiles").select("*").eq("id", vendor["user_id"]).execute()
+
+            if not profile_response.data:
+                continue
+
+            profile = profile_response.data[0]
+
+            # 업데이트할 데이터
+            update_data = {
+                "owner_name": profile.get("full_name"),
+                "phone": profile.get("phone"),
+                "email": profile.get("email"),
+                "approval_status": "approved" if vendor.get("is_active") else "pending",
+            }
+
+            # 승인된 경우 approved_at 설정
+            if update_data["approval_status"] == "approved" and not vendor.get("approved_at"):
+                from datetime import datetime, timezone
+                update_data["approved_at"] = datetime.now(timezone.utc).isoformat()
+
+            # 업데이트 실행
+            supabase.table("vendors").update(update_data).eq("id", vendor["id"]).execute()
+            updated_count += 1
+
+        return MessageResponse(message=f"{updated_count}개 판매자 데이터가 업데이트되었습니다.")
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"마이그레이션 중 오류가 발생했습니다: {str(e)}"
         )

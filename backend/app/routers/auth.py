@@ -163,9 +163,13 @@ async def register(user_data: UserRegisterRequest):
                     "user_id": user_id,
                     "business_name": user_data.business_name,
                     "business_number": user_data.business_number,
+                    "owner_name": user_data.full_name,
+                    "phone": user_data.phone,
+                    "email": user_data.email,
                     "business_address": user_data.business_address,
                     "store_name": user_data.store_name,
                     "store_description": user_data.store_description,
+                    "approval_status": "pending",  # 승인대기 상태
                     "is_active": False,
                     "is_verified": False,
                 }
@@ -213,9 +217,13 @@ async def register(user_data: UserRegisterRequest):
                 "user_id": user_id,
                 "business_name": user_data.business_name,
                 "business_number": user_data.business_number,
+                "owner_name": user_data.full_name,
+                "phone": user_data.phone,
+                "email": user_data.email,
                 "business_address": user_data.business_address,
                 "store_name": user_data.store_name,
                 "store_description": user_data.store_description,
+                "approval_status": "pending",  # 승인대기 상태
                 "is_active": False,  # 관리자 승인 필요
                 "is_verified": False,
             }

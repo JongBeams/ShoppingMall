@@ -200,7 +200,7 @@ export default function Home() {
   // 판매자용 홈 화면
   if (userType === 'seller') {
     return (
-      <div>
+      <div className="relative">
         {/* Main Banner - 판매자 대시보드 */}
         <section className="relative -mt-8 h-[350px] overflow-hidden bg-white dark:bg-gray-900">
           <Image

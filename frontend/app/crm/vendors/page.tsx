@@ -4,73 +4,31 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CRMLayout from '../components/CRMLayout';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+interface Vendor {
+  id: string;
+  user_id: string;
+  business_name: string;
+  business_number: string;
+  owner_name: string;
+  phone: string;
+  email: string;
+  category: string | null;
+  approval_status: string;
+  created_at: string;
+  updated_at: string;
+  approved_at: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+}
+
 export default function VendorsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-
-  // 가짜 판매자 데이터
-  const [vendors] = useState([
-    {
-      id: 'V001',
-      businessName: 'OO농장',
-      ownerName: '김농부',
-      businessNumber: '123-45-67890',
-      category: '식품',
-      phone: '010-1234-5678',
-      email: 'farm@example.com',
-      status: 'pending',
-      appliedAt: '2025-11-18 14:30',
-    },
-    {
-      id: 'V002',
-      businessName: '스마트스토어',
-      ownerName: '이사장',
-      businessNumber: '234-56-78901',
-      category: '전자제품',
-      phone: '010-2345-6789',
-      email: 'smart@example.com',
-      status: 'pending',
-      appliedAt: '2025-11-18 13:00',
-    },
-    {
-      id: 'V003',
-      businessName: '패션몰',
-      ownerName: '박디자이너',
-      businessNumber: '345-67-89012',
-      category: '의류',
-      phone: '010-3456-7890',
-      email: 'fashion@example.com',
-      status: 'approved',
-      appliedAt: '2025-11-17 16:20',
-      approvedAt: '2025-11-18 09:00',
-    },
-    {
-      id: 'V004',
-      businessName: '건강식품',
-      ownerName: '최건강',
-      businessNumber: '456-78-90123',
-      category: '건강식품',
-      phone: '010-4567-8901',
-      email: 'health@example.com',
-      status: 'approved',
-      appliedAt: '2025-11-16 11:15',
-      approvedAt: '2025-11-17 10:30',
-    },
-    {
-      id: 'V005',
-      businessName: '부정판매자',
-      ownerName: '정불법',
-      businessNumber: '567-89-01234',
-      category: '기타',
-      phone: '010-5678-9012',
-      email: 'bad@example.com',
-      status: 'rejected',
-      appliedAt: '2025-11-15 14:50',
-      rejectedAt: '2025-11-16 09:20',
-    },
-  ]);
 
   useEffect(() => {
     const adminToken = localStorage.getItem('admin_token');
@@ -78,8 +36,46 @@ export default function VendorsPage() {
       router.push('/crm/login');
       return;
     }
-    setIsLoading(false);
+    fetchVendors();
   }, [router]);
+
+  const fetchVendors = async () => {
+    try {
+      const adminToken = localStorage.getItem('admin_token');
+      const params = new URLSearchParams();
+
+      if (statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery);
+      }
+
+      const url = `${API_BASE_URL}/admin/vendors${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVendors(data);
+      }
+    } catch (error) {
+      console.error('판매자 목록 조회 실패:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 검색어나 필터 변경 시 재조회
+  useEffect(() => {
+    if (!isLoading) {
+      fetchVendors();
+    }
+  }, [statusFilter]);
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; color: string }> = {
@@ -105,28 +101,102 @@ export default function VendorsPage() {
     );
   };
 
-  const handleApprove = (vendorId: string) => {
-    if (confirm('판매자를 승인하시겠습니까?')) {
-      alert(`판매자 ${vendorId} 승인 완료`);
-      // TODO: 실제 승인 API 호출
+  const handleSearch = () => {
+    fetchVendors();
+  };
+
+  const handleApprove = async (vendorId: string) => {
+    if (!confirm('판매자를 승인하시겠습니까?')) return;
+
+    try {
+      const adminToken = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/approve`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      });
+
+      if (response.ok) {
+        alert('판매자가 승인되었습니다.');
+        fetchVendors(); // 목록 새로고침
+      } else {
+        const error = await response.json();
+        alert(error.detail || '승인 처리 실패');
+      }
+    } catch (error) {
+      console.error('승인 처리 실패:', error);
+      alert('승인 처리 중 오류가 발생했습니다.');
     }
   };
 
-  const handleReject = (vendorId: string) => {
-    if (confirm('판매자 신청을 반려하시겠습니까?')) {
-      alert(`판매자 ${vendorId} 반려 완료`);
-      // TODO: 실제 반려 API 호출
+  const handleReject = async (vendorId: string) => {
+    if (!confirm('판매자 신청을 반려하시겠습니까?')) return;
+
+    const reason = prompt('반려 사유를 입력하세요 (선택사항):');
+
+    try {
+      const adminToken = localStorage.getItem('admin_token');
+      const url = new URL(`${API_BASE_URL}/admin/vendors/${vendorId}/reject`);
+      if (reason) {
+        url.searchParams.append('rejection_reason', reason);
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      });
+
+      if (response.ok) {
+        alert('판매자 신청이 반려되었습니다.');
+        fetchVendors(); // 목록 새로고침
+      } else {
+        const error = await response.json();
+        alert(error.detail || '반려 처리 실패');
+      }
+    } catch (error) {
+      console.error('반려 처리 실패:', error);
+      alert('반려 처리 중 오류가 발생했습니다.');
     }
   };
 
-  const filteredVendors = vendors.filter((vendor) => {
-    const matchesSearch =
-      vendor.businessName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vendor.ownerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vendor.businessNumber.includes(searchQuery);
-    const matchesStatus = statusFilter === 'all' || vendor.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const handleCancelApproval = async (vendorId: string) => {
+    if (!confirm('판매자 승인을 취소하시겠습니까?')) return;
+
+    try {
+      const adminToken = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/cancel-approval`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      });
+
+      if (response.ok) {
+        alert('판매자 승인이 취소되었습니다.');
+        fetchVendors(); // 목록 새로고침
+      } else {
+        const error = await response.json();
+        alert(error.detail || '승인 취소 실패');
+      }
+    } catch (error) {
+      console.error('승인 취소 실패:', error);
+      alert('승인 취소 중 오류가 발생했습니다.');
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   if (isLoading) {
     return (
@@ -153,19 +223,26 @@ export default function VendorsPage() {
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-gray-900 dark:text-white">전체 판매자</h2>
               <span className="rounded-full bg-gray-900 px-2.5 py-0.5 text-xs font-bold text-white dark:bg-white dark:text-gray-900">
-                {filteredVendors.length}
+                {vendors.length}
               </span>
             </div>
 
             {/* Search */}
-            <div className="flex-1 md:max-w-md">
+            <div className="flex flex-1 gap-2 md:max-w-md">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="상호명, 대표자명, 사업자번호로 검색"
-                className="w-full border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-white"
+                className="flex-1 border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-900 transition focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-white"
               />
+              <button
+                onClick={handleSearch}
+                className="border border-gray-900 bg-gray-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+              >
+                검색
+              </button>
             </div>
           </div>
 
@@ -217,7 +294,7 @@ export default function VendorsPage() {
         {/* Vendors List */}
         <section className="mt-3 border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
           <div className="p-4">
-            {filteredVendors.length === 0 ? (
+            {vendors.length === 0 ? (
               <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                 판매자 신청이 없습니다.
               </div>
@@ -226,77 +303,90 @@ export default function VendorsPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         상호명
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         대표자
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         사업자번호
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         카테고리
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         연락처
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         신청일시
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         상태
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
                         관리
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredVendors.map((vendor) => (
+                    {vendors.map((vendor) => (
                       <tr
                         key={vendor.id}
                         className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
                       >
-                        <td className="px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
-                          {vendor.businessName}
+                        <td className="whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
+                          {vendor.business_name}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                          {vendor.ownerName}
+                        <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                          {vendor.owner_name}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                          {vendor.businessNumber}
+                        <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                          {vendor.business_number}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                          {vendor.category}
+                        <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                          {vendor.category || '-'}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                        <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
                           {vendor.phone}
                         </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                          {vendor.appliedAt}
+                        <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                          {formatDate(vendor.created_at)}
                         </td>
-                        <td className="px-3 py-3">{getStatusBadge(vendor.status)}</td>
+                        <td className="px-3 py-3">{getStatusBadge(vendor.approval_status)}</td>
                         <td className="px-3 py-3">
                           <div className="flex items-center justify-end gap-2">
-                            <button className="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
-                              상세
-                            </button>
-                            {vendor.status === 'pending' && (
+                            {vendor.approval_status === 'pending' && (
                               <>
                                 <button
                                   onClick={() => handleApprove(vendor.id)}
-                                  className="border border-green-600 bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700 dark:border-green-500 dark:bg-green-500"
+                                  className="whitespace-nowrap border border-green-600 bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700 dark:border-green-500 dark:bg-green-500"
                                 >
                                   승인
                                 </button>
                                 <button
                                   onClick={() => handleReject(vendor.id)}
-                                  className="border border-red-600 bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 dark:border-red-500 dark:bg-red-500"
+                                  className="whitespace-nowrap border border-red-600 bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 dark:border-red-500 dark:bg-red-500"
                                 >
                                   반려
                                 </button>
                               </>
+                            )}
+                            {vendor.approval_status === 'approved' && (
+                              <button
+                                onClick={() => handleCancelApproval(vendor.id)}
+                                className="whitespace-nowrap border border-orange-600 bg-orange-600 px-2 py-1 text-xs font-medium text-white hover:bg-orange-700 dark:border-orange-500 dark:bg-orange-500"
+                              >
+                                승인취소
+                              </button>
+                            )}
+                            {vendor.approval_status === 'rejected' && (
+                              <button
+                                onClick={() => handleApprove(vendor.id)}
+                                className="whitespace-nowrap border border-green-600 bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700 dark:border-green-500 dark:bg-green-500"
+                              >
+                                재승인
+                              </button>
                             )}
                           </div>
                         </td>

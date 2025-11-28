@@ -19,6 +19,7 @@ import DeliveryManagement from '../components/mypage/DeliveryManagement';
 import InquiryManagement from '../components/mypage/InquiryManagement';
 import SellerCoupons from '../components/mypage/SellerCoupons';
 import EventManagement from '../components/mypage/EventManagement';
+import VendorAuthGuard from '../components/auth/VendorAuthGuard';
 
 // 임시 더미 데이터(주문 내역)
 const dummyOrders: CartItemType[] = [
