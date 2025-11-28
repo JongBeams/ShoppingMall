@@ -263,7 +263,8 @@ async def get_product(product_id: str):
             supabase.table("products")
             .select(
                 "id, name, description, price, stock_quantity, low_stock_threshold, category_id, vendor_id, "
-                "thumbnail_url, images, meta_title, meta_description, is_active, created_at, updated_at"
+                "thumbnail_url, images, meta_title, meta_description, is_active, created_at, updated_at, "
+                "discount_price, discount_start, discount_end"
             )
             .eq("id", product_id)
             .eq("is_active", True)

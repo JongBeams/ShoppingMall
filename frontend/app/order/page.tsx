@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -28,6 +28,7 @@ export default function OrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
+  const hasLoadedDirectOrder = useRef(false);
 
   const [orderForm, setOrderForm] = useState<OrderForm>({
     recipient_name: '',
@@ -71,41 +72,64 @@ export default function OrderPage() {
     }
 
     // 바로구매인 경우
-    if (orderType === 'direct') {
-      const directOrderData = sessionStorage.getItem('directOrder');
-      if (directOrderData) {
-        try {
-          const items = JSON.parse(directOrderData);
-          const cartItemsFromDirect: any[] = items.map((item: any, index: number) => ({
-            id: `direct-${index}`,
-            product_id: item.product_id,
-            product_name: item.product_name,
-            product_thumbnail: item.product_image,
-            product_price: item.price,
-            product_original_price: item.original_price || item.price,
-            is_on_sale: item.is_on_sale || false,
-            quantity: item.quantity,
-            total_price: item.price * item.quantity,
-            selected_options: item.selected_options || [],
-            vendor_name: item.vendor_name,
-          }));
-          setCartItems(cartItemsFromDirect);
-          setLoading(false);
-          sessionStorage.removeItem('directOrder');
-          return;
-        } catch (e) {
-          console.error('바로구매 데이터 파싱 실패:', e);
+    if (orderType === 'direct' && !hasLoadedDirectOrder.current) {
+      hasLoadedDirectOrder.current = true;
+
+      // sessionStorage에서 데이터를 가져올 때까지 최대 5번 재시도
+      let retryCount = 0;
+      const maxRetries = 5;
+
+      const loadDirectOrder = () => {
+        const directOrderData = sessionStorage.getItem('directOrder');
+
+        if (directOrderData) {
+          try {
+            const items = JSON.parse(directOrderData);
+
+            const cartItemsFromDirect: any[] = items.map((item: any, index: number) => ({
+              id: `direct-${index}`,
+              product_id: item.product_id,
+              product_name: item.product_name,
+              product_thumbnail: item.product_image,
+              product_price: item.price,
+              product_original_price: item.original_price || item.price,
+              is_on_sale: item.is_on_sale || false,
+              quantity: item.quantity,
+              total_price: item.price * item.quantity,
+              selected_options: item.selected_options || [],
+              vendor_name: item.vendor_name,
+            }));
+            setCartItems(cartItemsFromDirect);
+            setLoading(false);
+            sessionStorage.removeItem('directOrder');
+            return true;
+          } catch (e) {
+            console.error('바로구매 데이터 파싱 실패:', e);
+          }
         }
-      }
-      // 데이터 없으면 장바구니로
-      alert('주문 정보가 없습니다.');
-      router.push('/cart');
+
+        // 데이터가 없으면 재시도
+        retryCount++;
+        if (retryCount < maxRetries) {
+          setTimeout(loadDirectOrder, 150);
+          return false;
+        }
+
+        // 최대 재시도 횟수 초과
+        alert('주문 정보가 없습니다.');
+        router.push('/cart');
+        return false;
+      };
+
+      loadDirectOrder();
       return;
     }
 
     // 장바구니 주문인 경우
-    fetchCart(token);
-  }, [orderType]);
+    if (orderType !== 'direct') {
+      fetchCart(token);
+    }
+  }, [orderType, router]);
 
   // 결제 팝업에서 postMessage 받기 (실패 시에만 사용)
   useEffect(() => {

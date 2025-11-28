@@ -210,18 +210,20 @@ export default function ProductDetailPage() {
   }, [productId]);
 
   const displayProduct = useMemo(() => {
-    if (product) {
-      console.log('Product data:', product);
-      console.log('Vendor name:', product.vendor_name);
-    }
     return product;
   }, [product]);
 
   // 할인 중인지 확인
   const isOnSale = useMemo(() => {
-    if (!displayProduct?.discount_price || !displayProduct?.discount_start || !displayProduct?.discount_end) return false;
+    if (!displayProduct?.discount_price || !displayProduct?.discount_start || !displayProduct?.discount_end) {
+      return false;
+    }
+
     const now = new Date();
-    return now >= new Date(displayProduct.discount_start) && now <= new Date(displayProduct.discount_end);
+    const startDate = new Date(displayProduct.discount_start);
+    const endDate = new Date(displayProduct.discount_end);
+
+    return now >= startDate && now <= endDate;
   }, [displayProduct]);
 
   // 할인율 계산
@@ -361,6 +363,11 @@ export default function ProductDetailPage() {
           {/* 상품 정보 */}
           <div className="flex flex-col">
             <div className="mb-2 flex items-center gap-2 text-xs">
+              {isOnSale && (
+                <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
+                  🔥 할인특가 {discountPercent}%
+                </span>
+              )}
               <span className="text-gray-500 dark:text-gray-400">{categoryLabel}</span>
               <span className="text-gray-300 dark:text-gray-600">|</span>
               <span className="font-medium text-blue-600 dark:text-blue-400">
@@ -484,14 +491,33 @@ export default function ProductDetailPage() {
                     original_price: displayProduct?.price,
                     is_on_sale: isOnSale,
                     quantity: quantity,
-                    selected_options: Object.entries(selectedOptions).map(([optionId, valueId]) => ({
-                      option_id: optionId,
-                      value_id: valueId
-                    })),
+                    selected_options: Object.entries(selectedOptions)
+                      .filter(([_, valueId]) => valueId !== '')
+                      .map(([optionId, valueId]) => ({
+                        option_id: optionId,
+                        value_id: valueId
+                      })),
                     vendor_name: displayProduct?.vendor_name
                   };
-                  sessionStorage.setItem('directOrder', JSON.stringify([orderItem]));
-                  router.push('/order?type=direct');
+
+                  // sessionStorage에 저장
+                  try {
+                    sessionStorage.setItem('directOrder', JSON.stringify([orderItem]));
+
+                    // 저장 확인
+                    const saved = sessionStorage.getItem('directOrder');
+                    if (!saved) {
+                      throw new Error('sessionStorage 저장 실패');
+                    }
+
+                    // 저장 후 페이지 이동
+                    setTimeout(() => {
+                      router.push('/order?type=direct');
+                    }, 200);
+                  } catch (e) {
+                    console.error('주문 데이터 저장 실패:', e);
+                    alert('주문 정보 저장에 실패했습니다.');
+                  }
                 }}
                 className="text-xs px-8"
               >
