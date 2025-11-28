@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import CRMLayout from '../../components/CRMLayout';
 
@@ -24,8 +24,12 @@ export default function FAQDetailPage() {
   const params = useParams();
   const [faq, setFaq] = useState<FAQ | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const hasFetched = useRef(false);
 
   useEffect(() => {
+    // 이미 fetch했으면 중복 실행 방지
+    if (hasFetched.current) return;
+
     // 관리자 로그인 체크
     const adminToken = localStorage.getItem('admin_token');
     if (!adminToken) {
@@ -34,6 +38,7 @@ export default function FAQDetailPage() {
     }
 
     if (params.id) {
+      hasFetched.current = true;
       fetchFaq(params.id as string);
     }
   }, [params.id, router]);

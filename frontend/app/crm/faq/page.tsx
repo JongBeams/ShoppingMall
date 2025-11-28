@@ -134,7 +134,7 @@ export default function FAQsPage() {
               />
               <button
                 type="submit"
-                className="border border-gray-900 bg-gray-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                className="whitespace-nowrap border border-gray-900 bg-gray-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
               >
                 검색
               </button>
@@ -172,13 +172,13 @@ export default function FAQsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">질문</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">카테고리</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">작성자</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">작성일</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">조회수</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">상태</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">관리</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">질문</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">카테고리</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">작성자</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">작성일</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">조회수</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">상태</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">관리</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -195,25 +195,25 @@ export default function FAQsPage() {
                           {faq.question}
                         </Link>
                       </td>
-                      <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                      <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
                         {faq.category || '-'}
                       </td>
-                      <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                      <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
                         {faq.author_name}
                       </td>
-                      <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                      <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
                         {formatDate(faq.created_at)}
                       </td>
-                      <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                      <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
                         {faq.views}
                       </td>
                       <td className="px-3 py-3">
                         {faq.is_published ? (
-                          <span className="inline-block bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                          <span className="whitespace-nowrap inline-block bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300">
                             공개
                           </span>
                         ) : (
-                          <span className="inline-block bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                          <span className="whitespace-nowrap inline-block bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
                             비공개
                           </span>
                         )}
@@ -222,13 +222,13 @@ export default function FAQsPage() {
                         <div className="flex items-center justify-end gap-2">
                           <Link
                             href={`/crm/faq/${faq.id}/edit`}
-                            className="border border-gray-900 bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                            className="whitespace-nowrap border border-gray-900 bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                           >
                             수정
                           </Link>
                           <button
                             onClick={() => handleDelete(faq.id)}
-                            className="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                            className="whitespace-nowrap border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                           >
                             삭제
                           </button>

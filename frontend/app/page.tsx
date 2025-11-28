@@ -26,6 +26,17 @@ interface Order {
   items?: any[];
 }
 
+interface Notice {
+  id: string;
+  title: string;
+  created_at: string;
+}
+
+interface FAQ {
+  id: string;
+  question: string;
+}
+
 export default function Home() {
   const [userType, setUserType] = useState<string>('');
   const [bestProducts, setBestProducts] = useState<Product[]>([]);
@@ -35,6 +46,11 @@ export default function Home() {
   const [myProducts, setMyProducts] = useState<Product[]>([]);
   const [myOrders, setMyOrders] = useState<Order[]>([]);
   const [sellerDataLoading, setSellerDataLoading] = useState(true);
+  // 공지사항, FAQ 데이터
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [faqs, setFaqs] = useState<FAQ[]>([]);
+  const [noticesLoading, setNoticesLoading] = useState(true);
+  const [faqsLoading, setFaqsLoading] = useState(true);
 
   // 할인 중인지 확인하는 함수
   const isOnSale = (product: Product) => {
@@ -135,6 +151,44 @@ export default function Home() {
 
     fetchSellerData();
   }, [userType]);
+
+  // 공지사항 가져오기
+  useEffect(() => {
+    const fetchNotices = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/notices?limit=4`);
+        if (response.ok) {
+          const data = await response.json();
+          setNotices(data);
+        }
+      } catch (error) {
+        console.error('공지사항 로딩 실패:', error);
+      } finally {
+        setNoticesLoading(false);
+      }
+    };
+
+    fetchNotices();
+  }, []);
+
+  // FAQ 가져오기
+  useEffect(() => {
+    const fetchFaqs = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/faqs?limit=4`);
+        if (response.ok) {
+          const data = await response.json();
+          setFaqs(data);
+        }
+      } catch (error) {
+        console.error('FAQ 로딩 실패:', error);
+      } finally {
+        setFaqsLoading(false);
+      }
+    };
+
+    fetchFaqs();
+  }, []);
 
   const [dealPage, setDealPage] = useState(0);
   const [bestPage, setBestPage] = useState(0);
@@ -455,25 +509,26 @@ export default function Home() {
               </Link>
             </div>
             <div className="space-y-2.5">
-              {[
-                { id: 1, title: '설 연휴 배송 안내', date: '01.20' },
-                { id: 2, title: '신규 회원 할인 이벤트', date: '01.18' },
-                { id: 3, title: '개인정보처리방침 개정 안내', date: '01.15' },
-                { id: 4, title: '시스템 점검 안내', date: '01.10' },
-              ].map((notice) => (
-                <Link
-                  key={notice.id}
-                  href={`/notice/${notice.id}`}
-                  className="flex items-start justify-between border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
-                >
-                  <span className="line-clamp-1 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
-                    {notice.title}
-                  </span>
-                  <span className="ml-2 whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
-                    {notice.date}
-                  </span>
-                </Link>
-              ))}
+              {noticesLoading ? (
+                <p className="text-center text-xs text-gray-500">로딩 중...</p>
+              ) : notices.length === 0 ? (
+                <p className="text-center text-xs text-gray-500">공지사항이 없습니다.</p>
+              ) : (
+                notices.map((notice) => (
+                  <Link
+                    key={notice.id}
+                    href={`/notice/${notice.id}`}
+                    className="flex items-start justify-between border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
+                  >
+                    <span className="line-clamp-1 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                      {notice.title}
+                    </span>
+                    <span className="ml-2 whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
+                      {new Date(notice.created_at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }).replace(/\./g, '.').replace(/\s/g, '')}
+                    </span>
+                  </Link>
+                ))
+              )}
             </div>
           </div>
 
@@ -486,25 +541,26 @@ export default function Home() {
               </Link>
             </div>
             <div className="space-y-2.5">
-              {[
-                { id: 1, title: '배송은 얼마나 걸리나요?' },
-                { id: 2, title: '교환/환불 절차는?' },
-                { id: 3, title: '회원가입 혜택은?' },
-                { id: 4, title: '결제 수단은?' },
-              ].map((faq) => (
-                <Link
-                  key={faq.id}
-                  href={`/faq/${faq.id}`}
-                  className="flex items-start gap-2 border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
-                >
-                  <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
-                    Q.
-                  </span>
-                  <span className="line-clamp-1 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
-                    {faq.title}
-                  </span>
-                </Link>
-              ))}
+              {faqsLoading ? (
+                <p className="text-center text-xs text-gray-500">로딩 중...</p>
+              ) : faqs.length === 0 ? (
+                <p className="text-center text-xs text-gray-500">FAQ가 없습니다.</p>
+              ) : (
+                faqs.map((faq) => (
+                  <Link
+                    key={faq.id}
+                    href={`/faq#${faq.id}`}
+                    className="flex items-start gap-2 border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
+                  >
+                    <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
+                      Q.
+                    </span>
+                    <span className="line-clamp-1 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                      {faq.question}
+                    </span>
+                  </Link>
+                ))
+              )}
             </div>
           </div>
         </section>
@@ -895,25 +951,26 @@ export default function Home() {
             </Link>
           </div>
           <div className="space-y-2.5">
-            {[
-              { id: 1, title: '설 연휴 배송 안내', date: '01.20' },
-              { id: 2, title: '신규 회원 할인 이벤트', date: '01.18' },
-              { id: 3, title: '개인정보처리방침 개정 안내', date: '01.15' },
-              { id: 4, title: '시스템 점검 안내', date: '01.10' },
-            ].map((notice) => (
-              <Link
-                key={notice.id}
-                href={`/notice/${notice.id}`}
-                className="flex items-start justify-between border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
-              >
-                <span className="line-clamp-1 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
-                  {notice.title}
-                </span>
-                <span className="ml-2 whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
-                  {notice.date}
-                </span>
-              </Link>
-            ))}
+            {noticesLoading ? (
+              <p className="text-center text-xs text-gray-500">로딩 중...</p>
+            ) : notices.length === 0 ? (
+              <p className="text-center text-xs text-gray-500">공지사항이 없습니다.</p>
+            ) : (
+              notices.map((notice) => (
+                <Link
+                  key={notice.id}
+                  href={`/notice/${notice.id}`}
+                  className="flex items-start justify-between border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
+                >
+                  <span className="line-clamp-1 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                    {notice.title}
+                  </span>
+                  <span className="ml-2 whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
+                    {new Date(notice.created_at).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }).replace(/\./g, '.').replace(/\s/g, '')}
+                  </span>
+                </Link>
+              ))
+            )}
           </div>
         </div>
 
@@ -926,25 +983,26 @@ export default function Home() {
             </Link>
           </div>
           <div className="space-y-2.5">
-            {[
-              { id: 1, title: '배송은 얼마나 걸리나요?' },
-              { id: 2, title: '교환/환불 절차는?' },
-              { id: 3, title: '회원가입 혜택은?' },
-              { id: 4, title: '결제 수단은?' },
-            ].map((faq) => (
-              <Link
-                key={faq.id}
-                href={`/faq/${faq.id}`}
-                className="flex items-start gap-2 border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
-              >
-                <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
-                  Q.
-                </span>
-                <span className="line-clamp-1 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
-                  {faq.title}
-                </span>
-              </Link>
-            ))}
+            {faqsLoading ? (
+              <p className="text-center text-xs text-gray-500">로딩 중...</p>
+            ) : faqs.length === 0 ? (
+              <p className="text-center text-xs text-gray-500">FAQ가 없습니다.</p>
+            ) : (
+              faqs.map((faq) => (
+                <Link
+                  key={faq.id}
+                  href={`/faq#${faq.id}`}
+                  className="flex items-start gap-2 border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
+                >
+                  <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
+                    Q.
+                  </span>
+                  <span className="line-clamp-1 text-sm text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                    {faq.question}
+                  </span>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </section>

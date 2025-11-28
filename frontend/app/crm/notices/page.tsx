@@ -133,7 +133,7 @@ export default function NoticesPage() {
               />
               <button
                 type="submit"
-                className="border border-gray-900 bg-gray-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                className="whitespace-nowrap border border-gray-900 bg-gray-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
               >
                 검색
               </button>
@@ -171,11 +171,11 @@ export default function NoticesPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">제목</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">작성자</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">작성일</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">조회수</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">관리</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">제목</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">작성자</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">작성일</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">조회수</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">관리</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,7 +187,7 @@ export default function NoticesPage() {
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
                           {notice.is_important && (
-                            <span className="rounded bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
+                            <span className="whitespace-nowrap rounded bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
                               중요
                             </span>
                           )}
@@ -199,26 +199,26 @@ export default function NoticesPage() {
                           </Link>
                         </div>
                       </td>
-                      <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                      <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
                         {notice.author_name}
                       </td>
-                      <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                      <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
                         {formatDate(notice.created_at)}
                       </td>
-                      <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                      <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
                         {notice.views}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center justify-end gap-2">
                           <Link
                             href={`/crm/notices/${notice.id}/edit`}
-                            className="border border-gray-900 bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                            className="whitespace-nowrap border border-gray-900 bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                           >
                             수정
                           </Link>
                           <button
                             onClick={() => handleDelete(notice.id)}
-                            className="border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                            className="whitespace-nowrap border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                           >
                             삭제
                           </button>
