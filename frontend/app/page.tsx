@@ -549,7 +549,7 @@ export default function Home() {
                 faqs.map((faq) => (
                   <Link
                     key={faq.id}
-                    href={`/faq#${faq.id}`}
+                    href="/faq"
                     className="flex items-start gap-2 border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
                   >
                     <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
@@ -625,7 +625,7 @@ export default function Home() {
           alt="Main Banner"
           fill
           className="object-cover"
-          priority
+          priority={userType !== 'seller'}
         />
         <div className="absolute inset-0 bg-black/40"></div>
 
@@ -991,7 +991,7 @@ export default function Home() {
               faqs.map((faq) => (
                 <Link
                   key={faq.id}
-                  href={`/faq#${faq.id}`}
+                  href="/faq"
                   className="flex items-start gap-2 border-b border-gray-100 pb-2.5 last:border-b-0 dark:border-gray-800"
                 >
                   <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
