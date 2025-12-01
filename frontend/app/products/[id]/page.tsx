@@ -44,6 +44,10 @@ export default function ProductDetailPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [avgRating, setAvgRating] = useState(0);
   const [reviewsLoading, setReviewsLoading] = useState(true);
+  // AI 리뷰 요약 state
+  const [aiSummary, setAiSummary] = useState<string>('');
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const [showAiSummary, setShowAiSummary] = useState(false);
 
   // 옵션 선택 핸들러
   const handleOptionChange = (optionId: string, valueId: string) => {
@@ -185,6 +189,68 @@ export default function ProductDetailPage() {
       mounted = false;
     };
   }, [productId]);
+
+  // AI 리뷰 요약 생성 함수
+  const generateAiSummary = async () => {
+    if (!productId || reviews.length === 0) {
+      alert('리뷰가 없어 AI 요약을 생성할 수 없습니다.');
+      return;
+    }
+
+    setAiSummaryLoading(true);
+    setShowAiSummary(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/reviews/summary/${productId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('AI 요약 생성 실패');
+      }
+
+      // 스트리밍 응답 처리
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let summary = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.token) {
+                  summary += data.token;
+                  setAiSummary(summary);
+                }
+              } catch (e) {
+                // JSON 파싱 실패 무시
+              }
+            }
+          }
+        }
+      }
+
+      if (!summary) {
+        setAiSummary('AI 요약을 생성할 수 없습니다.');
+      }
+    } catch (error) {
+      console.error('AI 요약 생성 오류:', error);
+      setAiSummary('AI 요약 생성 중 오류가 발생했습니다.');
+    } finally {
+      setAiSummaryLoading(false);
+    }
+  };
 
   // 리뷰 데이터 가져오기
   useEffect(() => {
@@ -724,6 +790,70 @@ export default function ProductDetailPage() {
             </p>
             <p className="text-[10px] text-gray-500 dark:text-gray-400">구매자 추천</p>
           </div>
+        </div>
+
+        {/* AI 리뷰 요약 */}
+        <div className="mb-4 border border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50 p-4 dark:border-purple-800 dark:from-purple-900/20 dark:to-blue-900/20">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/50">
+                <svg className="h-4 w-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">AI 리뷰 요약</h3>
+              <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
+                Powered by AI
+              </span>
+            </div>
+            {!showAiSummary && (
+              <button
+                onClick={generateAiSummary}
+                disabled={reviews.length === 0 || aiSummaryLoading}
+                className="flex items-center gap-1.5 bg-purple-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-purple-500 dark:hover:bg-purple-600"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                요약 생성
+              </button>
+            )}
+          </div>
+
+          {showAiSummary ? (
+            <div className="rounded-lg bg-white p-4 dark:bg-gray-800/50">
+              {aiSummaryLoading ? (
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex gap-1">
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-purple-500" style={{ animationDelay: '0ms' }}></span>
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-purple-500" style={{ animationDelay: '150ms' }}></span>
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-purple-500" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                  <span>AI가 리뷰를 분석하고 있습니다...</span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700 dark:text-gray-300">
+                    {aiSummary}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setShowAiSummary(false);
+                      setAiSummary('');
+                    }}
+                    className="text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
+                  >
+                    요약 닫기
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              AI가 {reviews.length}개의 리뷰를 분석하여 핵심 내용을 요약해드립니다.
+              {reviews.length === 0 && ' (리뷰가 없습니다)'}
+            </p>
+          )}
         </div>
 
         {/* 리뷰 목록 */}
