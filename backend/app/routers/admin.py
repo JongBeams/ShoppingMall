@@ -476,7 +476,8 @@ async def get_all_vendors(
         query = supabase.table("vendors").select(
             "id, user_id, business_name, business_number, owner_name, "
             "phone, email, category, approval_status, created_at, updated_at, "
-            "approved_at, rejected_at, rejection_reason"
+            "approved_at, rejected_at, rejection_reason, "
+            "store_name, store_logo_url, store_banner_url"
         )
 
         # 상태 필터

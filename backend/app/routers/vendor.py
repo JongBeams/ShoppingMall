@@ -37,21 +37,23 @@ class VendorResponse(BaseModel):
 
 @router.get("/me", response_model=VendorResponse)
 async def get_my_vendor_info(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """현재 로그인한 판매자 정보 조회"""
-    supabase = get_supabase_client()
+    """현재 로그인한 판매자 정보 조회 (승인 여부와 관계없이 조회 가능)"""
+    from app.services.jwt_auth import verify_token
+    from app.services.supabase import get_supabase_admin_client
+    supabase = get_supabase_admin_client()
 
     try:
-        # Supabase 토큰으로 사용자 정보 가져오기
+        # JWT 토큰 검증
         token = credentials.credentials
-        user_response = supabase.auth.get_user(token)
+        payload = verify_token(token)
 
-        if not user_response.user:
+        if not payload:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="유효하지 않은 토큰입니다."
             )
 
-        user_id = user_response.user.id
+        user_id = payload.get("sub")
 
         # vendors 테이블에서 판매자 정보 조회
         response = supabase.table("vendors").select("*").eq("user_id", user_id).single().execute()
@@ -100,21 +102,23 @@ async def update_my_vendor_info(
     vendor_data: VendorUpdateRequest,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """현재 로그인한 판매자 정보 업데이트"""
-    supabase = get_supabase_client()
+    """현재 로그인한 판매자 정보 업데이트 (승인 여부와 관계없이 수정 가능)"""
+    from app.services.jwt_auth import verify_token
+    from app.services.supabase import get_supabase_admin_client
+    supabase = get_supabase_admin_client()
 
     try:
-        # Supabase 토큰으로 사용자 정보 가져오기
+        # JWT 토큰 검증
         token = credentials.credentials
-        user_response = supabase.auth.get_user(token)
+        payload = verify_token(token)
 
-        if not user_response.user:
+        if not payload:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="유효하지 않은 토큰입니다."
             )
 
-        user_id = user_response.user.id
+        user_id = payload.get("sub")
 
         # 업데이트할 데이터 준비
         update_data = {}
@@ -176,35 +180,61 @@ async def upload_store_logo(
     file: UploadFile,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """스토어 로고 업로드"""
-    supabase = get_supabase_client()
+    """스토어 로고 업로드 (승인 여부와 관계없이 업로드 가능)"""
+    from app.services.jwt_auth import verify_token
+    from app.services.supabase import get_supabase_admin_client
+    from uuid import uuid4
+    from pathlib import Path
+
+    supabase = get_supabase_admin_client()
 
     try:
-        # Supabase 토큰으로 사용자 정보 가져오기
+        # JWT 토큰 검증
         token = credentials.credentials
-        user_response = supabase.auth.get_user(token)
+        payload = verify_token(token)
 
-        if not user_response.user:
+        if not payload:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="유효하지 않은 토큰입니다."
             )
 
-        user_id = user_response.user.id
+        user_id = payload.get("sub")
+
+        # 파일 유효성 검사
+        if not file.content_type or not file.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미지 파일만 업로드 가능합니다."
+            )
 
         # 파일 읽기
-        contents = await file.read()
+        file_content = await file.read()
 
-        # Supabase Storage에 업로드
-        file_path = f"store-logos/{user_id}/{file.filename}"
-        storage_response = supabase.storage.from_("vendors").upload(
-            file_path,
-            contents,
-            {"content-type": file.content_type}
+        # 파일 크기 제한 (5MB)
+        max_size = 5 * 1024 * 1024
+        if len(file_content) > max_size:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="파일 크기는 5MB를 초과할 수 없습니다."
+            )
+
+        # 파일 확장자 추출
+        filename = Path(file.filename or "logo.jpg")
+        ext = filename.suffix if filename.suffix else ".jpg"
+
+        # Storage 경로: store-logos/{user_id}/{uuid4()}{ext}
+        storage_path = f"store-logos/{user_id}/{uuid4()}{ext}"
+
+        # Supabase Storage에 업로드 (ProductImage 버킷 사용)
+        upload_response = supabase.storage.from_("ProductImage").upload(
+            path=storage_path,
+            file=file_content,
+            file_options={"content-type": file.content_type}
         )
 
-        # 업로드된 파일의 공개 URL 가져오기
-        public_url = supabase.storage.from_("vendors").get_public_url(file_path)
+        # Public URL 생성
+        public_url = supabase.storage.from_("ProductImage").get_public_url(storage_path)
 
         # vendors 테이블에 URL 업데이트
         update_response = supabase.table("vendors").update({
@@ -213,6 +243,8 @@ async def upload_store_logo(
 
         return {"message": "로고가 업로드되었습니다.", "url": public_url}
 
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         print(f"[ERROR] 로고 업로드 오류: {str(e)}")
@@ -228,35 +260,61 @@ async def upload_store_banner(
     file: UploadFile,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """스토어 배너 업로드"""
-    supabase = get_supabase_client()
+    """스토어 배너 업로드 (승인 여부와 관계없이 업로드 가능)"""
+    from app.services.jwt_auth import verify_token
+    from app.services.supabase import get_supabase_admin_client
+    from uuid import uuid4
+    from pathlib import Path
+
+    supabase = get_supabase_admin_client()
 
     try:
-        # Supabase 토큰으로 사용자 정보 가져오기
+        # JWT 토큰 검증
         token = credentials.credentials
-        user_response = supabase.auth.get_user(token)
+        payload = verify_token(token)
 
-        if not user_response.user:
+        if not payload:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="유효하지 않은 토큰입니다."
             )
 
-        user_id = user_response.user.id
+        user_id = payload.get("sub")
+
+        # 파일 유효성 검사
+        if not file.content_type or not file.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미지 파일만 업로드 가능합니다."
+            )
 
         # 파일 읽기
-        contents = await file.read()
+        file_content = await file.read()
 
-        # Supabase Storage에 업로드
-        file_path = f"store-banners/{user_id}/{file.filename}"
-        storage_response = supabase.storage.from_("vendors").upload(
-            file_path,
-            contents,
-            {"content-type": file.content_type}
+        # 파일 크기 제한 (5MB)
+        max_size = 5 * 1024 * 1024
+        if len(file_content) > max_size:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="파일 크기는 5MB를 초과할 수 없습니다."
+            )
+
+        # 파일 확장자 추출
+        filename = Path(file.filename or "banner.jpg")
+        ext = filename.suffix if filename.suffix else ".jpg"
+
+        # Storage 경로: store-banners/{user_id}/{uuid4()}{ext}
+        storage_path = f"store-banners/{user_id}/{uuid4()}{ext}"
+
+        # Supabase Storage에 업로드 (ProductImage 버킷 사용)
+        upload_response = supabase.storage.from_("ProductImage").upload(
+            path=storage_path,
+            file=file_content,
+            file_options={"content-type": file.content_type}
         )
 
-        # 업로드된 파일의 공개 URL 가져오기
-        public_url = supabase.storage.from_("vendors").get_public_url(file_path)
+        # Public URL 생성
+        public_url = supabase.storage.from_("ProductImage").get_public_url(storage_path)
 
         # vendors 테이블에 URL 업데이트
         update_response = supabase.table("vendors").update({
@@ -265,6 +323,8 @@ async def upload_store_banner(
 
         return {"message": "배너가 업로드되었습니다.", "url": public_url}
 
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         print(f"[ERROR] 배너 업로드 오류: {str(e)}")

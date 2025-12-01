@@ -72,10 +72,11 @@ export default function StoreManagement() {
 
     try {
       // 1. 스토어 정보 업데이트
-      const updateResponse = await fetch(`${API_BASE_URL}/vendors/me?token=${token}`, {
+      const updateResponse = await fetch(`${API_BASE_URL}/vendors/me`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           store_name: storeName,
@@ -84,7 +85,8 @@ export default function StoreManagement() {
       });
 
       if (!updateResponse.ok) {
-        throw new Error('스토어 정보 업데이트에 실패했습니다.');
+        const error = await updateResponse.json().catch(() => ({}));
+        throw new Error(error.detail || '스토어 정보 업데이트에 실패했습니다.');
       }
 
       // 2. 로고 업로드 (파일이 있는 경우)
@@ -92,13 +94,17 @@ export default function StoreManagement() {
         const logoFormData = new FormData();
         logoFormData.append('file', logoFile);
 
-        const logoResponse = await fetch(`${API_BASE_URL}/vendors/me/upload-logo?token=${token}`, {
+        const logoResponse = await fetch(`${API_BASE_URL}/vendors/me/upload-logo`, {
           method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
           body: logoFormData,
         });
 
         if (!logoResponse.ok) {
-          throw new Error('로고 업로드에 실패했습니다.');
+          const error = await logoResponse.json().catch(() => ({}));
+          throw new Error(error.detail || '로고 업로드에 실패했습니다.');
         }
       }
 
@@ -107,23 +113,44 @@ export default function StoreManagement() {
         const bannerFormData = new FormData();
         bannerFormData.append('file', bannerFile);
 
-        const bannerResponse = await fetch(`${API_BASE_URL}/vendors/me/upload-banner?token=${token}`, {
+        const bannerResponse = await fetch(`${API_BASE_URL}/vendors/me/upload-banner`, {
           method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
           body: bannerFormData,
         });
 
         if (!bannerResponse.ok) {
-          throw new Error('배너 업로드에 실패했습니다.');
+          const error = await bannerResponse.json().catch(() => ({}));
+          throw new Error(error.detail || '배너 업로드에 실패했습니다.');
         }
       }
 
-      // localStorage의 vendor 정보 업데이트
-      const vendorData = localStorage.getItem('vendor');
-      if (vendorData) {
-        const vendor = JSON.parse(vendorData);
-        vendor.store_name = storeName;
-        vendor.store_description = storeDescription;
-        localStorage.setItem('vendor', JSON.stringify(vendor));
+      // 서버에서 최신 vendor 정보 다시 가져오기
+      const vendorResponse = await fetch(`${API_BASE_URL}/vendors/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (vendorResponse.ok) {
+        const updatedVendor = await vendorResponse.json();
+
+        // localStorage 업데이트
+        localStorage.setItem('vendor', JSON.stringify(updatedVendor));
+
+        // state 업데이트
+        setStoreName(updatedVendor.store_name || '');
+        setStoreDescription(updatedVendor.store_description || '');
+        setLogoPreview(updatedVendor.store_logo_url);
+        setBannerPreview(updatedVendor.store_banner_url);
+        setInitialData({
+          storeName: updatedVendor.store_name || '',
+          storeDescription: updatedVendor.store_description || '',
+          logoUrl: updatedVendor.store_logo_url,
+          bannerUrl: updatedVendor.store_banner_url,
+        });
       }
 
       alert('스토어 정보가 저장되었습니다.');

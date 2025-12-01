@@ -21,12 +21,22 @@ interface PendingInquiry {
   created_at: string;
 }
 
+interface PendingVendor {
+  id: string;
+  business_name: string;
+  category: string;
+  created_at: string;
+  store_logo_url?: string | null;
+  store_name?: string;
+}
+
 export default function CRMPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [adminUser, setAdminUser] = useState<any>(null);
   const [newUsers, setNewUsers] = useState<NewUser[]>([]);
   const [pendingInquiries, setPendingInquiries] = useState<PendingInquiry[]>([]);
+  const [pendingVendors, setPendingVendors] = useState<PendingVendor[]>([]);
 
   useEffect(() => {
     // 관리자 로그인 체크
@@ -58,8 +68,13 @@ export default function CRMPage() {
         const data = await adminAPI.getUsers(adminToken);
         // 최근 3명만 가져오기
         setNewUsers(data.users.slice(0, 3));
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to fetch new users:', error);
+        // 401 에러는 이미 api.ts에서 처리되므로 여기서는 무시
+        if (error.message?.includes('로그인이 필요합니다')) {
+          // 이미 리다이렉트 중
+          return;
+        }
       }
     };
 
@@ -83,6 +98,24 @@ export default function CRMPage() {
     };
 
     fetchPendingInquiries();
+  }, []);
+
+  // 판매자 승인 대기 조회
+  useEffect(() => {
+    const fetchPendingVendors = async () => {
+      const adminToken = localStorage.getItem('admin_token');
+      if (!adminToken) return;
+
+      try {
+        const data = await adminAPI.getVendors(adminToken, 'pending');
+        // 최근 2개만
+        setPendingVendors(data.slice(0, 2));
+      } catch (error) {
+        console.error('Failed to fetch pending vendors:', error);
+      }
+    };
+
+    fetchPendingVendors();
   }, []);
 
   // 시간 계산 함수
@@ -286,36 +319,47 @@ export default function CRMPage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {[
-              { id: 1, name: 'OO농장', category: '식품', time: '5분 전', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&q=80' },
-              { id: 2, name: '스마트스토어', category: '전자제품', time: '30분 전', image: 'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=200&q=80' },
-            ].map((vendor) => (
-              <Link
-                key={vendor.id}
-                href={`/crm/vendors/${vendor.id}`}
-                className="group flex gap-3"
-              >
-                <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden border border-gray-200 dark:border-gray-700">
-                  <Image
-                    src={vendor.image}
-                    alt={vendor.name}
-                    fill
-                    className="object-cover transition group-hover:scale-105"
-                    sizes="80px"
-                  />
-                  <div className="absolute left-0 top-0 bg-yellow-600 px-1.5 py-0.5 text-xs font-bold text-white">
-                    대기
+            {pendingVendors.length > 0 ? (
+              pendingVendors.map((vendor) => (
+                <Link
+                  key={vendor.id}
+                  href={`/crm/vendors/${vendor.id}`}
+                  className="group flex gap-3"
+                >
+                  <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
+                    {vendor.store_logo_url ? (
+                      <Image
+                        src={vendor.store_logo_url}
+                        alt={vendor.store_name || vendor.business_name}
+                        fill
+                        className="object-cover transition group-hover:scale-105"
+                        sizes="80px"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <svg className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="absolute left-0 top-0 bg-yellow-600 px-1.5 py-0.5 text-xs font-bold text-white">
+                      대기
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-1 flex-col justify-center">
-                  <h3 className="mb-1 text-sm font-medium text-gray-900 dark:text-white">
-                    {vendor.name}
-                  </h3>
-                  <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{vendor.category}</p>
-                  <span className="text-xs text-gray-400">{vendor.time}</span>
-                </div>
-              </Link>
-            ))}
+                  <div className="flex flex-1 flex-col justify-center">
+                    <h3 className="mb-1 text-sm font-medium text-gray-900 dark:text-white">
+                      {vendor.store_name || vendor.business_name}
+                    </h3>
+                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{vendor.category || '미분류'}</p>
+                    <span className="text-xs text-gray-400">{getTimeAgo(vendor.created_at)}</span>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                승인 대기 중인 판매자가 없습니다
+              </div>
+            )}
           </div>
         </div>
 

@@ -56,15 +56,22 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
       throw new Error('로그인이 필요합니다.');
     }
 
-    // 비활성화된 계정 (403) - 자동 로그아웃
-    if (response.status === 403 && error.detail?.includes('비활성화된 계정')) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('vendor');
-      alert('비활성화된 계정입니다. 관리자에게 문의해주세요. (wwhow2003@naver.com)');
-      window.location.href = '/login';
-      throw new Error(error.detail);
+    // 403 에러 처리
+    if (response.status === 403) {
+      // 비활성화된 계정 - 로그아웃
+      if (error.detail?.includes('비활성화된 계정')) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('vendor');
+        alert('비활성화된 계정입니다. 관리자에게 문의해주세요. (wwhow2003@naver.com)');
+        window.location.href = '/login';
+        throw new Error(error.detail);
+      }
+
+      // 승인 대기 중인 판매자 - 에러만 던짐 (로그아웃 안 함)
+      // 에러 메시지만 던지고 각 컴포넌트에서 처리하도록 함
+      throw new Error(error.detail || '접근 권한이 없습니다.');
     }
 
     // FastAPI는 detail 필드를 사용
@@ -319,6 +326,13 @@ export const adminAPI = {
   // 문의 목록 조회
   getInquiries: (token: string) =>
     fetchAPI('/inquiries', {
+      method: 'GET',
+      token,
+    }),
+
+  // 판매자 목록 조회 (status: pending, approved, rejected)
+  getVendors: (token: string, status?: string) =>
+    fetchAPI(`/admin/vendors${status ? `?status=${status}` : ''}`, {
       method: 'GET',
       token,
     }),
