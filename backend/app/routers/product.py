@@ -306,6 +306,8 @@ async def get_product(product_id: str):
     supabase_admin = get_supabase_admin_client()
     vendor_name = None
     vendor_address = None
+    store_logo_url = None
+    vendor_email = None
     vendor_id = product.get("vendor_id")
     print(f"Product vendor_id: {vendor_id}")
     if vendor_id:
@@ -314,7 +316,7 @@ async def get_product(product_id: str):
             # 먼저 id로 시도
             vendor_response = (
                 supabase_admin.table("vendors")
-                .select("store_name, business_address")
+                .select("store_name, business_address, store_logo_url, email")
                 .eq("id", vendor_id)
                 .execute()
             )
@@ -323,12 +325,14 @@ async def get_product(product_id: str):
             if vendor_response.data and len(vendor_response.data) > 0:
                 vendor_name = vendor_response.data[0].get("store_name")
                 vendor_address = vendor_response.data[0].get("business_address")
-                print(f"Vendor found by id: {vendor_name}, {vendor_address}")
+                store_logo_url = vendor_response.data[0].get("store_logo_url")
+                vendor_email = vendor_response.data[0].get("email")
+                print(f"Vendor found by id: {vendor_name}, {vendor_address}, {store_logo_url}")
             else:
                 # id로 못 찾으면 user_id로 시도
                 vendor_response = (
                     supabase_admin.table("vendors")
-                    .select("store_name, business_address")
+                    .select("store_name, business_address, store_logo_url, email")
                     .eq("user_id", vendor_id)
                     .execute()
                 )
@@ -336,11 +340,15 @@ async def get_product(product_id: str):
                 if vendor_response.data and len(vendor_response.data) > 0:
                     vendor_name = vendor_response.data[0].get("store_name")
                     vendor_address = vendor_response.data[0].get("business_address")
-                    print(f"Vendor found by user_id: {vendor_name}, {vendor_address}")
+                    store_logo_url = vendor_response.data[0].get("store_logo_url")
+                    vendor_email = vendor_response.data[0].get("email")
+                    print(f"Vendor found by user_id: {vendor_name}, {vendor_address}, {store_logo_url}")
         except Exception as e:
             print(f"Error fetching vendor: {str(e)}")
             vendor_name = None
             vendor_address = None
+            store_logo_url = None
+            vendor_email = None
 
     # 상품 옵션 조회
     options = get_product_options(supabase_admin, product_id)
@@ -351,6 +359,8 @@ async def get_product(product_id: str):
         "category_name": category_info["name"],
         "vendor_name": vendor_name,
         "vendor_address": vendor_address,
+        "store_logo_url": store_logo_url,
+        "vendor_email": vendor_email,
         "options": options,
     }
 
