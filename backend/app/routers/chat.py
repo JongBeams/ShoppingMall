@@ -228,6 +228,32 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
             data = await websocket.receive_text()
             message_data = json.loads(data)
 
+            message_type = message_data.get('type', 'message')
+
+            # 원격 제어 이벤트 처리 (관리자 ↔ 사용자)
+            if message_type in ['remote_click', 'remote_scroll', 'remote_input', 'remote_control_start', 'remote_control_stop']:
+                # DB 저장 없이 바로 브로드캐스트
+                await manager.send_message(message_data, room_id)
+
+                # 원격 제어 시작/종료는 관리자에게도 알림
+                if message_type in ['remote_control_start', 'remote_control_stop']:
+                    await manager.notify_admin({
+                        'type': message_type,
+                        'room_id': room_id
+                    })
+
+                continue
+
+            # WebRTC 시그널링 처리
+            if message_type in ['webrtc_offer', 'webrtc_answer', 'webrtc_ice_candidate']:
+                print(f"🔴 WebRTC 메시지 수신: type={message_type}, room_id={room_id}")
+                print(f"🔴 현재 방의 연결 수: {len(manager.active_connections.get(room_id, []))}")
+                # DB 저장 없이 바로 브로드캐스트 (관리자 ↔ 사용자)
+                await manager.send_message(message_data, room_id)
+                print(f"✅ WebRTC 메시지 브로드캐스트 완료")
+                continue
+
+            # 일반 채팅 메시지
             # DB에 메시지 저장
             saved_message = supabase.table('chat_messages').insert({
                 'room_id': room_id,
@@ -281,8 +307,17 @@ async def admin_monitor_websocket(websocket: WebSocket):
             data = await websocket.receive_text()
             message_data = json.loads(data)
 
+            message_type = message_data.get('type')
+
+            # 원격 제어 이벤트 (관리자 → 사용자)
+            if message_type in ['remote_click', 'remote_scroll', 'remote_input', 'remote_control_start', 'remote_control_stop']:
+                room_id = message_data.get('room_id')
+                # DB 저장 없이 바로 브로드캐스트
+                await manager.send_message(message_data, room_id)
+                continue
+
             # 특정 채팅방으로 메시지 전송
-            if message_data.get('type') == 'send_to_room':
+            if message_type == 'send_to_room':
                 room_id = message_data.get('room_id')
 
                 # DB에 저장
@@ -304,7 +339,8 @@ async def admin_monitor_websocket(websocket: WebSocket):
                     'sender_id': message_data.get('sender_id'),
                     'sender_name': message_data.get('sender_name', '상담사'),
                     'message': message_data.get('message'),
-                    'timestamp': saved_message.data[0]['created_at']
+                    'timestamp': saved_message.data[0]['created_at'],
+                    'is_remote_support_request': message_data.get('is_remote_support_request', False)
                 }, room_id)
 
     except WebSocketDisconnect:

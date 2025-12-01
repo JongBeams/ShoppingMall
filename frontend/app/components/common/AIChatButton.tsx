@@ -33,7 +33,6 @@ export default function AIChatButton() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
   // 메시지가 업데이트될 때마다 스크롤 아래로
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -335,7 +334,7 @@ export default function AIChatButton() {
 
   return (
     <>
-      {/* 고정 버튼 */}
+      {/* AI 챗봇 버튼 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gray-900 text-white shadow-lg transition-all hover:bg-gray-800 hover:shadow-xl dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"

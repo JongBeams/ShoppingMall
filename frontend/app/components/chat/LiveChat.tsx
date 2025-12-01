@@ -12,6 +12,7 @@ interface Message {
   sender_name: string;
   message: string;
   timestamp?: string;
+  is_remote_support_request?: boolean; // 원격 지원 요청 메시지 플래그
 }
 
 interface LiveChatProps {
@@ -24,12 +25,164 @@ export default function LiveChat({ onBack }: LiveChatProps) {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [remoteControlActive, setRemoteControlActive] = useState(false);
   const ws = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initRef = useRef(false);
+  const peerConnection = useRef<RTCPeerConnection | null>(null);
+  const localStream = useRef<MediaStream | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // WebRTC 화면 공유 시작
+  const startScreenShare = async () => {
+    try {
+      console.log('🖥️ 화면 공유 시작...');
+
+      // 화면 캡처 스트림 가져오기
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          displaySurface: 'browser', // 브라우저 탭 공유 선호
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 }
+        },
+        audio: false,
+        preferCurrentTab: true // 현재 탭 공유 선호
+      });
+
+      localStream.current = stream;
+      const videoTrack = stream.getVideoTracks()[0];
+      console.log('✅ 화면 스트림 획득 완료');
+      console.log('📹 비디오 트랙 설정:', videoTrack.getSettings());
+      console.log('📹 비디오 트랙 상태:', videoTrack.readyState);
+      console.log('📹 비디오 트랙 활성화:', videoTrack.enabled);
+
+      // RTCPeerConnection 생성
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' }
+        ]
+      });
+      peerConnection.current = pc;
+
+      // 연결 상태 모니터링
+      pc.onconnectionstatechange = () => {
+        console.log('🔗 WebRTC 연결 상태:', pc.connectionState);
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        console.log('🧊 ICE 연결 상태:', pc.iceConnectionState);
+      };
+
+      // 로컬 스트림을 피어 연결에 추가
+      stream.getTracks().forEach(track => {
+        const sender = pc.addTrack(track, stream);
+        console.log('➕ 트랙 추가됨:', track.kind, track.id);
+      });
+
+      // ICE 후보 전송
+      pc.onicecandidate = (event) => {
+        if (event.candidate && ws.current) {
+          ws.current.send(JSON.stringify({
+            type: 'webrtc_ice_candidate',
+            room_id: roomId,
+            candidate: {
+              candidate: event.candidate.candidate,
+              sdpMLineIndex: event.candidate.sdpMLineIndex,
+              sdpMid: event.candidate.sdpMid
+            }
+          }));
+        }
+      };
+
+      // Offer 생성 및 전송
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      if (ws.current) {
+        const offerMessage = {
+          type: 'webrtc_offer',
+          room_id: roomId,
+          offer: {
+            type: pc.localDescription!.type,
+            sdp: pc.localDescription!.sdp
+          }
+        };
+
+        ws.current.send(JSON.stringify(offerMessage));
+        console.log('✅ WebRTC Offer 전송 완료');
+      } else {
+        console.error('❌ WebSocket이 연결되지 않음!');
+      }
+
+      // 스트림이 종료되면 처리
+      stream.getVideoTracks()[0].onended = () => {
+        console.log('🛑 화면 공유 종료됨');
+        stopScreenShare();
+      };
+
+    } catch (error) {
+      console.error('❌ 화면 공유 시작 실패:', error);
+      alert('화면 공유를 시작할 수 없습니다. 권한을 확인해주세요.');
+    }
+  };
+
+  // WebRTC 화면 공유 중지
+  const stopScreenShare = () => {
+    if (localStream.current) {
+      localStream.current.getTracks().forEach(track => track.stop());
+      localStream.current = null;
+    }
+    if (peerConnection.current) {
+      peerConnection.current.close();
+      peerConnection.current = null;
+    }
+    console.log('🛑 화면 공유 중지됨');
+  };
+
+  // 원격 지원 승인
+  const handleApproveRemoteSupport = async () => {
+    if (!ws.current || !roomId) return;
+
+    const userData = localStorage.getItem('user');
+    if (!userData) return;
+    const user = JSON.parse(userData);
+
+    // 사용자 화면에만 표시될 메시지 전송
+    ws.current.send(JSON.stringify({
+      type: 'message',
+      sender_type: 'user',
+      sender_id: user.id,
+      sender_name: user.full_name || '고객',
+      message: '원격 제어 모드로 변경되었습니다.'
+    }));
+
+    // 관리자에게만 표시될 "사용자 화면 보기" 버튼 메시지 전송
+    ws.current.send(JSON.stringify({
+      type: 'message',
+      sender_type: 'user',
+      sender_id: user.id,
+      sender_name: user.full_name || '고객',
+      message: '[REMOTE_CONTROL_APPROVED]', // 특수 메시지
+      is_remote_control_approved: true
+    }));
+
+    // 관리자에게 승인 알림 전송
+    ws.current.send(JSON.stringify({
+      type: 'remote_control_start',
+      room_id: roomId
+    }));
+
+    setRemoteControlActive(true);
+
+    // 화면 공유 안내 후 시작
+    alert('⚠️ 중요: 다음 화면에서 반드시 "이 탭 공유" 또는 현재 쇼핑몰 화면을 선택해주세요!\n\n전체 화면이나 다른 창을 선택하면 관리자가 화면을 볼 수 없습니다.');
+
+    // 화면 공유 시작
+    await startScreenShare();
   };
 
   useEffect(() => {
@@ -91,17 +244,138 @@ export default function LiveChat({ onBack }: LiveChatProps) {
           setIsLoading(false);
         };
 
-        websocket.onmessage = (event) => {
+        websocket.onmessage = async (event) => {
           const data = JSON.parse(event.data);
           console.log('📨 메시지 수신:', data);
 
+          // WebRTC 시그널링 처리
+          if (data.type === 'webrtc_answer') {
+            if (peerConnection.current) {
+              try {
+                await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.answer));
+                console.log('✅ WebRTC Answer 수신 완료');
+              } catch (error) {
+                console.error('❌ WebRTC Answer 설정 실패:', error);
+              }
+            }
+            return;
+          }
+
+          if (data.type === 'webrtc_ice_candidate') {
+            if (peerConnection.current && data.candidate) {
+              try {
+                // remote description이 설정된 후에만 ICE Candidate 추가
+                if (peerConnection.current.remoteDescription) {
+                  await peerConnection.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+                  console.log('✅ ICE Candidate 추가 완료');
+                } else {
+                  console.log('⏳ Remote description 대기 중, ICE Candidate 보류');
+                }
+              } catch (error) {
+                console.error('❌ ICE Candidate 추가 실패:', error);
+              }
+            }
+            return;
+          }
+
+          // 원격 제어 이벤트 처리
+          if (data.type === 'remote_control_start') {
+            setRemoteControlActive(true);
+            console.log('🖥️ 원격 제어 시작');
+            return;
+          }
+
+          if (data.type === 'remote_control_stop') {
+            setRemoteControlActive(false);
+            stopScreenShare();
+            console.log('🖥️ 원격 제어 종료');
+            return;
+          }
+
+          if (data.type === 'remote_click') {
+            // 클릭 이벤트 재현
+            const { x, y } = data;
+
+            console.log('🖱️ 원격 클릭 수신:', {
+              x, y,
+              windowSize: { width: window.innerWidth, height: window.innerHeight },
+              scrollPosition: { x: window.scrollX, y: window.scrollY },
+              documentSize: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }
+            });
+
+            // 뷰포트 좌표로 요소 찾기
+            const element = document.elementFromPoint(x, y) as HTMLElement;
+
+            if (element) {
+              console.log('✅ 클릭할 요소 발견:', element.tagName, element.className);
+
+              // 시각적 피드백 (클릭 위치에 빨간 점 표시)
+              const marker = document.createElement('div');
+              marker.style.cssText = `
+                position: fixed;
+                left: ${x}px;
+                top: ${y}px;
+                width: 20px;
+                height: 20px;
+                background: red;
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 999999;
+              `;
+              document.body.appendChild(marker);
+              setTimeout(() => marker.remove(), 1000);
+
+              // 실제 마우스 클릭 이벤트 생성
+              const clickEvent = new MouseEvent('click', {
+                view: window,
+                bubbles: true,
+                cancelable: true,
+                clientX: x,
+                clientY: y
+              });
+              element.dispatchEvent(clickEvent);
+
+              // 추가로 기본 click() 메서드도 실행
+              element.click();
+
+              console.log('✅ 클릭 이벤트 전송 완료');
+            } else {
+              console.error('❌ 해당 위치에 요소가 없음');
+            }
+            return;
+          }
+
+          if (data.type === 'remote_scroll') {
+            // 스크롤 이벤트 재현
+            const { scrollY } = data;
+            console.log('📜 원격 스크롤:', scrollY);
+            window.scrollTo({ top: scrollY, behavior: 'smooth' });
+            return;
+          }
+
+          if (data.type === 'remote_input') {
+            // 입력 이벤트 재현
+            const { selector, value } = data;
+            const element = document.querySelector(selector) as HTMLInputElement;
+            if (element) {
+              console.log('⌨️ 원격 입력:', selector, value);
+              element.value = value;
+              element.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            return;
+          }
+
           if (data.type === 'message') {
+            console.log('💬 메시지 수신:', data);
+            console.log('🔴 is_remote_support_request 값:', data.is_remote_support_request);
+
             setMessages(prev => [...prev, {
               id: data.id,
               sender_type: data.sender_type,
               sender_id: data.sender_id,
               sender_name: data.sender_name,
               message: data.message,
+              is_remote_support_request: data.is_remote_support_request || false,
               timestamp: data.timestamp
             }]);
           } else if (data.type === 'status_changed') {
@@ -141,6 +415,8 @@ export default function LiveChat({ onBack }: LiveChatProps) {
 
     // 컴포넌트 언마운트 시 WebSocket 연결 종료 및 채팅방 종료
     return () => {
+      // 화면 공유 중지
+      stopScreenShare();
       if (websocket) {
         websocket.close();
       }
@@ -188,11 +464,21 @@ export default function LiveChat({ onBack }: LiveChatProps) {
       {/* 상태 표시 */}
       <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-            <span className="text-xs text-gray-600 dark:text-gray-400">
-              {isConnected ? '상담사 연결됨' : '상담사 연결 대기 중...'}
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+              <span className="text-xs text-gray-600 dark:text-gray-400">
+                {isConnected ? '상담사 연결됨' : '상담사 연결 대기 중...'}
+              </span>
+            </div>
+            {remoteControlActive && (
+              <div className="flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 dark:bg-red-900/30">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-red-500"></div>
+                <span className="text-xs font-medium text-red-700 dark:text-red-400">
+                  원격 제어 중
+                </span>
+              </div>
+            )}
           </div>
           <button
             onClick={onBack}
@@ -224,7 +510,9 @@ export default function LiveChat({ onBack }: LiveChatProps) {
             </div>
           </div>
         ) : (
-          messages.map((msg, idx) => (
+          messages
+            .filter(msg => msg.message !== '[REMOTE_CONTROL_APPROVED]') // 특수 메시지는 사용자에게 숨김
+            .map((msg, idx) => (
             <div
               key={msg.id || idx}
               className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -243,6 +531,16 @@ export default function LiveChat({ onBack }: LiveChatProps) {
                   }`}
                 >
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+
+                  {/* 원격 지원 요청 승인 버튼 */}
+                  {msg.message.includes('원격지원 승인 버튼') && msg.sender_type === 'admin' && !remoteControlActive && (
+                    <button
+                      onClick={handleApproveRemoteSupport}
+                      className="mt-3 w-full bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+                    >
+                      원격 지원 승인
+                    </button>
+                  )}
                 </div>
                 {msg.timestamp && (
                   <span className="text-xs text-gray-400 px-2">

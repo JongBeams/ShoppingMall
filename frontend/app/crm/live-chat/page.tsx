@@ -20,6 +20,7 @@ interface Message {
   sender_name: string;
   message: string;
   created_at: string;
+  is_remote_control_approved?: boolean; // 원격 제어 승인 메시지인지 여부
 }
 
 export default function LiveChatPage() {
@@ -31,10 +32,20 @@ export default function LiveChatPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'waiting' | 'active' | 'closed'>('all');
+  const [remoteControlActive, setRemoteControlActive] = useState(false);
+  const [showRemoteModal, setShowRemoteModal] = useState(false);
+  const [modalPosition, setModalPosition] = useState({ x: 100, y: 100 });
+  const [modalSize, setModalSize] = useState({ width: 900, height: 650 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const ws = useRef<WebSocket | null>(null);
+  const roomWs = useRef<WebSocket | null>(null); // 채팅방별 WebSocket
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const shouldScrollRef = useRef<boolean>(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const peerConnection = useRef<RTCPeerConnection | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (shouldScrollRef.current && messagesContainerRef.current) {
@@ -82,6 +93,8 @@ export default function LiveChatPage() {
     const websocket = new WebSocket(`${WS_BASE_URL}/chat/ws/admin/monitor`);
     websocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log('📨 관리자 WebSocket 수신:', data);
+
       if (data.type === 'new_chat') {
         fetchChatRooms();
       } else if (data.type === 'new_message') {
@@ -94,6 +107,31 @@ export default function LiveChatPage() {
       } else if (data.type === 'message' && selectedRoom && data.room_id === selectedRoom.id) {
         setMessages(prev => [...prev, data]);
         shouldScrollRef.current = true;
+      } else if (data.type === 'remote_control_start') {
+        console.log('🖥️ 원격 제어 시작 이벤트 수신:', data);
+        if (!selectedRoom || data.room_id === selectedRoom.id) {
+          setRemoteControlActive(true);
+          console.log('✅ 원격 제어 활성화됨');
+        }
+      } else if (data.type === 'remote_control_stop') {
+        if (!selectedRoom || data.room_id === selectedRoom.id) {
+          setRemoteControlActive(false);
+          console.log('🖥️ 원격 제어 종료됨');
+          // WebRTC 연결 종료
+          if (peerConnection.current) {
+            peerConnection.current.close();
+            peerConnection.current = null;
+          }
+        }
+      } else if (data.type === 'webrtc_offer') {
+        // WebRTC Offer 수신 (사용자로부터)
+        handleWebRTCOffer(data.offer, data.room_id);
+      } else if (data.type === 'webrtc_ice_candidate') {
+        // ICE Candidate 수신
+        if (peerConnection.current && data.candidate) {
+          peerConnection.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+          console.log('✅ ICE Candidate 추가 완료');
+        }
       }
     };
     ws.current = websocket;
@@ -112,10 +150,146 @@ export default function LiveChatPage() {
     }
   };
 
+  // WebRTC Offer 처리 (사용자로부터 받음)
+  const handleWebRTCOffer = async (offer: RTCSessionDescriptionInit, roomId: string) => {
+    try {
+      console.log('📥 WebRTC Offer 수신:', offer);
+
+      // RTCPeerConnection 생성
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' }
+        ]
+      });
+      peerConnection.current = pc;
+
+      // 원격 스트림 수신
+      pc.ontrack = (event) => {
+        console.log('📺 원격 스트림 수신!');
+        console.log('📺 스트림 정보:', event.streams[0]);
+        console.log('📺 트랙 정보:', event.track.kind, event.track.id);
+        console.log('📺 트랙 상태:', event.track.readyState);
+
+        // 스트림 저장 (나중에 비디오 요소에 연결)
+        const stream = event.streams[0];
+
+        // 모달 자동 열기
+        setShowRemoteModal(true);
+
+        // 비디오 요소가 렌더링될 때까지 대기 후 스트림 연결
+        setTimeout(() => {
+          if (remoteVideoRef.current && stream) {
+            remoteVideoRef.current.srcObject = stream;
+            console.log('✅ 비디오 요소에 스트림 설정 완료');
+
+            // 비디오 재생 확인
+            remoteVideoRef.current.onloadedmetadata = () => {
+              console.log('✅ 비디오 메타데이터 로드 완료');
+              console.log('📺 비디오 크기:', remoteVideoRef.current?.videoWidth, 'x', remoteVideoRef.current?.videoHeight);
+            };
+
+            remoteVideoRef.current.onplay = () => {
+              console.log('▶️ 비디오 재생 시작됨');
+            };
+          } else {
+            console.error('❌ 비디오 요소가 아직 렌더링되지 않음');
+          }
+        }, 100);
+      };
+
+      // 연결 상태 모니터링
+      pc.onconnectionstatechange = () => {
+        console.log('🔗 WebRTC 연결 상태:', pc.connectionState);
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        console.log('🧊 ICE 연결 상태:', pc.iceConnectionState);
+      };
+
+      // ICE 후보 전송
+      pc.onicecandidate = (event) => {
+        if (event.candidate && roomWs.current) {
+          roomWs.current.send(JSON.stringify({
+            type: 'webrtc_ice_candidate',
+            room_id: roomId,
+            candidate: event.candidate
+          }));
+        }
+      };
+
+      // Offer 설정 및 Answer 생성
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      // Answer 전송
+      if (roomWs.current) {
+        roomWs.current.send(JSON.stringify({
+          type: 'webrtc_answer',
+          room_id: roomId,
+          answer: pc.localDescription
+        }));
+        console.log('📤 WebRTC Answer 전송 완료');
+      }
+
+    } catch (error) {
+      console.error('❌ WebRTC Offer 처리 실패:', error);
+    }
+  };
+
   const handleSelectRoom = async (room: ChatRoom) => {
     setSelectedRoom(room);
     await fetchMessages(room.id);
     shouldScrollRef.current = true;
+
+    // 기존 채팅방 WebSocket 연결 종료
+    if (roomWs.current) {
+      roomWs.current.close();
+    }
+
+    // 새로운 채팅방 WebSocket 연결 (WebRTC 시그널링용)
+    const newRoomWs = new WebSocket(`${WS_BASE_URL}/chat/ws/${room.id}`);
+
+    newRoomWs.onopen = () => {
+      console.log(`✅ 채팅방 ${room.id} WebSocket 연결됨`);
+    };
+
+    newRoomWs.onmessage = async (event) => {
+      const data = JSON.parse(event.data);
+      console.log('📨 채팅방 WebSocket 수신 - Type:', data.type, '전체 데이터:', data);
+
+      // WebRTC 시그널링 처리
+      if (data.type === 'webrtc_offer') {
+        console.log('📥 WebRTC Offer 수신!', data.offer);
+        handleWebRTCOffer(data.offer, room.id);
+      } else if (data.type === 'webrtc_answer') {
+        // 관리자는 자신이 보낸 Answer를 무시
+        console.log('📥 WebRTC Answer 수신 (무시 - 관리자가 보낸 것)', data.answer);
+      } else if (data.type === 'webrtc_ice_candidate') {
+        console.log('📥 ICE Candidate 수신', data.candidate);
+        if (peerConnection.current && data.candidate) {
+          try {
+            // remote description이 설정된 후에만 ICE Candidate 추가
+            if (peerConnection.current.remoteDescription) {
+              await peerConnection.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+              console.log('✅ ICE Candidate 추가 완료');
+            } else {
+              console.log('⏳ Remote description 대기 중, ICE Candidate 보류');
+            }
+          } catch (error) {
+            console.error('❌ ICE Candidate 추가 실패:', error);
+          }
+        }
+      } else {
+        console.log('⚠️ 처리되지 않은 메시지 타입:', data.type);
+      }
+    };
+
+    newRoomWs.onerror = (error) => {
+      console.error('❌ 채팅방 WebSocket 에러:', error);
+    };
+
+    roomWs.current = newRoomWs;
   };
 
   const handleStartChat = async () => {
@@ -132,7 +306,7 @@ export default function LiveChatPage() {
   };
 
   const handleSend = () => {
-    if (!input.trim() || !ws.current || !selectedRoom) return;
+    if (!input.trim() || !selectedRoom) return;
     const adminUser = JSON.parse(localStorage.getItem('admin_user') || '{}');
     const messageText = input.trim();
 
@@ -148,14 +322,16 @@ export default function LiveChatPage() {
     setInput('');
     shouldScrollRef.current = true;
 
-    // WebSocket으로 메시지 전송
-    ws.current.send(JSON.stringify({
-      type: 'send_to_room',
-      room_id: selectedRoom.id,
-      sender_id: adminUser.id,
-      sender_name: adminUser.username || '상담사',
-      message: messageText
-    }));
+    // WebSocket으로 메시지 전송 (채팅방 WebSocket 사용)
+    if (roomWs.current) {
+      roomWs.current.send(JSON.stringify({
+        type: 'message',
+        sender_type: 'admin',
+        sender_id: adminUser.id,
+        sender_name: adminUser.username || '상담사',
+        message: messageText
+      }));
+    }
   };
 
   const handleCloseChat = async () => {
@@ -164,6 +340,96 @@ export default function LiveChatPage() {
     setSelectedRoom(null);
     setMessages([]);
     fetchChatRooms();
+  };
+
+  // 원격 승인 요청 전송
+  const handleRequestRemoteSupport = () => {
+    if (!roomWs.current || !selectedRoom) return;
+
+    const adminUser = JSON.parse(localStorage.getItem('admin_user') || '{}');
+
+    // WebSocket으로 원격 지원 요청 메시지 전송
+    roomWs.current.send(JSON.stringify({
+      type: 'message',
+      sender_type: 'admin',
+      sender_id: adminUser.id,
+      sender_name: adminUser.username || '상담사',
+      message: '원격지원 승인 버튼 보내드리오니 희망 시 클릭 바랍니다.',
+      is_remote_support_request: true // 원격 지원 요청 플래그
+    }));
+
+    alert('원격 지원 요청을 전송했습니다. 사용자가 승인하면 원격 제어가 시작됩니다.');
+  };
+
+  // 모달창 드래그 시작
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.modal-header')) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - modalPosition.x,
+        y: e.clientY - modalPosition.y
+      });
+    }
+  };
+
+  // 모달창 드래그 중
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDragging) {
+      setModalPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  // 모달창 드래그 종료
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // 드래그 이벤트 리스너 등록
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragStart]);
+
+  // 원격 제어: 화면 클릭
+  const handleScreenClick = (e: React.MouseEvent<HTMLVideoElement>) => {
+    if (!roomWs.current || !selectedRoom || !remoteControlActive) {
+      console.log('❌ 클릭 무시:', { roomWs: !!roomWs.current, selectedRoom: !!selectedRoom, remoteControlActive });
+      return;
+    }
+
+    const video = e.currentTarget;
+    const rect = video.getBoundingClientRect();
+
+    // 비디오 내 클릭 위치 계산
+    const scaleX = video.videoWidth / video.clientWidth;
+    const scaleY = video.videoHeight / video.clientHeight;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    console.log('🖱️ 관리자 클릭:');
+    console.log('  - 비디오 크기:', video.videoWidth, 'x', video.videoHeight);
+    console.log('  - 표시 크기:', video.clientWidth, 'x', video.clientHeight);
+    console.log('  - 클릭 위치 (화면):', e.clientX, ',', e.clientY);
+    console.log('  - 클릭 위치 (원본):', x, ',', y);
+
+    // 원격 클릭 이벤트 전송
+    roomWs.current.send(JSON.stringify({
+      type: 'remote_click',
+      room_id: selectedRoom.id,
+      x: x,
+      y: y
+    }));
+
+    console.log('✅ 원격 클릭 전송 완료');
   };
 
   const formatDate = (dateString: string) => {
@@ -291,6 +557,21 @@ export default function LiveChatPage() {
                         진행하기
                       </button>
                     )}
+                    {remoteControlActive ? (
+                      <button
+                        onClick={() => setShowRemoteModal(true)}
+                        className="border-2 border-red-600 bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700 dark:border-red-500 dark:bg-red-500 dark:hover:bg-red-600"
+                      >
+                        🖥️ 사용자 화면 보기
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleRequestRemoteSupport}
+                        className="border border-red-300 bg-red-50 px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-100 dark:border-red-700 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50"
+                      >
+                        원격 승인 요청
+                      </button>
+                    )}
                     <button
                       onClick={handleCloseChat}
                       className="border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
@@ -300,21 +581,38 @@ export default function LiveChatPage() {
                   </div>
                 </div>
                 <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
-                  {messages.map((msg, idx) => (
-                    <div key={idx} className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}>
-                      <div className="flex max-w-[70%] flex-col gap-1">
-                        {msg.sender_type === 'user' && (
-                          <span className="px-2 text-xs text-gray-500 dark:text-gray-400">{msg.sender_name}</span>
-                        )}
-                        <div className={`rounded-lg px-3 py-2 ${msg.sender_type === 'admin' ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'}`}>
-                          <p className="whitespace-pre-wrap text-sm">{msg.message}</p>
+                  {messages.map((msg, idx) => {
+                    // 특수 메시지: 사용자 화면 보기 버튼
+                    if (msg.message === '[REMOTE_CONTROL_APPROVED]' || msg.is_remote_control_approved) {
+                      return (
+                        <div key={idx} className="flex justify-center my-4">
+                          <button
+                            onClick={() => setShowRemoteModal(true)}
+                            className="border-2 border-red-600 bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-red-700"
+                          >
+                            🖥️ 사용자 화면 보기
+                          </button>
                         </div>
-                        <span className="px-2 text-xs text-gray-400">
-                          {new Date(msg.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                      );
+                    }
+
+                    // 일반 메시지
+                    return (
+                      <div key={idx} className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                        <div className="flex max-w-[70%] flex-col gap-1">
+                          {msg.sender_type === 'user' && (
+                            <span className="px-2 text-xs text-gray-500 dark:text-gray-400">{msg.sender_name}</span>
+                          )}
+                          <div className={`rounded-lg px-3 py-2 ${msg.sender_type === 'admin' ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'}`}>
+                            <p className="whitespace-pre-wrap text-sm">{msg.message}</p>
+                          </div>
+                          <span className="px-2 text-xs text-gray-400">
+                            {new Date(msg.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
                 <div className="border-t border-gray-200 p-4 dark:border-gray-700">
@@ -349,6 +647,98 @@ export default function LiveChatPage() {
             )}
           </div>
         </div>
+
+        {/* 원격 제어 모달창 */}
+        {showRemoteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div
+              ref={modalRef}
+              onMouseDown={handleMouseDown}
+              style={{
+                position: 'fixed',
+                left: `${modalPosition.x}px`,
+                top: `${modalPosition.y}px`,
+                width: `${modalSize.width}px`,
+                height: `${modalSize.height}px`,
+              }}
+              className="flex flex-col border-2 border-red-500 bg-white shadow-2xl dark:bg-gray-800"
+            >
+              {/* 헤더 (드래그 가능) */}
+              <div className="modal-header flex cursor-move items-center justify-between border-b-2 border-red-500 bg-red-50 p-3 dark:bg-red-900/20">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 animate-pulse rounded-full bg-red-500"></div>
+                  <h3 className="text-sm font-bold text-red-700 dark:text-red-400">원격 제어 중</h3>
+                  <span className="text-xs text-gray-500">드래그하여 이동</span>
+                </div>
+                <button
+                  onClick={() => {
+                    if (roomWs.current && selectedRoom) {
+                      roomWs.current.send(JSON.stringify({
+                        type: 'remote_control_stop',
+                        room_id: selectedRoom.id
+                      }));
+                      setRemoteControlActive(false);
+                      setShowRemoteModal(false);
+                      // WebRTC 연결 종료
+                      if (peerConnection.current) {
+                        peerConnection.current.close();
+                        peerConnection.current = null;
+                      }
+                    }
+                  }}
+                  className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-red-700"
+                >
+                  종료
+                </button>
+              </div>
+
+              {/* 화면 영역 */}
+              <div className="flex-1 overflow-auto bg-gray-100 p-4 dark:bg-gray-900">
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  onClick={handleScreenClick}
+                  className="h-full w-full cursor-crosshair border border-red-300 object-contain bg-black"
+                />
+              </div>
+
+              {/* 하단 안내 */}
+              <div className="border-t border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-700">
+                <p className="text-center text-xs text-gray-600 dark:text-gray-400">
+                  화면을 클릭하여 사용자 화면을 제어할 수 있습니다
+                </p>
+              </div>
+
+              {/* 크기 조절 핸들 (우하단) */}
+              <div
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  const startX = e.clientX;
+                  const startY = e.clientY;
+                  const startWidth = modalSize.width;
+                  const startHeight = modalSize.height;
+
+                  const handleResize = (moveEvent: MouseEvent) => {
+                    setModalSize({
+                      width: Math.max(600, startWidth + (moveEvent.clientX - startX)),
+                      height: Math.max(400, startHeight + (moveEvent.clientY - startY))
+                    });
+                  };
+
+                  const handleResizeEnd = () => {
+                    window.removeEventListener('mousemove', handleResize);
+                    window.removeEventListener('mouseup', handleResizeEnd);
+                  };
+
+                  window.addEventListener('mousemove', handleResize);
+                  window.addEventListener('mouseup', handleResizeEnd);
+                }}
+                className="absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize bg-red-500"
+              ></div>
+            </div>
+          </div>
+        )}
       </div>
     </CRMLayout>
   );
