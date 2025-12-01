@@ -35,6 +35,16 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
 
+    // 토큰 만료 또는 유효하지 않음 (401) - 자동 로그아웃
+    if (response.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('vendor');
+      window.location.href = '/login';
+      throw new Error('로그인이 필요합니다.');
+    }
+
     // 비활성화된 계정 (403) - 자동 로그아웃
     if (response.status === 403 && error.detail?.includes('비활성화된 계정')) {
       localStorage.removeItem('access_token');
