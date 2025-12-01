@@ -339,7 +339,7 @@ SUPABASE_SERVICE_ROLE_KEY={self.env_vars['supabase']['SUPABASE_SERVICE_ROLE_KEY'
 # Backend Configuration
 SECRET_KEY={self.env_vars['backend']['SECRET_KEY']}
 ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+ACCESS_TOKEN_EXPIRE_MINUTES=10080
 
 # Redis Configuration
 REDIS_HOST={self.env_vars['backend']['REDIS_HOST']}
