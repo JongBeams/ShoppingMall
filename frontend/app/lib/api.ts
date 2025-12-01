@@ -37,11 +37,22 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
 
     // 토큰 만료 또는 유효하지 않음 (401) - 자동 로그아웃
     if (response.status === 401) {
+      // 일반 사용자 로그아웃
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
       localStorage.removeItem('vendor');
-      window.location.href = '/login';
+
+      // 관리자 로그아웃
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+
+      // CRM 페이지인지 확인
+      if (window.location.pathname.startsWith('/crm')) {
+        window.location.href = '/crm/login';
+      } else {
+        window.location.href = '/login';
+      }
       throw new Error('로그인이 필요합니다.');
     }
 
@@ -291,6 +302,23 @@ export const paymentAPI = {
 export const orderPaymentsAPI = {
   getPayments: (token: string): Promise<{ message: string; products: GetVendorProductRequest[] }> =>
     fetchAPI('/orders/checkout', {
+      method: 'GET',
+      token,
+    }),
+};
+
+// Admin API (CRM 관리자용)
+export const adminAPI = {
+  // 회원 목록 조회
+  getUsers: (token: string) =>
+    fetchAPI('/admin/users', {
+      method: 'GET',
+      token,
+    }),
+
+  // 문의 목록 조회
+  getInquiries: (token: string) =>
+    fetchAPI('/inquiries', {
       method: 'GET',
       token,
     }),

@@ -4,8 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+import { adminAPI } from '@/app/lib/api';
 
 interface NewUser {
   id: string;
@@ -56,17 +55,9 @@ export default function CRMPage() {
       if (!adminToken) return;
 
       try {
-        const response = await fetch(`${API_BASE_URL}/admin/users`, {
-          headers: {
-            'Authorization': `Bearer ${adminToken}`
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          // 최근 3명만 가져오기
-          setNewUsers(data.users.slice(0, 3));
-        }
+        const data = await adminAPI.getUsers(adminToken);
+        // 최근 3명만 가져오기
+        setNewUsers(data.users.slice(0, 3));
       } catch (error) {
         console.error('Failed to fetch new users:', error);
       }
@@ -82,18 +73,10 @@ export default function CRMPage() {
       if (!adminToken) return;
 
       try {
-        const response = await fetch(`${API_BASE_URL}/inquiries`, {
-          headers: {
-            'Authorization': `Bearer ${adminToken}`
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          // pending 상태만 필터링하고 최근 2개만
-          const pending = data.inquiries.filter((inq: any) => inq.status === 'pending').slice(0, 2);
-          setPendingInquiries(pending);
-        }
+        const data = await adminAPI.getInquiries(adminToken);
+        // pending 상태만 필터링하고 최근 2개만
+        const pending = data.inquiries.filter((inq: any) => inq.status === 'pending').slice(0, 2);
+        setPendingInquiries(pending);
       } catch (error) {
         console.error('Failed to fetch pending inquiries:', error);
       }
