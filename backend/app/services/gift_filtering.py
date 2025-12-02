@@ -1,8 +1,9 @@
 """
-선물 추천을 위한 상품 필터링 서비스
+선물 추천을 위한 상품 필터링 서비스 (임베딩 기반)
 """
 from typing import List, Dict, Optional
 from app.services.supabase import supabase
+from app.services.embedding_service import EmbeddingService
 
 
 # 관계별 추천 카테고리 매핑
@@ -38,7 +39,7 @@ STYLE_KEYWORDS = {
 
 
 class GiftFilteringService:
-    """선물 상품 필터링 서비스"""
+    """선물 상품 필터링 서비스 (임베딩 기반)"""
 
     @staticmethod
     async def filter_products(
@@ -51,7 +52,7 @@ class GiftFilteringService:
         limit: int = 50
     ) -> List[Dict]:
         """
-        선물 추천을 위한 상품 필터링
+        선물 추천을 위한 상품 필터링 (임베딩 기반 의미 검색)
 
         Args:
             relationship: 관계 (예: 연인_남, 친구)
@@ -66,20 +67,7 @@ class GiftFilteringService:
             필터링된 상품 리스트
         """
 
-        # 1단계: 관계 기반 카테고리 추출
-        base_categories = GIFT_CATEGORY_MAP.get(relationship, [])
-
-        # 2단계: 관심사 반영
-        all_categories = base_categories.copy()
-        if interests:
-            for interest in interests:
-                interest_categories = INTEREST_CATEGORY_MAP.get(interest, [])
-                all_categories.extend(interest_categories)
-
-        # 중복 제거
-        all_categories = list(set(all_categories))
-
-        # 3단계: 기본 쿼리 (활성 상품만, 평점 조건 제거)
+        # 1단계: 기본 쿼리 (활성 상품만)
         query = supabase.table('products').select(
             'id, name, slug, description, price, thumbnail_url, '
             'rating, review_count, tags, category_id, '
@@ -87,84 +75,57 @@ class GiftFilteringService:
             'stock_quantity, is_active'
         ).eq('is_active', True)
 
-        # 가격대 필터 (예산 ±30% 여유로 완화)
-        price_min = int(budget_min * 0.7)
+        # 가격대 필터 (예산 ±50% 여유)
+        price_min = int(budget_min * 0.5)
         price_max = int(budget_max * 1.5)
         query = query.gte('price', price_min).lte('price', price_max)
 
-        # 재고 조건도 완화 (0개여도 일단 보여주기)
-        # query = query.gt('stock_quantity', 0)
-
-        # 카테고리 필터 (OR 조건)
-        # Supabase는 OR 필터가 복잡하므로, 일단 전체 조회 후 필터링
         result = query.limit(500).execute()
 
         if not result.data:
+            print("조건에 맞는 상품 없음")
             return []
 
         products = result.data
+        print(f"가격 필터링 후 상품 수: {len(products)}개")
 
-        # 4단계: 카테고리 필터링 (Python에서 처리)
-        filtered_products = []
-        for product in products:
-            category_name = product.get('categories', {}).get('name', '') if product.get('categories') else ''
-
-            # 카테고리 매칭 확인
-            if all_categories:
-                category_matched = any(
-                    cat.lower() in category_name.lower()
-                    for cat in all_categories
-                )
-            else:
-                category_matched = True  # 카테고리 조건 없으면 통과
-
-            if category_matched:
-                filtered_products.append(product)
-
-        # 카테고리 매칭 실패 시 전체 상품 반환
-        if not filtered_products and products:
-            print(f"카테고리 매칭 실패, 전체 상품 {len(products)}개 반환")
-            filtered_products = products
-
-        # 5단계: 스타일 키워드 매칭
-        style_keywords = STYLE_KEYWORDS.get(style, [])
-        if style_keywords:
-            styled_products = []
-            for product in filtered_products:
-                name = product.get('name', '').lower()
-                description = product.get('description', '').lower() if product.get('description') else ''
-                tags = product.get('tags', [])
-                tags_str = ' '.join(tags).lower() if tags else ''
-
-                # 키워드 매칭 확인
-                keyword_matched = any(
-                    keyword.lower() in name or
-                    keyword.lower() in description or
-                    keyword.lower() in tags_str
-                    for keyword in style_keywords
-                )
-
-                if keyword_matched:
-                    product['style_score'] = 2  # 스타일 매칭 보너스
-                    styled_products.append(product)
-                else:
-                    product['style_score'] = 0
-                    styled_products.append(product)
-
-            filtered_products = styled_products
-
-        # 6단계: 정렬 (스타일 매칭 > 평점 > 리뷰 수)
-        filtered_products.sort(
-            key=lambda x: (
-                x.get('style_score', 0),
-                float(x.get('rating', 0)),
-                x.get('review_count', 0)
-            ),
-            reverse=True
+        # 2단계: 쿼리 텍스트 생성
+        query_text = EmbeddingService.create_gift_query_text(
+            relationship=relationship,
+            interests=interests or [],
+            style=style,
+            occasion="선물",  # 나중에 answers에서 가져오도록 수정 가능
+            age_range=age_range
         )
 
-        # 7단계: 상위 N개 반환
-        return filtered_products[:limit]
+        print(f"검색 쿼리: {query_text}")
+
+        # 3단계: 쿼리 임베딩
+        query_embedding = EmbeddingService.generate_embedding(query_text)
+
+        # 4단계: 상품 텍스트 생성 및 임베딩
+        product_texts = [
+            EmbeddingService.create_product_text(product)
+            for product in products
+        ]
+
+        print("상품 임베딩 생성 중...")
+        product_embeddings = EmbeddingService.generate_embeddings_batch(product_texts)
+
+        # 5단계: 유사도 검색
+        print("유사도 계산 중...")
+        similar_products = EmbeddingService.find_most_similar(
+            query_embedding=query_embedding,
+            product_embeddings=list(product_embeddings),
+            products=products,
+            top_k=limit
+        )
+
+        print(f"최종 추천 상품 수: {len(similar_products)}개")
+        if similar_products:
+            print(f"최고 유사도: {similar_products[0].get('similarity_score', 0):.3f}")
+
+        return similar_products
 
 
     @staticmethod
