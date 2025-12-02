@@ -233,6 +233,12 @@ export default function Header() {
       rightLinks: []
     },
     {
+      name: 'AI선물추천',
+      href: '/gift-wizard',
+      submenu: [],
+      rightLinks: []
+    },
+    {
       name: '상품',
       href: '/products',
       submenu: [

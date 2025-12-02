@@ -79,21 +79,21 @@ class GiftFilteringService:
         # 중복 제거
         all_categories = list(set(all_categories))
 
-        # 3단계: 기본 쿼리 (가격대 + 활성 상품 + 평점 4.0 이상)
+        # 3단계: 기본 쿼리 (활성 상품만, 평점 조건 제거)
         query = supabase.table('products').select(
             'id, name, slug, description, price, thumbnail_url, '
             'rating, review_count, tags, category_id, '
             'categories(name, slug), '
             'stock_quantity, is_active'
-        ).eq('is_active', True).gte('rating', 4.0)
+        ).eq('is_active', True)
 
-        # 가격대 필터 (예산 ±20% 여유)
-        price_min = int(budget_min * 0.8)
-        price_max = int(budget_max * 1.2)
+        # 가격대 필터 (예산 ±30% 여유로 완화)
+        price_min = int(budget_min * 0.7)
+        price_max = int(budget_max * 1.5)
         query = query.gte('price', price_min).lte('price', price_max)
 
-        # 재고 있는 상품만
-        query = query.gt('stock_quantity', 0)
+        # 재고 조건도 완화 (0개여도 일단 보여주기)
+        # query = query.gt('stock_quantity', 0)
 
         # 카테고리 필터 (OR 조건)
         # Supabase는 OR 필터가 복잡하므로, 일단 전체 조회 후 필터링
@@ -110,13 +110,21 @@ class GiftFilteringService:
             category_name = product.get('categories', {}).get('name', '') if product.get('categories') else ''
 
             # 카테고리 매칭 확인
-            category_matched = any(
-                cat.lower() in category_name.lower()
-                for cat in all_categories
-            )
+            if all_categories:
+                category_matched = any(
+                    cat.lower() in category_name.lower()
+                    for cat in all_categories
+                )
+            else:
+                category_matched = True  # 카테고리 조건 없으면 통과
 
             if category_matched:
                 filtered_products.append(product)
+
+        # 카테고리 매칭 실패 시 전체 상품 반환
+        if not filtered_products and products:
+            print(f"카테고리 매칭 실패, 전체 상품 {len(products)}개 반환")
+            filtered_products = products
 
         # 5단계: 스타일 키워드 매칭
         style_keywords = STYLE_KEYWORDS.get(style, [])

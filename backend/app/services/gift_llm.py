@@ -181,7 +181,7 @@ class GiftLLMService:
         Yields:
             스트리밍 응답 청크
         """
-        url = f"{settings.OLLAMA_BASE_URL}/api/generate"
+        url = f"{settings.OLLAMA_HOST}/api/generate"
 
         payload = {
             "model": model,
@@ -223,7 +223,7 @@ class GiftLLMService:
         Returns:
             LLM 응답
         """
-        url = f"{settings.OLLAMA_BASE_URL}/api/generate"
+        url = f"{settings.OLLAMA_HOST}/api/generate"
 
         payload = {
             "model": model,
@@ -265,6 +265,10 @@ class GiftLLMService:
             if response.startswith('```'):
                 lines = response.split('\n')
                 response = '\n'.join(lines[1:-1])  # 첫 줄(```json)과 마지막 줄(```) 제거
+
+            # 제어 문자 제거 (개행, 탭, 캐리지 리턴 제외)
+            import re
+            response = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', response)
 
             # JSON 파싱
             data = json.loads(response)

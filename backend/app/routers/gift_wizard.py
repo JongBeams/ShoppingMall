@@ -101,8 +101,7 @@ async def get_gift_recommendations(
 
 @router.post("/recommendations-json")
 async def get_gift_recommendations_json(
-    answers: GiftWizardAnswers,
-    current_user: Optional[dict] = Depends(get_current_user)
+    answers: GiftWizardAnswers
 ):
     """
     선물 추천 받기 (JSON, 비스트리밍)
@@ -127,13 +126,8 @@ async def get_gift_recommendations_json(
                 detail="조건에 맞는 상품을 찾을 수 없습니다."
             )
 
-        # 2. 과거 이력
+        # 2. 과거 이력 (로그인하지 않은 경우 빈 리스트)
         purchase_history = []
-        if current_user:
-            purchase_history = await GiftFilteringService.get_user_purchase_history(
-                user_id=current_user['id'],
-                limit=5
-            )
 
         # 3. LLM 호출
         prompt = GiftLLMService.generate_recommendation_prompt(
@@ -173,8 +167,10 @@ async def get_gift_recommendations_json(
         }
 
     except Exception as e:
-        print(f"선물 추천 오류: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        error_detail = f"추천 오류: {str(e)}\n{traceback.format_exc()}"
+        print(error_detail)
+        raise HTTPException(status_code=500, detail=error_detail)
 
 
 @router.post("/messages")
