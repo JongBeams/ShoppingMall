@@ -231,7 +231,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
             message_type = message_data.get('type', 'message')
 
             # 원격 제어 이벤트 처리 (관리자 ↔ 사용자)
-            if message_type in ['remote_click', 'remote_scroll', 'remote_input', 'remote_control_start', 'remote_control_stop']:
+            if message_type in ['remote_click', 'remote_scroll', 'remote_input', 'remote_input_text', 'remote_keydown', 'scroll_sync', 'remote_control_start', 'remote_control_stop']:
                 # DB 저장 없이 바로 브로드캐스트
                 await manager.send_message(message_data, room_id)
 

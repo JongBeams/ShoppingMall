@@ -46,6 +46,7 @@ export default function LiveChatPage() {
   const modalRef = useRef<HTMLDivElement>(null);
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const userScrollInfo = useRef({ scrollX: 0, scrollY: 0, innerWidth: 0, innerHeight: 0 });
 
   useEffect(() => {
     if (shouldScrollRef.current && messagesContainerRef.current) {
@@ -280,6 +281,14 @@ export default function LiveChatPage() {
             console.error('❌ ICE Candidate 추가 실패:', error);
           }
         }
+      } else if (data.type === 'scroll_sync') {
+        // 사용자 스크롤 위치 동기화
+        userScrollInfo.current = {
+          scrollX: data.scrollX,
+          scrollY: data.scrollY,
+          innerWidth: data.innerWidth,
+          innerHeight: data.innerHeight
+        };
       } else {
         console.log('⚠️ 처리되지 않은 메시지 타입:', data.type);
       }
@@ -399,27 +408,58 @@ export default function LiveChatPage() {
     }
   }, [isDragging, dragStart]);
 
+
   // 원격 제어: 화면 클릭
   const handleScreenClick = (e: React.MouseEvent<HTMLVideoElement>) => {
     if (!roomWs.current || !selectedRoom || !remoteControlActive) {
-      console.log('❌ 클릭 무시:', { roomWs: !!roomWs.current, selectedRoom: !!selectedRoom, remoteControlActive });
       return;
     }
 
     const video = e.currentTarget;
     const rect = video.getBoundingClientRect();
 
-    // 비디오 내 클릭 위치 계산
-    const scaleX = video.videoWidth / video.clientWidth;
-    const scaleY = video.videoHeight / video.clientHeight;
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
+    // 비디오의 실제 표시 영역 계산 (object-contain 고려)
+    const videoRatio = video.videoWidth / video.videoHeight;
+    const displayRatio = rect.width / rect.height;
 
-    console.log('🖱️ 관리자 클릭:');
-    console.log('  - 비디오 크기:', video.videoWidth, 'x', video.videoHeight);
-    console.log('  - 표시 크기:', video.clientWidth, 'x', video.clientHeight);
-    console.log('  - 클릭 위치 (화면):', e.clientX, ',', e.clientY);
-    console.log('  - 클릭 위치 (원본):', x, ',', y);
+    let actualVideoWidth = rect.width;
+    let actualVideoHeight = rect.height;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (videoRatio > displayRatio) {
+      // 비디오가 더 넓음 -> 위아래에 여백
+      actualVideoHeight = rect.width / videoRatio;
+      offsetY = (rect.height - actualVideoHeight) / 2;
+    } else {
+      // 비디오가 더 높음 -> 좌우에 여백
+      actualVideoWidth = rect.height * videoRatio;
+      offsetX = (rect.width - actualVideoWidth) / 2;
+    }
+
+    // 클릭 위치를 실제 비디오 영역 내 좌표로 변환
+    const clickX = e.clientX - rect.left - offsetX;
+    const clickY = e.clientY - rect.top - offsetY;
+
+    // 사용자 실제 화면 해상도
+    const userWidth = userScrollInfo.current.innerWidth || window.innerWidth;
+    const userHeight = userScrollInfo.current.innerHeight || window.innerHeight;
+
+    // 비디오 표시 크기 -> 사용자 viewport 크기로 스케일링
+    const scaleX = userWidth / actualVideoWidth;
+    const scaleY = userHeight / actualVideoHeight;
+
+    let x = clickX * scaleX;
+    let y = clickY * scaleY;
+
+    console.log('🎯 클릭 좌표:', {
+      클릭위치: { clickX, clickY },
+      비디오표시크기: { actualVideoWidth, actualVideoHeight },
+      사용자화면크기: { userWidth, userHeight },
+      스케일: { scaleX, scaleY },
+      스크롤전좌표: { x, y },
+      스크롤: { scrollX: userScrollInfo.current.scrollX, scrollY: userScrollInfo.current.scrollY },
+    });
 
     // 원격 클릭 이벤트 전송
     roomWs.current.send(JSON.stringify({
@@ -428,8 +468,6 @@ export default function LiveChatPage() {
       x: x,
       y: y
     }));
-
-    console.log('✅ 원격 클릭 전송 완료');
   };
 
   const formatDate = (dateString: string) => {
@@ -654,6 +692,20 @@ export default function LiveChatPage() {
             <div
               ref={modalRef}
               onMouseDown={handleMouseDown}
+              onKeyDown={(e) => {
+                if (roomWs.current && selectedRoom && remoteControlActive) {
+                  roomWs.current.send(JSON.stringify({
+                    type: 'remote_keydown',
+                    room_id: selectedRoom.id,
+                    key: e.key,
+                    code: e.code,
+                    ctrlKey: e.ctrlKey,
+                    shiftKey: e.shiftKey,
+                    altKey: e.altKey
+                  }));
+                }
+              }}
+              tabIndex={0}
               style={{
                 position: 'fixed',
                 left: `${modalPosition.x}px`,
@@ -661,7 +713,7 @@ export default function LiveChatPage() {
                 width: `${modalSize.width}px`,
                 height: `${modalSize.height}px`,
               }}
-              className="flex flex-col border-2 border-red-500 bg-white shadow-2xl dark:bg-gray-800"
+              className="flex flex-col border-2 border-red-500 bg-white shadow-2xl dark:bg-gray-800 outline-none"
             >
               {/* 헤더 (드래그 가능) */}
               <div className="modal-header flex cursor-move items-center justify-between border-b-2 border-red-500 bg-red-50 p-3 dark:bg-red-900/20">
@@ -693,13 +745,26 @@ export default function LiveChatPage() {
               </div>
 
               {/* 화면 영역 */}
-              <div className="flex-1 overflow-auto bg-gray-100 p-4 dark:bg-gray-900">
+              <div
+                className="flex-1 overflow-auto bg-gray-100 p-4 dark:bg-gray-900"
+                onWheel={(e) => {
+                  // 스크롤 이벤트 전송
+                  if (roomWs.current && selectedRoom && remoteControlActive) {
+                    e.preventDefault();
+                    roomWs.current.send(JSON.stringify({
+                      type: 'remote_scroll',
+                      room_id: selectedRoom.id,
+                      deltaY: e.deltaY
+                    }));
+                  }
+                }}
+              >
                 <video
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
                   onClick={handleScreenClick}
-                  className="h-full w-full cursor-crosshair border border-red-300 object-contain bg-black"
+                  className="h-full w-full cursor-crosshair border border-red-300 object-contain bg-black outline-none"
                 />
               </div>
 

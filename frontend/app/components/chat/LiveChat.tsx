@@ -183,6 +183,23 @@ export default function LiveChat({ onBack }: LiveChatProps) {
 
     // 화면 공유 시작
     await startScreenShare();
+
+    // 주기적으로 스크롤 위치 전송 (관리자와 동기화)
+    const syncInterval = setInterval(() => {
+      if (ws.current && roomId) {
+        ws.current.send(JSON.stringify({
+          type: 'scroll_sync',
+          room_id: roomId,
+          scrollX: window.scrollX,
+          scrollY: window.scrollY,
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight
+        }));
+      }
+    }, 500); // 0.5초마다 동기화
+
+    // 컴포넌트 언마운트 시 인터벌 정리
+    return () => clearInterval(syncInterval);
   };
 
   useEffect(() => {
@@ -294,17 +311,21 @@ export default function LiveChat({ onBack }: LiveChatProps) {
 
           if (data.type === 'remote_click') {
             // 클릭 이벤트 재현
-            const { x, y } = data;
+            let { x, y } = data;
 
             console.log('🖱️ 원격 클릭 수신:', {
-              x, y,
+              원본좌표: { x, y },
               windowSize: { width: window.innerWidth, height: window.innerHeight },
-              scrollPosition: { x: window.scrollX, y: window.scrollY },
-              documentSize: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight }
+              scrollPosition: { x: window.scrollX, y: window.scrollY }
             });
 
+            // 스크롤 위치를 빼서 뷰포트 좌표로 변환
+            // 받은 좌표는 이미 뷰포트 기준이므로 그대로 사용
+            const viewportX = x;
+            const viewportY = y;
+
             // 뷰포트 좌표로 요소 찾기
-            const element = document.elementFromPoint(x, y) as HTMLElement;
+            let element = document.elementFromPoint(viewportX, viewportY) as HTMLElement;
 
             if (element) {
               console.log('✅ 클릭할 요소 발견:', element.tagName, element.className);
@@ -313,8 +334,8 @@ export default function LiveChat({ onBack }: LiveChatProps) {
               const marker = document.createElement('div');
               marker.style.cssText = `
                 position: fixed;
-                left: ${x}px;
-                top: ${y}px;
+                left: ${viewportX}px;
+                top: ${viewportY}px;
                 width: 20px;
                 height: 20px;
                 background: red;
@@ -325,18 +346,52 @@ export default function LiveChat({ onBack }: LiveChatProps) {
               document.body.appendChild(marker);
               setTimeout(() => marker.remove(), 1000);
 
-              // 실제 마우스 클릭 이벤트 생성
+              // input/textarea가 아니면 자식 요소 중에서 찾기
+              if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) {
+                const inputChild = element.querySelector('input, textarea') as HTMLInputElement | HTMLTextAreaElement | null;
+                if (inputChild) {
+                  console.log('🔍 자식 요소에서 입력 필드 발견:', inputChild.tagName);
+                  element = inputChild;
+                }
+              }
+
+              // 먼저 mousedown, mouseup 이벤트 발생
+              const mouseDownEvent = new MouseEvent('mousedown', {
+                view: window,
+                bubbles: true,
+                cancelable: true,
+                clientX: viewportX,
+                clientY: viewportY
+              });
+              element.dispatchEvent(mouseDownEvent);
+
+              const mouseUpEvent = new MouseEvent('mouseup', {
+                view: window,
+                bubbles: true,
+                cancelable: true,
+                clientX: viewportX,
+                clientY: viewportY
+              });
+              element.dispatchEvent(mouseUpEvent);
+
+              // 클릭 이벤트 발생
               const clickEvent = new MouseEvent('click', {
                 view: window,
                 bubbles: true,
                 cancelable: true,
-                clientX: x,
-                clientY: y
+                clientX: viewportX,
+                clientY: viewportY
               });
               element.dispatchEvent(clickEvent);
 
-              // 추가로 기본 click() 메서드도 실행
-              element.click();
+              // Input/Textarea이면 포커스
+              if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+                element.focus();
+                element.click();
+                console.log('📝 입력 필드에 포커스 설정:', element);
+              } else if (element instanceof HTMLElement && typeof element.click === 'function') {
+                element.click();
+              }
 
               console.log('✅ 클릭 이벤트 전송 완료');
             } else {
@@ -347,9 +402,87 @@ export default function LiveChat({ onBack }: LiveChatProps) {
 
           if (data.type === 'remote_scroll') {
             // 스크롤 이벤트 재현
-            const { scrollY } = data;
-            console.log('📜 원격 스크롤:', scrollY);
-            window.scrollTo({ top: scrollY, behavior: 'smooth' });
+            const { deltaY } = data;
+            console.log('📜 원격 스크롤:', deltaY);
+            window.scrollBy({
+              top: deltaY,
+              behavior: 'auto'
+            });
+            return;
+          }
+
+          if (data.type === 'remote_keydown') {
+            // 키보드 입력 재현
+            const { key, code, ctrlKey, shiftKey, altKey } = data;
+            console.log('⌨️ 원격 키보드:', key);
+
+            // 현재 포커스된 요소 가져오기
+            const activeElement = document.activeElement as HTMLElement;
+
+            if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+              // 입력 필드에 직접 입력
+              const inputElement = activeElement as HTMLInputElement | HTMLTextAreaElement;
+
+              if (key === 'Backspace') {
+                inputElement.value = inputElement.value.slice(0, -1);
+              } else if (key === 'Enter') {
+                // Enter 키 이벤트 발생
+                const enterEvent = new KeyboardEvent('keydown', {
+                  key: 'Enter',
+                  code: 'Enter',
+                  bubbles: true
+                });
+                inputElement.dispatchEvent(enterEvent);
+              } else if (key.length === 1) {
+                // 일반 문자 입력
+                inputElement.value += key;
+              }
+
+              // input 이벤트 발생
+              const inputEvent = new Event('input', { bubbles: true });
+              inputElement.dispatchEvent(inputEvent);
+
+              // change 이벤트 발생
+              const changeEvent = new Event('change', { bubbles: true });
+              inputElement.dispatchEvent(changeEvent);
+            } else {
+              // 포커스된 요소가 없으면 키보드 이벤트만 발생
+              const keyEvent = new KeyboardEvent('keydown', {
+                key,
+                code,
+                ctrlKey,
+                shiftKey,
+                altKey,
+                bubbles: true
+              });
+              document.dispatchEvent(keyEvent);
+            }
+            return;
+          }
+
+          if (data.type === 'remote_input_text') {
+            // 텍스트 입력 (한글 포함)
+            const { text } = data;
+            console.log('📝 원격 텍스트 입력:', text);
+
+            const activeElement = document.activeElement as HTMLElement;
+
+            if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+              const inputElement = activeElement as HTMLInputElement | HTMLTextAreaElement;
+
+              // 현재 값에 텍스트 추가
+              inputElement.value += text;
+
+              // input 이벤트 발생
+              const inputEvent = new Event('input', { bubbles: true });
+              inputElement.dispatchEvent(inputEvent);
+
+              // change 이벤트 발생
+              const changeEvent = new Event('change', { bubbles: true });
+              inputElement.dispatchEvent(changeEvent);
+
+              console.log('✅ 텍스트 입력 완료:', inputElement.value);
+            }
             return;
           }
 
