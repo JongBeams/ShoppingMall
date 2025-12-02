@@ -31,56 +31,51 @@ export default function GiftWizardResult({
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         {/* 헤더 */}
         <div className="border border-gray-200 bg-white mb-6 dark:border-gray-700 dark:bg-gray-900">
-          {/* 상단 성공 배너 */}
-          <div className="border-b border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800">
-            <div className="flex items-center justify-center gap-3">
-              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-lg">✓</span>
+          {/* 상단 성공 배너 - 작게 수정 */}
+          <div className="border-b border-gray-200 bg-gray-50 px-6 py-3 dark:border-gray-700 dark:bg-gray-800">
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs font-bold">✓</span>
               </div>
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
-                  추천 완료
-                </p>
-                <p className="text-sm font-bold text-gray-900 dark:text-white">
-                  AI 분석 결과 · 3개 상품 매칭 성공
-                </p>
-              </div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                추천 완료 · AI 분석 결과 <span className="font-bold text-gray-900 dark:text-white">3개 상품 매칭 성공</span>
+              </p>
             </div>
           </div>
 
-          {/* 메인 헤더 */}
-          <div className="p-10">
+          {/* 메인 헤더 - 작게 수정 */}
+          <div className="p-6">
             <div className="text-center">
-              <div className="mb-5">
-                <span className="text-6xl">🎁</span>
+              <div className="mb-3">
+                <span className="text-4xl">🎁</span>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
                 완벽한 선물 3가지를 찾았어요
               </h1>
               <div className="max-w-2xl mx-auto">
-                <p className="text-base text-gray-600 dark:text-gray-400 mb-6">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   <span className="font-bold text-gray-900 dark:text-white">{answers.relationship}</span>
                   에게
                   <span className="font-bold text-gray-900 dark:text-white"> {answers.occasion}</span>
                   {' '}선물로 추천드려요
                 </p>
 
-                {/* 추천 정보 태그 */}
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900">
-                    <span className="text-sm">💰</span>
+                {/* 추천 정보 태그 - 작게 수정 */}
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900">
+                    <span className="text-xs">💰</span>
                     <span className="text-xs text-gray-600 dark:text-gray-400">
-                      예산: {answers.budget_min?.toLocaleString()}원 ~ {answers.budget_max?.toLocaleString()}원
+                      {answers.budget_min?.toLocaleString()}원 ~ {answers.budget_max?.toLocaleString()}원
                     </span>
                   </div>
-                  <div className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900">
-                    <span className="text-sm">✨</span>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900">
+                    <span className="text-xs">✨</span>
                     <span className="text-xs text-gray-600 dark:text-gray-400">
                       스타일: {answers.style}
                     </span>
                   </div>
-                  <div className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900">
-                    <span className="text-sm">🎯</span>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900">
+                    <span className="text-xs">🎯</span>
                     <span className="text-xs text-gray-600 dark:text-gray-400">
                       연령: {answers.age_range}
                     </span>
@@ -90,8 +85,8 @@ export default function GiftWizardResult({
             </div>
           </div>
 
-          {/* 하단 안내 */}
-          <div className="border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+          {/* 하단 안내 - 작게 수정 */}
+          <div className="border-t border-gray-200 bg-gray-50 px-6 py-2.5 dark:border-gray-700 dark:bg-gray-800">
             <p className="text-center text-xs text-gray-500 dark:text-gray-400">
               💡 각 선물마다 추천 이유와 선물 메시지를 확인하세요
             </p>
