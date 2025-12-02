@@ -9,9 +9,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   
   // 결제 관련 페이지는 헤더/푸터 숨김
-  const hideLayout = pathname?.startsWith('/order/checkout') || 
-                     pathname?.startsWith('/order/success') || 
-                     pathname?.startsWith('/order/fail');
+  const hideLayout = pathname?.startsWith('/order/checkout') ||
+                     pathname?.startsWith('/order/success') ||
+                     pathname?.startsWith('/order/fail') ||
+                     pathname?.startsWith('/subscription/checkout') ||
+                     pathname?.startsWith('/subscription/success') ||
+                     pathname?.startsWith('/subscription/fail');
 
   if (hideLayout) {
     return <>{children}</>;

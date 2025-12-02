@@ -77,3 +77,33 @@ class SubscriptionPlanResponse(BaseModel):
 class SubscriptionPlansResponse(BaseModel):
     plans: list[SubscriptionPlanResponse]
     count: int
+
+
+# 구독자 정보 모델
+class SubscriptionUser(BaseModel):
+    id: UUID
+    profile_id: UUID
+    subscription_plan_id: UUID
+    started_at: datetime
+    ended_at: Optional[datetime] = None
+    is_active: bool = True
+    created_at: datetime
+    features: Optional[dict] = None  # jsonb 필드
+
+    class Config:
+        from_attributes = True
+
+
+# 구독 결제 확인 요청 모델
+class SubscriptionConfirmRequest(BaseModel):
+    order_id: str
+    payment_key: str
+    amount: float
+    plan_id: str
+
+
+# 구독 결제 확인 응답 모델
+class SubscriptionConfirmResponse(BaseModel):
+    success: bool
+    message: str
+    subscription_user_id: Optional[str] = None

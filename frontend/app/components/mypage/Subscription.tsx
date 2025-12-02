@@ -14,12 +14,15 @@ export default function Subscription({ user }: SubscriptionProps) {
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [currentSubscription, setCurrentSubscription] = useState<any>(null);
 
   // 판매자인지 구매자인지 판별
   const isSeller = user?.user_type === 'seller';
 
   useEffect(() => {
     fetchSubscriptionPlans();
+    fetchCurrentSubscription();
   }, [isSeller]);
 
   const fetchSubscriptionPlans = async () => {
@@ -34,6 +37,112 @@ export default function Subscription({ user }: SubscriptionProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchCurrentSubscription = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log('로그인된 사용자가 아닙니다.');
+        return;
+      }
+
+      const response = await subscriptionApi.getCurrentSubscription(token);
+      console.log('현재 구독 정보:', response);
+
+      if (response.has_subscription) {
+        console.log('활성 구독:', response.subscription);
+        console.log('구독 플랜:', response.subscription.subscription_plans);
+        console.log('구독 시작일:', response.subscription.started_at);
+        console.log('구독 종료일:', response.subscription.ended_at);
+        console.log('구독 기능:', response.subscription.features);
+
+        // 현재 구독 정보 저장
+        setCurrentSubscription(response.subscription);
+
+        // 현재 구독 중인 플랜을 자동으로 선택
+        if (response.subscription.subscription_plan_id) {
+          setSelectedPlan(response.subscription.subscription_plan_id);
+        }
+      } else {
+        console.log('활성 구독이 없습니다.');
+        setCurrentSubscription(null);
+      }
+    } catch (err) {
+      console.error('현재 구독 정보 조회 실패:', err);
+      setCurrentSubscription(null);
+    }
+  };
+
+  // 구독하기 버튼 클릭 시 결제 처리
+  const handleSubscribe = () => {
+    if (!selectedPlan) {
+      alert('구독 플랜을 선택해주세요.');
+      return;
+    }
+
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert('로그인이 필요합니다.');
+      window.location.href = '/login';
+      return;
+    }
+
+    // 선택한 플랜 찾기
+    const plan = subscriptionPlans.find(p => p.id === selectedPlan);
+    if (!plan) {
+      alert('선택한 플랜을 찾을 수 없습니다.');
+      return;
+    }
+
+    setSubmitting(true);
+
+    // sessionStorage에 구독 결제 데이터 저장
+    const checkoutData = {
+      amount: plan.price,
+      orderName: `${plan.name} 구독`,
+      email: user?.email || '',
+      paymentType: 'subscription',
+      planId: plan.id,
+      planName: plan.name,
+      duration_days: plan.duration_days,
+    };
+    sessionStorage.setItem('checkoutData', JSON.stringify(checkoutData));
+
+    // 결제 팝업 열기
+    const popup = window.open(
+      '/subscription/checkout',
+      'subscription-payment',
+      'width=800,height=700,left=100,top=100'
+    );
+
+    if (!popup) {
+      alert('팝업이 차단되었습니다. 팝업 차단을 해제해주세요.');
+      setSubmitting(false);
+      return;
+    }
+
+    // 팝업이 닫혔을 때 처리
+    const checkPopupClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkPopupClosed);
+        setSubmitting(false);
+
+        // 결제 완료 여부 확인
+        const paymentResult = sessionStorage.getItem('subscriptionPaymentResult');
+        if (paymentResult) {
+          const result = JSON.parse(paymentResult);
+          sessionStorage.removeItem('subscriptionPaymentResult');
+
+          if (result.success) {
+            alert('구독이 완료되었습니다!');
+            // 구독 정보 새로고침
+            fetchSubscriptionPlans();
+            fetchCurrentSubscription();
+          }
+        }
+      }
+    }, 500);
   };
 
   // Type guard to check if features are buyer features
@@ -204,8 +313,16 @@ export default function Subscription({ user }: SubscriptionProps) {
           })}
         </div>
         {selectedPlan && (
-          <button className="mt-3 w-full border border-gray-900 bg-gray-900 py-2 text-xs font-medium text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
-            구독하기
+          <button
+            onClick={handleSubscribe}
+            disabled={submitting || (currentSubscription?.subscription_plan_id === selectedPlan)}
+            className="mt-3 w-full border border-gray-900 bg-gray-900 py-2 text-xs font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+          >
+            {submitting
+              ? '처리 중...'
+              : currentSubscription?.subscription_plan_id === selectedPlan
+              ? '구독 중'
+              : '구독하기'}
           </button>
         )}
       </div>

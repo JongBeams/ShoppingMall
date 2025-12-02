@@ -378,6 +378,19 @@ export const subscriptionApi = {
     if (!response.ok) throw new Error('구독 플랜 조회 실패');
     return response.json();
   },
+
+  // 현재 사용자의 활성 구독 정보 조회
+  getCurrentSubscription: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/subscription/current`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) throw new Error('현재 구독 정보 조회 실패');
+    return response.json();
+  },
 };
 
 

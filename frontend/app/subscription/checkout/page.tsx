@@ -9,7 +9,7 @@ import styles from "../../components/payment/style.module.css";
 const clientKey = "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm";
 const queryClient = new QueryClient();
 
-export default function CheckoutPage() {
+export default function SubscriptionCheckoutPage() {
   return (
     <QueryClientProvider client={queryClient}>
       <CheckoutContent />
@@ -26,7 +26,7 @@ function CheckoutContent() {
   const [orderData, setOrderData] = useState<any>(null);
 
   useEffect(() => {
-    // sessionStorage에서 주문 데이터 가져오기
+    // sessionStorage에서 구독 데이터 가져오기
     const storedOrderData = sessionStorage.getItem('checkoutData');
     if (storedOrderData) {
       try {
@@ -34,7 +34,7 @@ function CheckoutContent() {
         setOrderData(data);
         setPrice(data.amount || 50_000);
       } catch (e) {
-        console.error('주문 데이터 파싱 실패:', e);
+        console.error('구독 데이터 파싱 실패:', e);
       }
     }
   }, []);
@@ -88,12 +88,12 @@ function CheckoutContent() {
               try {
                 await paymentWidget?.requestPayment({
                   orderId: nanoid(),
-                  orderName: orderData?.orderName || "상품 주문",
-                  customerName: orderData?.recipient_name || "고객",
+                  orderName: orderData?.orderName || "구독 상품",
+                  customerName: orderData?.planName || orderData?.recipient_name || "고객",
                   customerEmail: orderData?.email || "customer@example.com",
                   customerMobilePhone: orderData?.recipient_phone?.replace(/-/g, '') || "01012341234",
-                  successUrl: `${window.location.origin}/order/success`,
-                  failUrl: `${window.location.origin}/order/fail`,
+                  successUrl: `${window.location.origin}/subscription/success`,
+                  failUrl: `${window.location.origin}/subscription/fail`,
                 });
               } catch (error) {
                 console.error(error);

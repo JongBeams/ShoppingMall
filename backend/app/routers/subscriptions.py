@@ -4,9 +4,26 @@ from supabase import Client
 from app.services.supabase import get_supabase_client
 from app.models.subscriptions import SubscriptionPlanResponse, SubscriptionPlansResponse
 from app.services.subscriptions import get_plans, get_plan_by_id, get_plan_by_slug
+from app.services.auth_middleware import get_current_user
+from app.config import get_settings
+from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime, timedelta
+import requests
+import base64
 
 router = APIRouter(prefix="/subscription", tags=["subscriptions"])
+
+# Settings 인스턴스
+settings = get_settings()
+
+
+# 프론트엔드로부터 받는 요청 모델 (camelCase)
+class SubscriptionConfirmRequest(BaseModel):
+    orderId: str
+    paymentKey: str
+    amount: int
+    planId: str
 
 
 @router.get("/plans", response_model=SubscriptionPlansResponse)
@@ -84,3 +101,148 @@ async def get_subscription_plan_by_slug(
     except Exception as e:
         print(f"구독 플랜 조회 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"구독 플랜 조회 실패: {str(e)}")
+
+
+@router.get("/current")
+async def get_current_subscription(
+    current_user: dict = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_client)
+):
+    """
+    현재 사용자의 활성 구독 정보 조회
+    """
+    try:
+        # 1. 사용자 profile_id 조회
+        profile_response = supabase.table("profiles").select("id").eq("id", current_user["id"]).execute()
+
+        if not profile_response.data:
+            raise HTTPException(status_code=404, detail="사용자 프로필을 찾을 수 없습니다")
+
+        profile_id = profile_response.data[0]["id"]
+
+        # 2. 활성 구독 정보 조회
+        subscription_response = supabase.table("subscription_users")\
+            .select("*, subscription_plans(*)")\
+            .eq("profile_id", profile_id)\
+            .eq("is_active", True)\
+            .execute()
+
+        if not subscription_response.data:
+            return {
+                "has_subscription": False,
+                "subscription": None,
+                "message": "활성 구독이 없습니다"
+            }
+
+        subscription = subscription_response.data[0]
+
+        return {
+            "has_subscription": True,
+            "subscription": subscription,
+            "message": "구독 정보 조회 성공"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"구독 정보 조회 오류: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"구독 정보 조회 실패: {str(e)}")
+
+
+@router.post("/confirm")
+async def confirm_subscription_payment(
+    request: SubscriptionConfirmRequest,
+    current_user: dict = Depends(get_current_user),
+    supabase: Client = Depends(get_supabase_client)
+):
+    """
+    구독 결제 승인 및 구독 생성
+    """
+    try:
+        # 1. Toss Payments에 결제 승인 요청
+        auth_string = base64.b64encode(f"{settings.TOSS_SECRET_KEY}:".encode()).decode()
+
+        toss_response = requests.post(
+            "https://api.tosspayments.com/v1/payments/confirm",
+            headers={
+                "Authorization": f"Basic {auth_string}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "orderId": request.orderId,
+                "paymentKey": request.paymentKey,
+                "amount": request.amount,
+            },
+        )
+
+        if toss_response.status_code != 200:
+            error_data = toss_response.json()
+            raise HTTPException(
+                status_code=400,
+                detail=f"결제 승인 실패: {error_data.get('message', '알 수 없는 오류')}"
+            )
+
+        payment_data = toss_response.json()
+
+        # 2. 구독 플랜 정보 조회
+        plan = await get_plan_by_id(supabase=supabase, plan_id=request.planId)
+        if not plan:
+            raise HTTPException(status_code=404, detail="구독 플랜을 찾을 수 없습니다")
+
+        # 3. 사용자 profile_id 조회
+        profile_response = supabase.table("profiles").select("id").eq("id", current_user["id"]).execute()
+
+        if not profile_response.data:
+            raise HTTPException(status_code=404, detail="사용자 프로필을 찾을 수 없습니다")
+
+        profile_id = profile_response.data[0]["id"]
+
+        # 4. 구독 종료일 계산
+        start_date = datetime.now()
+        end_date = start_date + timedelta(days=plan.duration_days)
+
+        # 5. 기존 구독이 있으면 비활성화
+        existing_subscription = supabase.table("subscription_users")\
+            .select("*")\
+            .eq("profile_id", profile_id)\
+            .eq("is_active", True)\
+            .execute()
+
+        if existing_subscription.data:
+            # 기존 구독 비활성화
+            supabase.table("subscription_users")\
+                .update({"is_active": False, "ended_at": datetime.now().isoformat()})\
+                .eq("profile_id", profile_id)\
+                .eq("is_active", True)\
+                .execute()
+
+        # 6. subscription_users 테이블에 새 구독 정보 저장
+        subscription_data = {
+            "profile_id": profile_id,
+            "subscription_plan_id": str(plan.id),
+            "started_at": start_date.isoformat(),
+            "ended_at": end_date.isoformat(),
+            "is_active": True,
+            "features": plan.features if isinstance(plan.features, dict) else plan.features.model_dump(),
+        }
+
+        result = supabase.table("subscription_users").insert(subscription_data).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=500, detail="구독 정보 저장 실패")
+
+        return {
+            "success": True,
+            "message": "구독이 완료되었습니다",
+            "subscription": result.data[0],
+            "payment": payment_data,
+        }
+
+    except HTTPException:
+        raise
+    except requests.exceptions.RequestException as e:
+        print(f"Toss Payments API 오류: {str(e)}")
+        raise HTTPException(status_code=500, detail="결제 승인 중 오류가 발생했습니다")
+    except Exception as e:
+        print(f"구독 처리 오류: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"구독 처리 실패: {str(e)}")
