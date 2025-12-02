@@ -30,16 +30,70 @@ export default function GiftWizardResult({
     <div className="bg-white dark:bg-gray-900 min-h-screen">
       <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
         {/* 헤더 */}
-        <div className="border border-gray-200 bg-white p-8 mb-6 dark:border-gray-700 dark:bg-gray-900">
-          <div className="text-center">
-            <div className="mb-3">
-              <span className="text-4xl">🎁</span>
+        <div className="border border-gray-200 bg-white mb-6 dark:border-gray-700 dark:bg-gray-900">
+          {/* 상단 성공 배너 */}
+          <div className="border-b border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800">
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-lg">✓</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                  추천 완료
+                </p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                  AI 분석 결과 · 3개 상품 매칭 성공
+                </p>
+              </div>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              완벽한 선물 3가지를 찾았어요
-            </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {answers.relationship}에게 {answers.occasion} 선물로 추천드려요
+          </div>
+
+          {/* 메인 헤더 */}
+          <div className="p-10">
+            <div className="text-center">
+              <div className="mb-5">
+                <span className="text-6xl">🎁</span>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                완벽한 선물 3가지를 찾았어요
+              </h1>
+              <div className="max-w-2xl mx-auto">
+                <p className="text-base text-gray-600 dark:text-gray-400 mb-6">
+                  <span className="font-bold text-gray-900 dark:text-white">{answers.relationship}</span>
+                  에게
+                  <span className="font-bold text-gray-900 dark:text-white"> {answers.occasion}</span>
+                  {' '}선물로 추천드려요
+                </p>
+
+                {/* 추천 정보 태그 */}
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900">
+                    <span className="text-sm">💰</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      예산: {answers.budget_min?.toLocaleString()}원 ~ {answers.budget_max?.toLocaleString()}원
+                    </span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900">
+                    <span className="text-sm">✨</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      스타일: {answers.style}
+                    </span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900">
+                    <span className="text-sm">🎯</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      연령: {answers.age_range}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 하단 안내 */}
+          <div className="border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+            <p className="text-center text-xs text-gray-500 dark:text-gray-400">
+              💡 각 선물마다 추천 이유와 선물 메시지를 확인하세요
             </p>
           </div>
         </div>

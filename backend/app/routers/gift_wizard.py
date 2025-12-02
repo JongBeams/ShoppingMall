@@ -147,13 +147,14 @@ async def get_gift_recommendations_json(
                 detail="AI 응답 파싱에 실패했습니다."
             )
 
-        # 5. 제품 정보 매핑
+        # 5. 제품 정보 매핑 (실제 상품명 덮어쓰기)
         recommendations = parsed_data.get('recommendations', [])
         for rec in recommendations:
             product_num = rec.get('product_number', 1) - 1
             if 0 <= product_num < len(products):
                 product = products[product_num]
                 rec['product_id'] = str(product['id'])
+                rec['product_name'] = product.get('name')  # 실제 상품명 덮어쓰기
                 rec['product_price'] = float(product['price'])
                 rec['product_image'] = product.get('thumbnail_url')
                 rec['product_rating'] = float(product.get('rating', 0))

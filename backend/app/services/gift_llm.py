@@ -86,13 +86,12 @@ class GiftLLMService:
     {{
       "rank": 1,
       "product_number": 1,
-      "product_name": "상품명",
       "reasons": [
         "받는 사람의 {answers.get('style', '')} 스타일에 완벽하게 맞는 디자인입니다.",
         "{answers.get('occasion', '')}에 어울리는 의미 있는 선택입니다.",
-        "가격 대비 품질이 우수하고, 평점 4.5 이상의 검증된 상품입니다."
+        "가격 대비 품질이 우수한 상품입니다."
       ],
-      "caution": "사이즈 확인이 필요합니다. (있다면)",
+      "caution": "사이즈나 색상 확인이 필요한 경우 언급",
       "gift_messages": [
         "{{감성적}} 2-3문장의 진심 어린 메시지",
         "{{위트있는}} 재치있고 유머러스한 메시지",
@@ -102,7 +101,6 @@ class GiftLLMService:
     {{
       "rank": 2,
       "product_number": 2,
-      "product_name": "상품명",
       "reasons": [...],
       "caution": "...",
       "gift_messages": [...]
@@ -110,7 +108,6 @@ class GiftLLMService:
     {{
       "rank": 3,
       "product_number": 3,
-      "product_name": "상품명",
       "reasons": [...],
       "caution": "...",
       "gift_messages": [...]
@@ -121,11 +118,13 @@ class GiftLLMService:
   "overall_advice": "{answers.get('relationship', '')}에게 선물할 때 전반적인 조언"
 }}
 
-중요:
-1. 받는 사람의 성격, 스타일, 관심사를 반드시 언급하세요
-2. {answers.get('occasion', '')}이라는 상황에 맞는 의미를 부여하세요
-3. 선물 메시지는 각각 2-3문장, 이모지 1-2개 포함
-4. 반드시 위 형식의 JSON만 출력하세요
+**중요 규칙:**
+1. product_name은 절대 작성하지 마세요! 시스템이 자동으로 매핑합니다.
+2. product_number는 위 상품 목록의 번호(1~N)를 정확히 사용하세요.
+3. 받는 사람의 성격, 스타일, 관심사를 반드시 언급하세요
+4. {answers.get('occasion', '')}이라는 상황에 맞는 의미를 부여하세요
+5. 선물 메시지는 각각 2-3문장, 이모지 1-2개 포함
+6. 반드시 위 형식의 JSON만 출력하세요
 """
 
         return prompt
