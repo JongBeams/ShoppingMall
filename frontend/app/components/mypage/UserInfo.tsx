@@ -167,18 +167,16 @@ export default function UserInfo({ user, activeTab, setActiveTab }: UserInfoProp
             건의하기
           </button>
         )}
-        {user?.user_type !== 'seller' && (
-          <button
-            onClick={() => handleTabClick('subscription')}
-            className={`w-full border-b border-gray-200 px-4 py-2.5 text-left text-xs transition dark:border-gray-700 ${
-              activeTab === 'subscription'
-                ? 'border-l-2 border-l-gray-900 bg-gray-50 font-bold text-gray-900 dark:border-l-white dark:bg-gray-800 dark:text-white'
-                : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'
-            }`}
-          >
-            구독 및 포인트
-          </button>
-        )}
+        <button
+          onClick={() => handleTabClick('subscription')}
+          className={`w-full border-b border-gray-200 px-4 py-2.5 text-left text-xs transition dark:border-gray-700 ${
+            activeTab === 'subscription'
+              ? 'border-l-2 border-l-gray-900 bg-gray-50 font-bold text-gray-900 dark:border-l-white dark:bg-gray-800 dark:text-white'
+              : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'
+          }`}
+        >
+          {user?.user_type === 'seller' ? '구독 관리' : '구독 및 포인트'}
+        </button>
         {user?.user_type !== 'seller' && (
           <button
             onClick={() => handleTabClick('coupons')}

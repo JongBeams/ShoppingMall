@@ -337,3 +337,48 @@ export const adminAPI = {
       token,
     }),
 };
+
+
+
+
+// Subscription(구독) 관련
+export const subscriptionApi = {
+  // 구독 플랜 목록 조회
+  getPlans: async (isBuyer: boolean = true) => {
+    const response = await fetch(`${API_BASE_URL}/subscription/plans?is_buyer=${isBuyer}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('구독 플랜 조회 실패');
+    return response.json();
+  },
+
+  // 특정 구독 플랜 조회 (ID)
+  getPlanById: async (planId: string) => {
+    const response = await fetch(`${API_BASE_URL}/subscription/plans/${planId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('구독 플랜 조회 실패');
+    return response.json();
+  },
+
+  // 특정 구독 플랜 조회 (slug)
+  getPlanBySlug: async (slug: string) => {
+    const response = await fetch(`${API_BASE_URL}/subscription/plans/slug/${slug}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) throw new Error('구독 플랜 조회 실패');
+    return response.json();
+  },
+};
+
+
+

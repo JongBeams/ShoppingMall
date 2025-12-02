@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CartItem as CartItemType, Product } from '../types';
+import { Product } from '../types';
 import UserInfo from '../components/mypage/UserInfo';
 import Profile from '../components/mypage/Profile';
 import Orders from '../components/mypage/Orders';
@@ -20,49 +20,6 @@ import InquiryManagement from '../components/mypage/InquiryManagement';
 import SellerCoupons from '../components/mypage/SellerCoupons';
 import EventManagement from '../components/mypage/EventManagement';
 import VendorAuthGuard from '../components/auth/VendorAuthGuard';
-
-// 임시 더미 데이터(주문 내역)
-const dummyOrders: CartItemType[] = [
-  {
-    product: {
-      id: '1',
-      name: '무선 이어폰',
-      description: '고음질 블루투스 무선 이어폰',
-      price: 89000,
-      category: '전자제품',
-      imageUrl: '/placeholder-product.jpg',
-      stock: 50,
-    },
-    quantity: 50,
-    status: 'shipping', // 배송 중
-  },
-  {
-    product: {
-      id: '2',
-      name: '스마트워치',
-      description: '다양한 기능을 갖춘 스마트워치',
-      price: 250000,
-      category: '전자제품',
-      imageUrl: '/placeholder-product.jpg',
-      stock: 30,
-    },
-    quantity: 1,
-    status: 'delivered', // 배송 완료
-  },
-  {
-    product: {
-      id: '3',
-      name: '백팩',
-      description: '심플한 디자인의 데일리 백팩',
-      price: 65000,
-      category: '패션',
-      imageUrl: '/placeholder-product.jpg',
-      stock: 20,
-    },
-    quantity: 2,
-    status: 'shipping', // 배송 중
-  },
-];
 
 // 임시 더미 데이터 (찜목록)
 const dummyWishList: Product[] = [
@@ -163,7 +120,7 @@ export default function MyPage() {
           {/* Main Content */}
           <div className="flex-1">
             {activeTab === 'profile' && <Profile user={user} vendor={vendor} />}
-            {activeTab === 'orders' && <Orders user={user} dummyOrders={dummyOrders} />}
+            {activeTab === 'orders' && <Orders user={user} />}
             {activeTab === 'sales' && user?.user_type === 'seller' && <Sales />}
             {activeTab === 'store' && user?.user_type === 'seller' && <StoreManagement />}
             {activeTab === 'products' && user?.user_type === 'seller' && <ProductManagement />}
@@ -174,7 +131,7 @@ export default function MyPage() {
             {activeTab === 'wishlist' && user?.user_type !== 'seller' && <Wishlist dummyWishList={dummyWishList} />}
             {activeTab === 'recent' && user?.user_type !== 'seller' && <RecentProducts />}
             {activeTab === 'inquiry' && <Inquiry />}
-            {activeTab === 'subscription' && user?.user_type !== 'seller' && <Subscription />}
+            {activeTab === 'subscription' && <Subscription user={user} />}
             {activeTab === 'coupons' && user?.user_type !== 'seller' && <Coupons />}
             {activeTab === 'reviews' && user?.user_type !== 'seller' && <Reviews />}
           </div>

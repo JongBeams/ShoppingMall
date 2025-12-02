@@ -142,3 +142,48 @@ export interface ApiResponse<T> {
   message?: string;
   error?: string;
 }
+
+// Subscription Types
+// 구매자용 Features
+export interface BuyerFeatures {
+  points: {
+    amount: number;
+    cycle: string;
+  };
+  shipping: string;
+  coupon_tier: string;
+  priority_delivery: boolean;
+  early_access: boolean;
+  cs_level: 'standard' | 'priority';
+  event_invites: boolean;
+}
+
+// 판매자용 Features
+export interface SellerFeatures {
+  product_limit: number | string;
+  coupon_issue: boolean;
+  promo_slots: number | string;
+  ads_included: number | string;
+  api_access: boolean;
+  cs_level: 'standard' | 'priority' | 'dedicated';
+}
+
+// 구독 플랜
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  slug: string | null;
+  price: number;
+  duration_days: number;
+  commission_discount: number;
+  description: string | null;
+  features: BuyerFeatures | SellerFeatures;
+  is_active: boolean;
+  is_buyer: boolean;
+}
+
+// 구독 플랜 목록 응답
+export interface SubscriptionPlansResponse {
+  plans: SubscriptionPlan[];
+  count: number;
+}
