@@ -395,3 +395,134 @@ export const subscriptionApi = {
 
 
 
+
+// point 관련
+export const pointApi = {
+  // 포인트 잔액 조회
+  getBalance: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/points/balance`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) throw new Error('포인트 잔액 조회 실패');
+    return response.json();
+  },
+
+  // 포인트 거래 내역 조회
+  getTransactions: async (token: string, page: number = 1, limit: number = 20) => {
+    const response = await fetch(
+      `${API_BASE_URL}/points/transactions?page=${page}&limit=${limit}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      }
+    );
+    if (!response.ok) throw new Error('포인트 내역 조회 실패');
+    return response.json();
+  },
+
+  // 포인트 적립 (시스템/관리자용)
+  earnPoints: async (
+    token: string,
+    data: {
+      user_id: string;
+      change_amount: number;
+      reason: string;
+      order_id?: string;
+    }
+  ) => {
+    const response = await fetch(`${API_BASE_URL}/points/earn`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('포인트 적립 실패');
+    return response.json();
+  },
+
+  // 포인트 사용 (결제 시)
+  usePoints: async (
+    token: string,
+    data: {
+      user_id: string;
+      change_amount: number;
+      reason?: string;
+      order_id?: string;
+    }
+  ) => {
+    const response = await fetch(`${API_BASE_URL}/points/use`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('포인트 사용 실패');
+    return response.json();
+  },
+
+  // 포인트 취소 (주문 취소 시)
+  cancelPoints: async (
+    token: string,
+    data: {
+      user_id: string;
+      order_id: string;
+      reason?: string;
+    }
+  ) => {
+    const response = await fetch(`${API_BASE_URL}/points/cancel`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('포인트 취소 실패');
+    return response.json();
+  },
+
+  // 포인트 조정 (관리자용)
+  adjustPoints: async (
+    token: string,
+    data: {
+      user_id: string;
+      change_amount: number;
+      reason?: string;
+    }
+  ) => {
+    const response = await fetch(`${API_BASE_URL}/points/adjust`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('포인트 조정 실패');
+    return response.json();
+  },
+
+  // 포인트 잔액 동기화
+  syncBalance: async (token: string) => {
+    const response = await fetch(`${API_BASE_URL}/points/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) throw new Error('포인트 잔액 동기화 실패');
+    return response.json();
+  },
+};

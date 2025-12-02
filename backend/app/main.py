@@ -2,13 +2,39 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
+from contextlib import asynccontextmanager
 
 load_dotenv()
 
 # Routers
-from app.routers import auth, admin, product, vendor, notice, faq, inquiry, chat, cart, documents, orders, reviews, payment, gift_wizard, subscriptions
+from app.routers import auth, admin, product, vendor, notice, faq, inquiry, chat, cart, documents, orders, reviews, payment, gift_wizard, subscriptions, points
 
-app = FastAPI(title="ShoppingMall API", version="1.0.0")
+# Scheduler
+from app.services.scheduler import start_scheduler, stop_scheduler
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    애플리케이션 생명주기 관리
+
+    - 시작 시: 스케줄러 시작
+    - 종료 시: 스케줄러 중지
+    """
+    # 시작
+    print("🚀 애플리케이션 시작 중...")
+    start_scheduler()
+    print("✅ 스케줄러 시작 완료")
+
+    yield
+
+    # 종료
+    print("🛑 애플리케이션 종료 중...")
+    stop_scheduler()
+    print("✅ 스케줄러 중지 완료")
+
+
+app = FastAPI(title="ShoppingMall API", version="1.0.0", lifespan=lifespan)
 
 # CORS 설정 - 개발 환경 (WebSocket 포함)
 app.add_middleware(
@@ -36,6 +62,7 @@ app.include_router(documents.router)
 app.include_router(payment.router)
 app.include_router(gift_wizard.router)
 app.include_router(subscriptions.router)
+app.include_router(points.router)
 
 @app.get("/")
 async def root():

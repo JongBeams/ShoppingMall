@@ -14,9 +14,15 @@ export default function Orders({ user }: OrdersProps) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [writtenReviewProductIds, setWrittenReviewProductIds] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchOrders();
+  }, [currentPage]);
+
+  useEffect(() => {
     fetchWrittenReviews();
   }, []);
 
@@ -28,7 +34,8 @@ export default function Orders({ user }: OrdersProps) {
     try {
       // 판매자는 /vendors/orders, 구매자는 /orders
       const endpoint = user?.user_type === 'seller' ? '/vendors/orders' : '/orders';
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const offset = (currentPage - 1) * itemsPerPage;
+      const response = await fetch(`${API_BASE_URL}${endpoint}?limit=${itemsPerPage}&offset=${offset}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -37,6 +44,8 @@ export default function Orders({ user }: OrdersProps) {
       if (response.ok) {
         const data = await response.json();
         setOrders(data.orders || []);
+        // 반환된 주문 수가 itemsPerPage보다 적으면 마지막 페이지
+        setHasMore(data.orders && data.orders.length >= itemsPerPage);
       }
     } catch (error) {
       console.error('주문 내역 조회 실패:', error);
@@ -294,6 +303,29 @@ export default function Orders({ user }: OrdersProps) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* 페이지네이션 */}
+      {orders.length > 0 && (
+        <div className="mt-6 flex items-center justify-center gap-2">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className="border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            이전
+          </button>
+          <span className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">
+            {currentPage} 페이지
+          </span>
+          <button
+            onClick={() => setCurrentPage((prev) => prev + 1)}
+            disabled={!hasMore}
+            className="border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+          >
+            다음
+          </button>
         </div>
       )}
     </div>

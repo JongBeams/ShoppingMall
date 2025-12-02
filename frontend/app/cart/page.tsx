@@ -139,6 +139,10 @@ export default function CartPage() {
     return sum + (originalPrice * item.quantity);
   }, 0);
   const totalDiscount = totalOriginalPrice - totalPrice;
+  // 배송비 계산: 5만원 이상 무료, 미만시 3,000원
+  const deliveryFee = totalPrice >= 50000 ? 0 : 3000;
+  // 최종 결제 금액
+  const finalAmount = totalPrice + deliveryFee;
 
   if (loading) {
     return (
@@ -353,12 +357,12 @@ export default function CartPage() {
               )}
               <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
                 <span>배송비</span>
-                <span>무료</span>
+                <span>{deliveryFee === 0 ? '무료' : `${deliveryFee.toLocaleString()}원`}</span>
               </div>
             </div>
             <div className="mt-4 flex justify-between text-base font-bold text-gray-900 dark:text-white">
               <span>총 금액</span>
-              <span className="text-blue-600 dark:text-blue-400">{Math.floor(totalPrice).toLocaleString()}원</span>
+              <span className="text-blue-600 dark:text-blue-400">{Math.floor(finalAmount).toLocaleString()}원</span>
             </div>
             <button
               onClick={handleOrder}

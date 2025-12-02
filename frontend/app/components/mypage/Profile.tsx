@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { pointApi } from '@/app/lib/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -42,6 +43,11 @@ export default function Profile({ user, vendor }: ProfileProps) {
   const [refundAccounts, setRefundAccounts] = useState<RefundAccount[]>([]);
   const [addresses, setAddresses] = useState<DeliveryAddress[]>([]);
 
+  // 통계 데이터
+  const [orderCount, setOrderCount] = useState(0);
+  const [wishlistCount, setWishlistCount] = useState(0);
+  const [pointBalance, setPointBalance] = useState(0);
+
   // 모달 상태
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
@@ -58,7 +64,35 @@ export default function Profile({ user, vendor }: ProfileProps) {
       fetchRefundAccounts();
       fetchAddresses();
     }
+    // 통계 데이터 불러오기
+    fetchStats();
   }, [user]);
+
+  const fetchStats = async () => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      // 포인트 잔액 조회
+      const pointResponse = await pointApi.getBalance(token);
+      setPointBalance(pointResponse.balance || 0);
+
+      // 주문 수 조회
+      const orderResponse = await fetch(`${API_BASE_URL}/orders?limit=1000&offset=0`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (orderResponse.ok) {
+        const orderData = await orderResponse.json();
+        setOrderCount(orderData.orders?.length || orderData.count || 0);
+      }
+
+      // 찜한 상품 수 조회 (wishlist API가 있다면)
+      // TODO: 찜하기 기능 구현 시 추가
+      setWishlistCount(0);
+    } catch (error) {
+      console.error('통계 데이터 조회 실패:', error);
+    }
+  };
 
   const getToken = () => localStorage.getItem('access_token');
 
@@ -468,7 +502,7 @@ export default function Profile({ user, vendor }: ProfileProps) {
               </svg>
             </div>
             <div>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">0</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{orderCount.toLocaleString()}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400">주문</p>
             </div>
           </div>
@@ -482,7 +516,7 @@ export default function Profile({ user, vendor }: ProfileProps) {
               </svg>
             </div>
             <div>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">0</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{wishlistCount.toLocaleString()}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400">찜한 상품</p>
             </div>
           </div>
@@ -496,7 +530,7 @@ export default function Profile({ user, vendor }: ProfileProps) {
               </svg>
             </div>
             <div>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">0</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{pointBalance.toLocaleString()}P</p>
               <p className="text-xs text-gray-600 dark:text-gray-400">포인트</p>
             </div>
           </div>

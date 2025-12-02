@@ -6,9 +6,11 @@ from app.models.subscriptions import SubscriptionPlanResponse, SubscriptionPlans
 from app.services.subscriptions import get_plans, get_plan_by_id, get_plan_by_slug
 from app.services.auth_middleware import get_current_user
 from app.config import get_settings
+from app.services.points import earn_points
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
+from uuid import UUID
 import requests
 import base64
 
@@ -231,11 +233,40 @@ async def confirm_subscription_payment(
         if not result.data:
             raise HTTPException(status_code=500, detail="구독 정보 저장 실패")
 
+        # 7. 구독 플랜에 포인트 혜택이 있으면 자동 적립
+        points_earned = 0
+        transaction_id = None
+
+        # 플랜의 features에서 포인트 정보 확인 (구매자 플랜만 해당)
+        plan_features = plan.features if isinstance(plan.features, dict) else plan.features.model_dump()
+
+        if "points" in plan_features and plan_features["points"]:
+            point_amount = plan_features["points"].get("amount", 0)
+
+            if point_amount > 0:
+                try:
+                    # 포인트 적립
+                    transaction_id, new_balance = await earn_points(
+                        supabase=supabase,
+                        user_id=UUID(profile_id),
+                        amount=point_amount,
+                        reason="subscription",
+                        order_id=None,
+                        expires_days=plan.duration_days  # 구독 기간만큼 유효
+                    )
+                    points_earned = point_amount
+                    print(f"구독 포인트 적립 성공: user_id={profile_id}, amount={point_amount}")
+                except Exception as e:
+                    print(f"구독 포인트 적립 실패 (무시): {str(e)}")
+                    # 포인트 적립 실패해도 구독은 성공으로 처리
+
         return {
             "success": True,
             "message": "구독이 완료되었습니다",
             "subscription": result.data[0],
             "payment": payment_data,
+            "points_earned": points_earned,
+            "point_transaction_id": transaction_id,
         }
 
     except HTTPException:

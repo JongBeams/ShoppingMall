@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { subscriptionApi } from '@/app/lib/api';
+import { subscriptionApi, pointApi } from '@/app/lib/api';
 import { SubscriptionPlan, BuyerFeatures, SellerFeatures } from '@/app/types';
 
 interface SubscriptionProps {
@@ -9,13 +9,15 @@ interface SubscriptionProps {
 }
 
 export default function Subscription({ user }: SubscriptionProps) {
-  const [currentPoints, setCurrentPoints] = useState(12500);
+  const [currentPoints, setCurrentPoints] = useState(0);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [currentSubscription, setCurrentSubscription] = useState<any>(null);
+  const [pointTransactions, setPointTransactions] = useState<any[]>([]);
+  const [pointsLoading, setPointsLoading] = useState(true);
 
   // 판매자인지 구매자인지 판별
   const isSeller = user?.user_type === 'seller';
@@ -23,6 +25,8 @@ export default function Subscription({ user }: SubscriptionProps) {
   useEffect(() => {
     fetchSubscriptionPlans();
     fetchCurrentSubscription();
+    fetchPointBalance();
+    fetchPointTransactions();
   }, [isSeller]);
 
   const fetchSubscriptionPlans = async () => {
@@ -71,6 +75,45 @@ export default function Subscription({ user }: SubscriptionProps) {
     } catch (err) {
       console.error('현재 구독 정보 조회 실패:', err);
       setCurrentSubscription(null);
+    }
+  };
+
+  const fetchPointBalance = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log('로그인된 사용자가 아닙니다.');
+        setCurrentPoints(0);
+        return;
+      }
+
+      const response = await pointApi.getBalance(token);
+      console.log('포인트 잔액:', response);
+      setCurrentPoints(response.balance || 0);
+    } catch (err) {
+      console.error('포인트 잔액 조회 실패:', err);
+      setCurrentPoints(0);
+    }
+  };
+
+  const fetchPointTransactions = async () => {
+    try {
+      setPointsLoading(true);
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log('로그인된 사용자가 아닙니다.');
+        setPointTransactions([]);
+        return;
+      }
+
+      const response = await pointApi.getTransactions(token, 1, 10);
+      console.log('포인트 내역:', response);
+      setPointTransactions(response.transactions || []);
+    } catch (err) {
+      console.error('포인트 내역 조회 실패:', err);
+      setPointTransactions([]);
+    } finally {
+      setPointsLoading(false);
     }
   };
 
@@ -136,9 +179,11 @@ export default function Subscription({ user }: SubscriptionProps) {
 
           if (result.success) {
             alert('구독이 완료되었습니다!');
-            // 구독 정보 새로고침
+            // 구독 정보 및 포인트 새로고침
             fetchSubscriptionPlans();
             fetchCurrentSubscription();
+            fetchPointBalance();
+            fetchPointTransactions();
           }
         }
       }
@@ -218,12 +263,42 @@ export default function Subscription({ user }: SubscriptionProps) {
     return features;
   };
 
-  const pointHistory = [
-    { id: 1, type: '적립', amount: 5000, description: '월간 구독 포인트', date: '2025.01.15' },
-    { id: 2, type: '사용', amount: -2500, description: 'AirPods Pro 구매', date: '2025.01.14' },
-    { id: 3, type: '적립', amount: 1000, description: '상품 리뷰 작성', date: '2025.01.10' },
-    { id: 4, type: '적립', amount: 5000, description: '월간 구독 포인트', date: '2025.01.01' },
-  ];
+  // 포인트 거래 타입에 따른 한글 변환
+  const getTransactionTypeText = (changeType: string) => {
+    switch (changeType) {
+      case 'earn': return '적립';
+      case 'use': return '사용';
+      case 'cancel': return '환원';
+      case 'expire': return '만료';
+      case 'adjust': return '조정';
+      default: return changeType;
+    }
+  };
+
+  // 포인트 사유에 따른 한글 설명
+  const getReasonText = (reason: string) => {
+    switch (reason) {
+      case 'order_reward': return '주문 완료 적립';
+      case 'review': return '리뷰 작성';
+      case 'photo_review': return '포토 리뷰';
+      case 'referral': return '친구 추천';
+      case 'subscription': return '구독 포인트';
+      case 'payment_use': return '결제 사용';
+      case 'expire_job': return '자동 만료';
+      case 'order_cancel': return '주문 취소';
+      case 'admin_adjust': return '관리자 조정';
+      default: return reason;
+    }
+  };
+
+  // 날짜 포맷팅 함수
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}.${month}.${day}`;
+  };
 
   if (loading) {
     return (
@@ -330,34 +405,48 @@ export default function Subscription({ user }: SubscriptionProps) {
       {/* Point History */}
       <div>
         <h2 className="mb-3 text-sm font-bold text-gray-900 dark:text-white">포인트 내역</h2>
-        <div className="space-y-2">
-          {pointHistory.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-b-0 dark:border-gray-800"
-            >
-              <div>
-                <p className="text-xs font-medium text-gray-900 dark:text-white">
-                  {item.description}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{item.date}</p>
+        {pointsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-xs text-gray-500 dark:text-gray-400">포인트 내역을 불러오는 중...</p>
+          </div>
+        ) : pointTransactions.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-xs text-gray-500 dark:text-gray-400">포인트 내역이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pointTransactions.map((transaction) => (
+              <div
+                key={transaction.id}
+                className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-b-0 dark:border-gray-800"
+              >
+                <div>
+                  <p className="text-xs font-medium text-gray-900 dark:text-white">
+                    {getReasonText(transaction.reason || '')}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {formatDate(transaction.created_at)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p
+                    className={`text-xs font-bold ${
+                      transaction.change_amount > 0
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-red-600 dark:text-red-400'
+                    }`}
+                  >
+                    {transaction.change_amount > 0 ? '+' : ''}
+                    {transaction.change_amount.toLocaleString()}P
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {getTransactionTypeText(transaction.change_type)}
+                  </p>
+                </div>
               </div>
-              <div className="text-right">
-                <p
-                  className={`text-xs font-bold ${
-                    item.type === '적립'
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-red-600 dark:text-red-400'
-                  }`}
-                >
-                  {item.amount > 0 ? '+' : ''}
-                  {item.amount.toLocaleString()}P
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{item.type}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

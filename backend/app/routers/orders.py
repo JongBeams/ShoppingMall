@@ -2,10 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.services.auth_middleware import get_current_user
 from app.services.supabase import get_supabase_admin_client
 from app.services.payments import process_payment_success, cancel_toss_payment
+from app.services.points import cancel_points
 from pydantic import BaseModel
 from typing import List, Optional
 from decimal import Decimal
 from datetime import datetime
+from uuid import UUID
 import uuid
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -44,6 +46,7 @@ class CreateOrderRequest(BaseModel):
     delivery_message: Optional[str] = ""
     payment_method: str  # card, bank, kakao, toss
     toss_order_id: Optional[str] = None  # 토스페이먼츠에서 전달한 orderId (nanoid)
+    points_used: Optional[int] = 0  # 사용한 포인트
 
 
 class OrderResponse(BaseModel):
@@ -115,16 +118,27 @@ async def create_order(
                 )
 
         # 주문 생성 (결제 대기 상태)
+        # subtotal = 포인트 사용 전 상품 금액 + 배송비 (total_amount + points_used)
+        subtotal_before_points = request.total_amount + (request.points_used or 0)
+
+        # 배송비 계산: 상품 금액(배송비 제외)이 50,000원 미만이면 3,000원
+        # subtotal_before_points에서 배송비를 역산해야 함
+        # 프론트엔드에서 이미 배송비 포함해서 보냈으므로, 배송비를 추출해야 함
+        # 상품 금액 계산
+        product_total = sum(item.price * item.quantity for item in request.items)
+        shipping_fee = 0 if product_total >= 50000 else 3000
+
         order_data = {
             "buyer_id": user_id,  # user_id -> buyer_id
             "order_number": order_number,
             "toss_order_id": request.toss_order_id,  # 토스 orderId (nanoid) 저장
             "status": "pending",  # 결제 대기 상태
-            "subtotal": request.total_amount,
-            "shipping_fee": 0,
+            "subtotal": subtotal_before_points,  # 포인트 사용 전 총 금액 (상품금액 + 배송비)
+            "shipping_fee": shipping_fee,  # 배송비
             "tax": 0,
             "discount": 0,
-            "total": request.total_amount,  # total_amount -> total
+            "points_used": request.points_used or 0,  # 사용한 포인트
+            "total": request.total_amount,  # 최종 결제 금액 (포인트 차감 후)
             "shipping_address": {  # JSONB 형식으로 변경
                 "recipient_name": request.recipient_name,
                 "recipient_phone": request.recipient_phone,
@@ -553,9 +567,32 @@ async def cancel_order(
                     {"stock_quantity": new_stock}
                 ).eq("id", item["product_id"]).execute()
 
+        # 사용했던 포인트 환원 (있다면)
+        points_refunded = 0
+        point_transaction_id = None
+
+        try:
+            point_transaction_id, new_balance = await cancel_points(
+                supabase=supabase,
+                user_id=UUID(user_id),
+                order_id=UUID(order_id)
+            )
+            # 환원된 포인트 계산
+            transaction_response = supabase.table("point_transactions").select("change_amount").eq("id", point_transaction_id).execute()
+            if transaction_response.data:
+                points_refunded = transaction_response.data[0]["change_amount"]
+            print(f"✅ 주문 취소 포인트 환원 성공: user_id={user_id}, amount={points_refunded}, order_id={order_id}")
+        except ValueError as e:
+            # 사용한 포인트가 없는 경우 (정상)
+            print(f"ℹ️ 주문 취소 포인트 환원 대상 없음: {str(e)}")
+        except Exception as e:
+            print(f"⚠️ 주문 취소 포인트 환원 실패 (무시): {str(e)}")
+
         return {
             "message": "주문이 취소되었습니다.",
-            "order_id": order_id
+            "order_id": order_id,
+            "points_refunded": points_refunded,
+            "point_transaction_id": point_transaction_id,
         }
 
     except HTTPException:

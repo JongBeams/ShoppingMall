@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { cartAPI } from '../lib/api';
+import { cartAPI, pointApi } from '../lib/api';
 import { CartItem } from '../types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
@@ -16,7 +16,7 @@ interface OrderForm {
   address: string;
   address_detail: string;
   delivery_message: string;
-  payment_method: 'card' | 'bank' | 'kakao' | 'toss';
+  payment_method: 'card' | 'bank' | 'kakao' | 'toss' | 'transfer';
 }
 
 export default function OrderPage() {
@@ -45,6 +45,8 @@ export default function OrderPage() {
   const [savedAccounts, setSavedAccounts] = useState<any[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [paymentPopup, setPaymentPopup] = useState<Window | null>(null);
+  const [availablePoints, setAvailablePoints] = useState(0);
+  const [pointsToUse, setPointsToUse] = useState(0);
 
   // 사용자 정보 및 장바구니 조회
   useEffect(() => {
@@ -67,6 +69,8 @@ export default function OrderPage() {
       fetchSavedCards(token);
       // 저장된 계좌 불러오기
       fetchSavedAccounts(token);
+      // 포인트 잔액 불러오기
+      fetchPointBalance(token);
     } catch (e) {
       console.error('Failed to parse user data:', e);
     }
@@ -153,6 +157,17 @@ export default function OrderPage() {
       window.removeEventListener('message', handleMessage);
     };
   }, []);
+
+  // 포인트 잔액 불러오기
+  const fetchPointBalance = async (token: string) => {
+    try {
+      const response = await pointApi.getBalance(token);
+      setAvailablePoints(response.balance || 0);
+    } catch (error) {
+      console.error('포인트 잔액 조회 실패:', error);
+      setAvailablePoints(0);
+    }
+  };
 
   // 저장된 결제수단 불러오기
   const fetchSavedCards = async (token: string) => {
@@ -304,6 +319,61 @@ export default function OrderPage() {
     }).open();
   };
 
+  // 포인트 사용 입력 핸들러
+  const handlePointsChange = (value: string) => {
+    const numValue = parseInt(value) || 0;
+
+    // 최소 사용 금액 체크 (1,000P)
+    if (numValue > 0 && numValue < 1000) {
+      alert('포인트는 최소 1,000P 이상 사용 가능합니다.');
+      setPointsToUse(0);
+      return;
+    }
+
+    // 보유 포인트 초과 체크
+    if (numValue > availablePoints) {
+      alert(`보유 포인트(${availablePoints.toLocaleString()}P)를 초과할 수 없습니다.`);
+      setPointsToUse(availablePoints);
+      return;
+    }
+
+    // 결제 금액 초과 체크
+    const maxPoints = totalPrice + deliveryFee;
+    if (numValue > maxPoints) {
+      alert(`결제 금액(${maxPoints.toLocaleString()}원)을 초과할 수 없습니다.`);
+      setPointsToUse(maxPoints);
+      return;
+    }
+
+    setPointsToUse(numValue);
+  };
+
+  // 포인트 추가 핸들러 (기존 값에 더하기)
+  const handleAddPoints = (amount: number) => {
+    const newValue = pointsToUse + amount;
+
+    // 보유 포인트 초과 체크
+    if (newValue > availablePoints) {
+      alert(`보유 포인트(${availablePoints.toLocaleString()}P)를 초과할 수 없습니다.`);
+      return;
+    }
+
+    // 결제 금액 초과 체크
+    const maxPoints = totalPrice + deliveryFee;
+    if (newValue > maxPoints) {
+      alert(`결제 금액(${maxPoints.toLocaleString()}원)을 초과할 수 없습니다.`);
+      return;
+    }
+
+    // 최소 사용 금액 체크 (누적 금액이 1,000P 미만이면 경고)
+    if (newValue > 0 && newValue < 1000) {
+      alert('포인트는 최소 1,000P 이상 사용 가능합니다.');
+      return;
+    }
+
+    setPointsToUse(newValue);
+  };
+
   // 주문하기 (결제 팝업 열기)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -330,6 +400,7 @@ export default function OrderPage() {
       ...orderForm,
       email: user?.email || '',
       items: cartItems,
+      pointsUsed: pointsToUse,
     };
     sessionStorage.setItem('checkoutData', JSON.stringify(checkoutData));
 
@@ -346,7 +417,7 @@ export default function OrderPage() {
   // 금액 계산
   const totalPrice = cartItems.reduce((sum, item) => sum + item.total_price, 0);
   const deliveryFee = totalPrice >= 50000 ? 0 : 3000;
-  const finalPrice = totalPrice + deliveryFee;
+  const finalPrice = totalPrice + deliveryFee - pointsToUse;
 
   if (loading) {
     return (
@@ -662,10 +733,77 @@ export default function OrderPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
 
-                {/* 저장된 계좌 목록 */}
-                {orderForm.payment_method === 'transfer' && savedAccounts.length > 0 && (
-                  <div className="mt-4 space-y-2">
+            {/* 포인트 사용 */}
+            <div className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+              <div className="border-b border-gray-200 px-5 py-4 dark:border-gray-700">
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">포인트 사용</h2>
+              </div>
+              <div className="p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">보유 포인트</span>
+                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                    {availablePoints.toLocaleString()}P
+                  </span>
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    placeholder="사용할 포인트 입력 (최소 1,000P)"
+                    value={pointsToUse || ''}
+                    onChange={(e) => handlePointsChange(e.target.value)}
+                    min="0"
+                    max={availablePoints}
+                    className="w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAddPoints(1000)}
+                      disabled={availablePoints < 1000}
+                      className="flex-1 border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                    >
+                      +1,000P
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddPoints(5000)}
+                      disabled={availablePoints < 5000}
+                      className="flex-1 border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                    >
+                      +5,000P
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddPoints(10000)}
+                      disabled={availablePoints < 10000}
+                      className="flex-1 border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                    >
+                      +10,000P
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePointsChange(String(Math.min(availablePoints, totalPrice + deliveryFee)))}
+                      disabled={availablePoints < 1000}
+                      className="flex-1 border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                    >
+                      전액사용
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    * 포인트는 최소 1,000P 이상 사용 가능합니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 저장된 계좌 목록 - 이건 결제수단 섹션 내부에 있어야 함 */}
+            {orderForm.payment_method === 'transfer' && savedAccounts.length > 0 && (
+              <div className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+                <div className="p-5">
+                  <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">저장된 계좌</p>
                     {savedAccounts.map((account) => (
                       <label
@@ -693,9 +831,9 @@ export default function OrderPage() {
                       </label>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* 오른쪽: 결제 정보 */}
@@ -714,6 +852,12 @@ export default function OrderPage() {
                     <span>배송비</span>
                     <span>{deliveryFee === 0 ? '무료' : `${deliveryFee.toLocaleString()}원`}</span>
                   </div>
+                  {pointsToUse > 0 && (
+                    <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
+                      <span>포인트 사용</span>
+                      <span>-{pointsToUse.toLocaleString()}원</span>
+                    </div>
+                  )}
                   {deliveryFee > 0 && (
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       * 50,000원 이상 구매시 무료배송

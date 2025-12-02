@@ -4,6 +4,8 @@ import base64
 from typing import Dict, Any
 from fastapi import HTTPException, status
 from app.services.supabase import get_supabase_admin_client
+from app.services.points import earn_points
+from uuid import UUID
 from dotenv import load_dotenv
 
 # .env 파일 로드 (환경 변수 읽기 전 필수)
@@ -217,7 +219,30 @@ async def process_payment_success(
         print(f"⚠️ 재고 차감 실패 (주문 ID: {order['id']}): {str(e)}")
         # 실패해도 결제는 완료된 상태이므로 에러를 발생시키지 않음
 
-    # 9. 성공 응답 반환
+    # 9. 주문 완료 포인트 자동 적립 (결제 금액의 1% 적립)
+    points_earned = 0
+    point_transaction_id = None
+
+    try:
+        # 적립 포인트 계산 (결제 금액의 1%, 최소 100P)
+        reward_points = max(100, int(toss_amount * 0.01))
+
+        # 포인트 적립
+        point_transaction_id, new_balance = await earn_points(
+            supabase=supabase,
+            user_id=UUID(user_id),
+            amount=reward_points,
+            reason="order_reward",
+            order_id=UUID(order["id"]),
+            expires_days=365  # 1년 유효
+        )
+        points_earned = reward_points
+        print(f"✅ 주문 완료 포인트 적립 성공: user_id={user_id}, amount={reward_points}, order_id={order['id']}")
+    except Exception as e:
+        print(f"⚠️ 주문 완료 포인트 적립 실패 (무시): {str(e)}")
+        # 포인트 적립 실패해도 결제는 성공으로 처리
+
+    # 10. 성공 응답 반환
     return {
         "message": "결제 승인이 완료되었습니다.",
         "order_id": order["id"],
@@ -225,7 +250,9 @@ async def process_payment_success(
         "payment_key": payment_key,
         "payment_status": mapped_payment_status,
         "total_amount": toss_amount,
-        "approved_at": toss_resp.get("approvedAt")
+        "approved_at": toss_resp.get("approvedAt"),
+        "points_earned": points_earned,
+        "point_transaction_id": point_transaction_id,
     }
 
 

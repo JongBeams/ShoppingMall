@@ -322,7 +322,7 @@ export default function OrderDetailPage() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-400">상품금액</span>
-              <span className="text-gray-900 dark:text-white">{order.subtotal.toLocaleString()}원</span>
+              <span className="text-gray-900 dark:text-white">{(order.subtotal - order.shipping_fee).toLocaleString()}원</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-400">배송비</span>
@@ -330,6 +330,12 @@ export default function OrderDetailPage() {
                 {order.shipping_fee === 0 ? '무료' : `${order.shipping_fee.toLocaleString()}원`}
               </span>
             </div>
+            {order.points_used > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">포인트 사용</span>
+                <span className="text-red-600 dark:text-red-400">-{order.points_used.toLocaleString()}원</span>
+              </div>
+            )}
             <div className="border-t border-gray-200 pt-3 dark:border-gray-700">
               <div className="flex justify-between">
                 <span className="text-sm font-bold text-gray-900 dark:text-white">총 결제금액</span>
@@ -388,8 +394,8 @@ export default function OrderDetailPage() {
         <div className="p-5">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-600 dark:text-gray-400">국민카드 / 일시불</span>
-              <span className="text-gray-900 dark:text-white">{order.total.toLocaleString()} 원</span>
+              <span className="text-gray-600 dark:text-gray-400">상품금액</span>
+              <span className="text-gray-900 dark:text-white">{(order.subtotal - order.shipping_fee).toLocaleString()} 원</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600 dark:text-gray-400">배송비</span>
@@ -397,6 +403,12 @@ export default function OrderDetailPage() {
                 {order.shipping_fee === 0 ? '0 원' : `${order.shipping_fee.toLocaleString()} 원`}
               </span>
             </div>
+            {order.points_used > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">포인트 할인</span>
+                <span className="text-red-600 dark:text-red-400">-{order.points_used.toLocaleString()} 원</span>
+              </div>
+            )}
             <div className="border-t border-gray-200 pt-2 dark:border-gray-700">
               <div className="flex justify-between font-bold">
                 <span className="text-gray-900 dark:text-white">총 결제금액</span>
