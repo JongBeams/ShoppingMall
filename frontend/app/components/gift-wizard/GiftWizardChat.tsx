@@ -148,98 +148,142 @@ export default function GiftWizardChat({ onComplete }: GiftWizardChatProps) {
   const selectedInterests = answers.interests || []
 
   return (
-    <div className="bg-white dark:bg-gray-900 min-h-screen">
-      <div className="max-w-4xl mx-auto px-6 lg:px-8 py-12">
-        {/* 진행 바 */}
-        <div className="border border-gray-200 bg-white p-6 mb-6 dark:border-gray-700 dark:bg-gray-900">
-          <div className="flex justify-between items-center mb-3">
-            <span className="text-xs font-bold text-gray-600 uppercase tracking-wider dark:text-gray-400">진행 상황</span>
-            <span className="text-sm font-bold text-gray-900 dark:text-white">
-              {currentStep + 1} / {questions.length}
-            </span>
+    <div className="bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-gray-900 min-h-screen">
+      <div className="max-w-5xl mx-auto px-4 lg:px-6 py-6">
+        {/* 헤더 - 진행 상황 */}
+        <div className="bg-white border-2 border-gray-900 p-6 mb-8 dark:bg-gray-900 dark:border-white">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-14 h-14 bg-gray-900 text-white flex items-center justify-center text-xl font-black dark:bg-white dark:text-gray-900">
+                  {currentStep + 1}
+                </div>
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-white border-2 border-gray-900 flex items-center justify-center dark:bg-gray-900 dark:border-white">
+                  <span className="text-xs font-bold">📝</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 dark:text-gray-400">
+                  STEP {currentStep + 1} OF {questions.length}
+                </p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{currentQuestion?.text}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="inline-block px-4 py-2 bg-gray-900 text-white dark:bg-white dark:text-gray-900">
+                <p className="text-2xl font-black">
+                  {Math.round(((currentStep + 1) / questions.length) * 100)}%
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="w-full bg-gray-200 h-1 dark:bg-gray-700">
+          <div className="relative w-full h-3 bg-gray-200 border border-gray-300 dark:bg-gray-700 dark:border-gray-600">
             <div
-              className="bg-gray-900 h-1 transition-all duration-500 dark:bg-white"
+              className="absolute top-0 left-0 h-full bg-gray-900 transition-all duration-500 dark:bg-white"
               style={{ width: `${((currentStep + 1) / questions.length) * 100}%` }}
             ></div>
           </div>
         </div>
 
-        {/* 채팅 메시지 */}
-        <div className="space-y-4">
+        {/* 대화 영역 */}
+        <div className="space-y-6">
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}
             >
               {message.type === 'ai' && (
-                <div className="flex items-start gap-4 max-w-3xl">
-                  <div className="w-10 h-10 border border-gray-900 bg-white flex items-center justify-center text-xl flex-shrink-0 dark:border-white dark:bg-gray-900">
+                <div className="flex items-start gap-4 max-w-3xl w-full">
+                  <div className="w-14 h-14 bg-white border-2 border-gray-900 flex items-center justify-center text-3xl flex-shrink-0 dark:bg-gray-900 dark:border-white">
                     🎁
                   </div>
-                  <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed dark:text-gray-300">{message.text}</p>
+                  <div className="flex-1">
+                    <div className="bg-white border-2 border-gray-200 p-6 dark:bg-gray-900 dark:border-gray-700">
+                      <p className="text-base text-gray-900 whitespace-pre-wrap leading-relaxed font-medium dark:text-white">
+                        {message.text}
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
 
               {message.type === 'user' && (
-                <div className="border border-gray-900 bg-gray-900 text-white px-6 py-4 max-w-md dark:border-white dark:bg-white dark:text-gray-900">
-                  <p className="text-sm">{message.text}</p>
+                <div className="max-w-xl">
+                  <div className="bg-gray-900 text-white px-8 py-5 border-2 border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white">
+                    <p className="text-base font-bold">{message.text}</p>
+                  </div>
                 </div>
               )}
             </div>
           ))}
 
-          {/* 옵션 버튼 */}
+          {/* 선택 옵션 */}
           {showOptions && currentQuestion && (
-            <div className="flex justify-start">
-              <div className="flex items-start gap-4 max-w-3xl">
-                <div className="w-10 h-10 flex-shrink-0"></div>
-                <div className="flex flex-wrap gap-3">
-                  {(currentQuestion.displayOptions || currentQuestion.options).map(
-                    (option, index) => {
-                      const actualValue = currentQuestion.options[index]
-                      const isSelected =
-                        currentQuestion.multi && selectedInterests.includes(actualValue)
+            <div className="flex justify-start animate-fadeIn">
+              <div className="flex items-start gap-4 max-w-3xl w-full">
+                <div className="w-14 flex-shrink-0"></div>
+                <div className="flex-1">
+                  <div className="flex flex-wrap gap-3">
+                    {(currentQuestion.displayOptions || currentQuestion.options).map(
+                      (option, index) => {
+                        const actualValue = currentQuestion.options[index]
+                        const isSelected =
+                          currentQuestion.multi && selectedInterests.includes(actualValue)
 
-                      return (
-                        <button
-                          key={index}
-                          onClick={() => handleOptionClick(actualValue, option)}
-                          className={`px-5 py-3 border text-sm font-bold transition-all duration-200 ${
-                            isSelected
-                              ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-900 hover:text-gray-900 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-600 dark:hover:border-white dark:hover:text-white'
-                          }`}
-                        >
-                          {option}
-                        </button>
-                      )
-                    }
-                  )}
-
-                  {/* 다중 선택 완료 버튼 */}
-                  {currentQuestion.multi && selectedInterests.length > 0 && (
-                    <button
-                      onClick={() =>
-                        handleOptionClick(
-                          selectedInterests.join(', '),
-                          selectedInterests.join(', ')
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => handleOptionClick(actualValue, option)}
+                            className={`px-6 py-4 border-2 text-base font-bold transition-all duration-200 hover:translate-y-[-2px] ${
+                              isSelected
+                                ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                                : 'bg-white text-gray-900 border-gray-300 hover:border-gray-900 dark:bg-gray-900 dark:text-white dark:border-gray-600 dark:hover:border-white'
+                            }`}
+                          >
+                            {isSelected && <span className="mr-2">✓</span>}
+                            {option}
+                          </button>
                         )
                       }
-                      className="px-6 py-3 bg-gray-900 text-white border border-gray-900 text-sm font-bold hover:bg-gray-800 transition-all dark:bg-white dark:text-gray-900 dark:border-white dark:hover:bg-gray-100"
-                    >
-                      선택 완료 ({selectedInterests.length}개)
-                    </button>
-                  )}
+                    )}
+
+                    {/* 다중 선택 완료 버튼 */}
+                    {currentQuestion.multi && selectedInterests.length > 0 && (
+                      <button
+                        onClick={() =>
+                          handleOptionClick(
+                            selectedInterests.join(', '),
+                            selectedInterests.join(', ')
+                          )
+                        }
+                        className="w-full px-8 py-5 bg-gray-900 text-white border-2 border-gray-900 text-lg font-black hover:bg-gray-800 transition-all dark:bg-white dark:text-gray-900 dark:border-white dark:hover:bg-gray-100"
+                      >
+                        ➜ 선택 완료 ({selectedInterests.length}개)
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   )
 }
