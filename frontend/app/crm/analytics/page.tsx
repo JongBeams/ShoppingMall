@@ -53,7 +53,16 @@ export default function AnalyticsPage() {
   const [rcTrend, setRcTrend] = useState<TrendData[]>([]);
   const [ragTrend, setRagTrend] = useState<TrendData[]>([]);
   const [giftTrend, setGiftTrend] = useState<TrendData[]>([]);
-  const [selectedPeriod, setSelectedPeriod] = useState(7);
+  const [usersTrend, setUsersTrend] = useState<{date: string; count: number}[]>([]);
+  const [productsTrend, setProductsTrend] = useState<{date: string; count: number}[]>([]);
+  const [ordersTrend, setOrdersTrend] = useState<{date: string; count: number}[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState(30);
+  const [usersTooltip, setUsersTooltip] = useState<{x: number; y: number; content: string} | null>(null);
+  const [productsTooltip, setProductsTooltip] = useState<{x: number; y: number; content: string} | null>(null);
+  const [ordersTooltip, setOrdersTooltip] = useState<{x: number; y: number; content: string} | null>(null);
+  const [rcTooltip, setRcTooltip] = useState<{x: number; y: number; content: string} | null>(null);
+  const [ragTooltip, setRagTooltip] = useState<{x: number; y: number; content: string} | null>(null);
+  const [giftTooltip, setGiftTooltip] = useState<{x: number; y: number; content: string} | null>(null);
 
   useEffect(() => {
     const adminToken = localStorage.getItem('admin_token');
@@ -97,6 +106,27 @@ export default function AnalyticsPage() {
       });
       const giftData = await giftRes.json();
       setGiftTrend(giftData.trend || []);
+
+      // 회원 추세
+      const usersRes = await fetch(`${API_BASE_URL}/analytics/users/trend?days=${days}`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      const usersData = await usersRes.json();
+      setUsersTrend(usersData.trend || []);
+
+      // 상품 추세
+      const productsRes = await fetch(`${API_BASE_URL}/analytics/products/trend?days=${days}`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      const productsData = await productsRes.json();
+      setProductsTrend(productsData.trend || []);
+
+      // 주문 추세
+      const ordersRes = await fetch(`${API_BASE_URL}/analytics/orders/trend?days=${days}`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      const ordersData = await ordersRes.json();
+      setOrdersTrend(ordersData.trend || []);
 
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
@@ -325,7 +355,41 @@ export default function AnalyticsPage() {
 
           {/* 차트 */}
           <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
-            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+            <svg
+              className="h-full w-full"
+              viewBox="0 0 500 200"
+              preserveAspectRatio="none"
+              onMouseMove={(e) => {
+                const svg = e.currentTarget;
+                const rect = svg.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 500;
+
+                if (x >= 40 && x <= 495 && rcTrend.length > 0) {
+                  let closestIndex = 0;
+                  let minDistance = Infinity;
+
+                  rcTrend.forEach((item, i) => {
+                    const pointX = 40 + (i / (rcTrend.length - 1 || 1)) * 455;
+                    const distance = Math.abs(x - pointX);
+                    if (distance < minDistance) {
+                      minDistance = distance;
+                      closestIndex = i;
+                    }
+                  });
+
+                  const item = rcTrend[closestIndex];
+                  const pointX = 40 + (closestIndex / (rcTrend.length - 1 || 1)) * 455;
+                  const pointY = 180 - ((item.sessions || 0) / maxRcSessions) * 160;
+
+                  setRcTooltip({
+                    x: pointX,
+                    y: pointY,
+                    content: `${item.date}: ${item.sessions}회`
+                  });
+                }
+              }}
+              onMouseLeave={() => setRcTooltip(null)}
+            >
               <defs>
                 {/* 그라데이션 영역 */}
                 <linearGradient id="rcGradient" x1="0" y1="0" x2="0" y2="1">
@@ -342,6 +406,40 @@ export default function AnalyticsPage() {
                   </feMerge>
                 </filter>
               </defs>
+
+              {/* 툴팁 */}
+              {rcTooltip && (
+                <g>
+                  <rect
+                    x={rcTooltip.x - 40}
+                    y={rcTooltip.y - 35}
+                    width="80"
+                    height="30"
+                    fill="rgba(0, 0, 0, 0.9)"
+                    stroke="rgb(168, 85, 247)"
+                    strokeWidth="1"
+                    rx="4"
+                  />
+                  <text
+                    x={rcTooltip.x}
+                    y={rcTooltip.y - 20}
+                    textAnchor="middle"
+                    className="fill-white text-[10px] font-medium"
+                  >
+                    {rcTooltip.content}
+                  </text>
+                  <line
+                    x1={rcTooltip.x}
+                    y1="20"
+                    x2={rcTooltip.x}
+                    y2="180"
+                    stroke="rgb(168, 85, 247)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                    opacity="0.5"
+                  />
+                </g>
+              )}
 
               {/* 수평 그리드 라인 */}
               {[0, 1, 2, 3, 4].map((i) => (
@@ -459,7 +557,41 @@ export default function AnalyticsPage() {
 
           {/* 차트 */}
           <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
-            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+            <svg
+              className="h-full w-full"
+              viewBox="0 0 500 200"
+              preserveAspectRatio="none"
+              onMouseMove={(e) => {
+                const svg = e.currentTarget;
+                const rect = svg.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 500;
+
+                if (x >= 40 && x <= 495 && ragTrend.length > 0) {
+                  let closestIndex = 0;
+                  let minDistance = Infinity;
+
+                  ragTrend.forEach((item, i) => {
+                    const pointX = 40 + (i / (ragTrend.length - 1 || 1)) * 455;
+                    const distance = Math.abs(x - pointX);
+                    if (distance < minDistance) {
+                      minDistance = distance;
+                      closestIndex = i;
+                    }
+                  });
+
+                  const item = ragTrend[closestIndex];
+                  const pointX = 40 + (closestIndex / (ragTrend.length - 1 || 1)) * 455;
+                  const pointY = 180 - ((item.queries || 0) / maxRagQueries) * 160;
+
+                  setRagTooltip({
+                    x: pointX,
+                    y: pointY,
+                    content: `${item.date}: ${item.queries}개`
+                  });
+                }
+              }}
+              onMouseLeave={() => setRagTooltip(null)}
+            >
               <defs>
                 <linearGradient id="ragGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="rgb(37, 99, 235)" stopOpacity="0.4" />
@@ -474,6 +606,40 @@ export default function AnalyticsPage() {
                   </feMerge>
                 </filter>
               </defs>
+
+              {/* 툴팁 */}
+              {ragTooltip && (
+                <g>
+                  <rect
+                    x={ragTooltip.x - 40}
+                    y={ragTooltip.y - 35}
+                    width="80"
+                    height="30"
+                    fill="rgba(0, 0, 0, 0.9)"
+                    stroke="rgb(37, 99, 235)"
+                    strokeWidth="1"
+                    rx="4"
+                  />
+                  <text
+                    x={ragTooltip.x}
+                    y={ragTooltip.y - 20}
+                    textAnchor="middle"
+                    className="fill-white text-[10px] font-medium"
+                  >
+                    {ragTooltip.content}
+                  </text>
+                  <line
+                    x1={ragTooltip.x}
+                    y1="20"
+                    x2={ragTooltip.x}
+                    y2="180"
+                    stroke="rgb(37, 99, 235)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                    opacity="0.5"
+                  />
+                </g>
+              )}
 
               {/* 수평 그리드 라인 */}
               {[0, 1, 2, 3, 4].map((i) => (
@@ -591,7 +757,41 @@ export default function AnalyticsPage() {
 
           {/* 차트 */}
           <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
-            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+            <svg
+              className="h-full w-full"
+              viewBox="0 0 500 200"
+              preserveAspectRatio="none"
+              onMouseMove={(e) => {
+                const svg = e.currentTarget;
+                const rect = svg.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 500;
+
+                if (x >= 40 && x <= 495 && giftTrend.length > 0) {
+                  let closestIndex = 0;
+                  let minDistance = Infinity;
+
+                  giftTrend.forEach((item, i) => {
+                    const pointX = 40 + (i / (giftTrend.length - 1 || 1)) * 455;
+                    const distance = Math.abs(x - pointX);
+                    if (distance < minDistance) {
+                      minDistance = distance;
+                      closestIndex = i;
+                    }
+                  });
+
+                  const item = giftTrend[closestIndex];
+                  const pointX = 40 + (closestIndex / (giftTrend.length - 1 || 1)) * 455;
+                  const pointY = 180 - ((item.sessions || 0) / maxGiftSessions) * 160;
+
+                  setGiftTooltip({
+                    x: pointX,
+                    y: pointY,
+                    content: `${item.date}: ${item.sessions}회`
+                  });
+                }
+              }}
+              onMouseLeave={() => setGiftTooltip(null)}
+            >
               <defs>
                 <linearGradient id="giftGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="rgb(16, 185, 129)" stopOpacity="0.4" />
@@ -606,6 +806,40 @@ export default function AnalyticsPage() {
                   </feMerge>
                 </filter>
               </defs>
+
+              {/* 툴팁 */}
+              {giftTooltip && (
+                <g>
+                  <rect
+                    x={giftTooltip.x - 40}
+                    y={giftTooltip.y - 35}
+                    width="80"
+                    height="30"
+                    fill="rgba(0, 0, 0, 0.9)"
+                    stroke="rgb(16, 185, 129)"
+                    strokeWidth="1"
+                    rx="4"
+                  />
+                  <text
+                    x={giftTooltip.x}
+                    y={giftTooltip.y - 20}
+                    textAnchor="middle"
+                    className="fill-white text-[10px] font-medium"
+                  >
+                    {giftTooltip.content}
+                  </text>
+                  <line
+                    x1={giftTooltip.x}
+                    y1="20"
+                    x2={giftTooltip.x}
+                    y2="180"
+                    stroke="rgb(16, 185, 129)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                    opacity="0.5"
+                  />
+                </g>
+              )}
 
               {/* 수평 그리드 라인 */}
               {[0, 1, 2, 3, 4].map((i) => (
@@ -727,7 +961,43 @@ export default function AnalyticsPage() {
 
           {/* 차트 */}
           <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
-            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+            <svg
+              className="h-full w-full"
+              viewBox="0 0 500 200"
+              preserveAspectRatio="none"
+              onMouseMove={(e) => {
+                const svg = e.currentTarget;
+                const rect = svg.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 500;
+
+                if (x >= 40 && x <= 495 && usersTrend.length > 0) {
+                  // 가장 가까운 데이터 포인트 찾기
+                  let closestIndex = 0;
+                  let minDistance = Infinity;
+
+                  usersTrend.forEach((item, i) => {
+                    const pointX = 40 + (i / (usersTrend.length - 1 || 1)) * 455;
+                    const distance = Math.abs(x - pointX);
+                    if (distance < minDistance) {
+                      minDistance = distance;
+                      closestIndex = i;
+                    }
+                  });
+
+                  const item = usersTrend[closestIndex];
+                  const pointX = 40 + (closestIndex / (usersTrend.length - 1 || 1)) * 455;
+                  const maxCount = Math.max(...usersTrend.map(t => t.count), 1);
+                  const pointY = 180 - ((item.count || 0) / maxCount) * 160;
+
+                  setUsersTooltip({
+                    x: pointX,
+                    y: pointY,
+                    content: `${item.date}: ${item.count}명`
+                  });
+                }
+              }}
+              onMouseLeave={() => setUsersTooltip(null)}
+            >
               <defs>
                 <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="rgb(59, 130, 246)" stopOpacity="0.4" />
@@ -742,6 +1012,41 @@ export default function AnalyticsPage() {
                   </feMerge>
                 </filter>
               </defs>
+
+              {/* 툴팁 */}
+              {usersTooltip && (
+                <g>
+                  <rect
+                    x={usersTooltip.x - 40}
+                    y={usersTooltip.y - 35}
+                    width="80"
+                    height="30"
+                    fill="rgba(0, 0, 0, 0.9)"
+                    stroke="rgb(59, 130, 246)"
+                    strokeWidth="1"
+                    rx="4"
+                  />
+                  <text
+                    x={usersTooltip.x}
+                    y={usersTooltip.y - 20}
+                    textAnchor="middle"
+                    className="fill-white text-[10px] font-medium"
+                  >
+                    {usersTooltip.content}
+                  </text>
+                  {/* 세로 가이드 라인 */}
+                  <line
+                    x1={usersTooltip.x}
+                    y1="20"
+                    x2={usersTooltip.x}
+                    y2="180"
+                    stroke="rgb(59, 130, 246)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                    opacity="0.5"
+                  />
+                </g>
+              )}
 
               {/* 수평 그리드 라인 */}
               {[0, 1, 2, 3, 4].map((i) => (
@@ -771,7 +1076,9 @@ export default function AnalyticsPage() {
 
               {/* Y축 레이블 */}
               {[0, 1, 2, 3, 4].map((i) => {
-                const value = Math.round((summary.total_users || 0) * (1 - i / 4));
+                const counts = usersTrend.map(t => t.count);
+                const maxCount = counts.length > 0 ? Math.max(...counts) : 1;
+                const value = Math.round(maxCount * (1 - i / 4));
                 return (
                   <text
                     key={i}
@@ -787,13 +1094,29 @@ export default function AnalyticsPage() {
 
               {/* 그라데이션 영역 */}
               <polygon
-                points="40,180 80,140 120,145 160,120 200,130 240,110 280,115 320,95 360,100 400,85 440,90 495,75 495,180"
+                points={usersTrend.length > 0
+                  ? `40,180 ${usersTrend.map((item, i) => {
+                      const x = 40 + (i / (usersTrend.length - 1 || 1)) * 455;
+                      const maxCount = Math.max(...usersTrend.map(t => t.count), 1);
+                      const y = 180 - ((item.count || 0) / maxCount) * 160;
+                      return `${x},${y}`;
+                    }).join(' ')} 495,180`
+                  : "40,180 495,180"
+                }
                 fill="url(#userGradient)"
               />
 
               {/* 선 그래프 */}
               <polyline
-                points="40,140 80,140 120,145 160,120 200,130 240,110 280,115 320,95 360,100 400,85 440,90 495,75"
+                points={usersTrend.length > 0
+                  ? usersTrend.map((item, i) => {
+                      const x = 40 + (i / (usersTrend.length - 1 || 1)) * 455;
+                      const maxCount = Math.max(...usersTrend.map(t => t.count), 1);
+                      const y = 180 - ((item.count || 0) / maxCount) * 160;
+                      return `${x},${y}`;
+                    }).join(' ')
+                  : "40,180 495,180"
+                }
                 fill="none"
                 stroke="rgb(59, 130, 246)"
                 strokeWidth="2.5"
@@ -803,16 +1126,17 @@ export default function AnalyticsPage() {
               />
 
               {/* 데이터 포인트 */}
-              {[
-                {x: 40, y: 140}, {x: 80, y: 140}, {x: 120, y: 145}, {x: 160, y: 120},
-                {x: 200, y: 130}, {x: 240, y: 110}, {x: 280, y: 115}, {x: 320, y: 95},
-                {x: 360, y: 100}, {x: 400, y: 85}, {x: 440, y: 90}, {x: 495, y: 75}
-              ].map((point, i) => (
-                <g key={i}>
-                  <circle cx={point.x} cy={point.y} r="4" fill="rgb(59, 130, 246)" opacity="0.5" />
-                  <circle cx={point.x} cy={point.y} r="2.5" fill="rgb(147, 197, 253)" />
-                </g>
-              ))}
+              {usersTrend.map((item, i) => {
+                const x = 40 + (i / (usersTrend.length - 1 || 1)) * 455;
+                const maxCount = Math.max(...usersTrend.map(t => t.count), 1);
+                const y = 180 - ((item.count || 0) / maxCount) * 160;
+                return (
+                  <g key={i}>
+                    <circle cx={x} cy={y} r="4" fill="rgb(59, 130, 246)" opacity="0.5" />
+                    <circle cx={x} cy={y} r="2.5" fill="rgb(147, 197, 253)" />
+                  </g>
+                );
+              })}
             </svg>
           </div>
 
@@ -852,7 +1176,42 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
-            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+            <svg
+              className="h-full w-full"
+              viewBox="0 0 500 200"
+              preserveAspectRatio="none"
+              onMouseMove={(e) => {
+                const svg = e.currentTarget;
+                const rect = svg.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 500;
+
+                if (x >= 40 && x <= 495 && productsTrend.length > 0) {
+                  let closestIndex = 0;
+                  let minDistance = Infinity;
+
+                  productsTrend.forEach((item, i) => {
+                    const pointX = 40 + (i / (productsTrend.length - 1 || 1)) * 455;
+                    const distance = Math.abs(x - pointX);
+                    if (distance < minDistance) {
+                      minDistance = distance;
+                      closestIndex = i;
+                    }
+                  });
+
+                  const item = productsTrend[closestIndex];
+                  const pointX = 40 + (closestIndex / (productsTrend.length - 1 || 1)) * 455;
+                  const maxCount = Math.max(...productsTrend.map(t => t.count), 1);
+                  const pointY = 180 - ((item.count || 0) / maxCount) * 160;
+
+                  setProductsTooltip({
+                    x: pointX,
+                    y: pointY,
+                    content: `${item.date}: ${item.count}개`
+                  });
+                }
+              }}
+              onMouseLeave={() => setProductsTooltip(null)}
+            >
               <defs>
                 <linearGradient id="productGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="rgb(168, 85, 247)" stopOpacity="0.4" />
@@ -868,6 +1227,40 @@ export default function AnalyticsPage() {
                 </filter>
               </defs>
 
+              {/* 툴팁 */}
+              {productsTooltip && (
+                <g>
+                  <rect
+                    x={productsTooltip.x - 40}
+                    y={productsTooltip.y - 35}
+                    width="80"
+                    height="30"
+                    fill="rgba(0, 0, 0, 0.9)"
+                    stroke="rgb(168, 85, 247)"
+                    strokeWidth="1"
+                    rx="4"
+                  />
+                  <text
+                    x={productsTooltip.x}
+                    y={productsTooltip.y - 20}
+                    textAnchor="middle"
+                    className="fill-white text-[10px] font-medium"
+                  >
+                    {productsTooltip.content}
+                  </text>
+                  <line
+                    x1={productsTooltip.x}
+                    y1="20"
+                    x2={productsTooltip.x}
+                    y2="180"
+                    stroke="rgb(168, 85, 247)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                    opacity="0.5"
+                  />
+                </g>
+              )}
+
               {[0, 1, 2, 3, 4].map((i) => (
                 <line key={i} x1="40" y1={20 + i * 40} x2="495" y2={20 + i * 40} stroke="rgba(255, 255, 255, 0.06)" strokeWidth="1" />
               ))}
@@ -876,7 +1269,9 @@ export default function AnalyticsPage() {
               ))}
 
               {[0, 1, 2, 3, 4].map((i) => {
-                const value = Math.round((summary.total_products || 0) * (1 - i / 4));
+                const counts = productsTrend.map(t => t.count);
+                const maxCount = counts.length > 0 ? Math.max(...counts) : 1;
+                const value = Math.round(maxCount * (1 - i / 4));
                 return (
                   <text key={i} x="35" y={23 + i * 40} textAnchor="end" className="fill-gray-500 text-[10px] font-medium">
                     {value}
@@ -885,12 +1280,28 @@ export default function AnalyticsPage() {
               })}
 
               <polygon
-                points="40,180 80,145 120,148 160,135 200,138 240,128 280,130 320,120 360,115 400,108 440,105 495,100 495,180"
+                points={productsTrend.length > 0
+                  ? `40,180 ${productsTrend.map((item, i) => {
+                      const x = 40 + (i / (productsTrend.length - 1 || 1)) * 455;
+                      const maxCount = Math.max(...productsTrend.map(t => t.count), 1);
+                      const y = 180 - ((item.count || 0) / maxCount) * 160;
+                      return `${x},${y}`;
+                    }).join(' ')} 495,180`
+                  : "40,180 495,180"
+                }
                 fill="url(#productGradient)"
               />
 
               <polyline
-                points="40,145 80,145 120,148 160,135 200,138 240,128 280,130 320,120 360,115 400,108 440,105 495,100"
+                points={productsTrend.length > 0
+                  ? productsTrend.map((item, i) => {
+                      const x = 40 + (i / (productsTrend.length - 1 || 1)) * 455;
+                      const maxCount = Math.max(...productsTrend.map(t => t.count), 1);
+                      const y = 180 - ((item.count || 0) / maxCount) * 160;
+                      return `${x},${y}`;
+                    }).join(' ')
+                  : "40,180 495,180"
+                }
                 fill="none"
                 stroke="rgb(168, 85, 247)"
                 strokeWidth="2.5"
@@ -899,16 +1310,17 @@ export default function AnalyticsPage() {
                 strokeLinejoin="round"
               />
 
-              {[
-                {x: 40, y: 145}, {x: 80, y: 145}, {x: 120, y: 148}, {x: 160, y: 135},
-                {x: 200, y: 138}, {x: 240, y: 128}, {x: 280, y: 130}, {x: 320, y: 120},
-                {x: 360, y: 115}, {x: 400, y: 108}, {x: 440, y: 105}, {x: 495, y: 100}
-              ].map((point, i) => (
-                <g key={i}>
-                  <circle cx={point.x} cy={point.y} r="4" fill="rgb(168, 85, 247)" opacity="0.5" />
-                  <circle cx={point.x} cy={point.y} r="2.5" fill="rgb(216, 180, 254)" />
-                </g>
-              ))}
+              {productsTrend.map((item, i) => {
+                const x = 40 + (i / (productsTrend.length - 1 || 1)) * 455;
+                const maxCount = Math.max(...productsTrend.map(t => t.count), 1);
+                const y = 180 - ((item.count || 0) / maxCount) * 160;
+                return (
+                  <g key={i}>
+                    <circle cx={x} cy={y} r="4" fill="rgb(168, 85, 247)" opacity="0.5" />
+                    <circle cx={x} cy={y} r="2.5" fill="rgb(216, 180, 254)" />
+                  </g>
+                );
+              })}
             </svg>
           </div>
 
@@ -947,7 +1359,42 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
-            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+            <svg
+              className="h-full w-full"
+              viewBox="0 0 500 200"
+              preserveAspectRatio="none"
+              onMouseMove={(e) => {
+                const svg = e.currentTarget;
+                const rect = svg.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 500;
+
+                if (x >= 40 && x <= 495 && ordersTrend.length > 0) {
+                  let closestIndex = 0;
+                  let minDistance = Infinity;
+
+                  ordersTrend.forEach((item, i) => {
+                    const pointX = 40 + (i / (ordersTrend.length - 1 || 1)) * 455;
+                    const distance = Math.abs(x - pointX);
+                    if (distance < minDistance) {
+                      minDistance = distance;
+                      closestIndex = i;
+                    }
+                  });
+
+                  const item = ordersTrend[closestIndex];
+                  const pointX = 40 + (closestIndex / (ordersTrend.length - 1 || 1)) * 455;
+                  const maxCount = Math.max(...ordersTrend.map(t => t.count), 1);
+                  const pointY = 180 - ((item.count || 0) / maxCount) * 160;
+
+                  setOrdersTooltip({
+                    x: pointX,
+                    y: pointY,
+                    content: `${item.date}: ${item.count}건`
+                  });
+                }
+              }}
+              onMouseLeave={() => setOrdersTooltip(null)}
+            >
               <defs>
                 <linearGradient id="orderGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="rgb(52, 211, 153)" stopOpacity="0.4" />
@@ -963,6 +1410,40 @@ export default function AnalyticsPage() {
                 </filter>
               </defs>
 
+              {/* 툴팁 */}
+              {ordersTooltip && (
+                <g>
+                  <rect
+                    x={ordersTooltip.x - 40}
+                    y={ordersTooltip.y - 35}
+                    width="80"
+                    height="30"
+                    fill="rgba(0, 0, 0, 0.9)"
+                    stroke="rgb(52, 211, 153)"
+                    strokeWidth="1"
+                    rx="4"
+                  />
+                  <text
+                    x={ordersTooltip.x}
+                    y={ordersTooltip.y - 20}
+                    textAnchor="middle"
+                    className="fill-white text-[10px] font-medium"
+                  >
+                    {ordersTooltip.content}
+                  </text>
+                  <line
+                    x1={ordersTooltip.x}
+                    y1="20"
+                    x2={ordersTooltip.x}
+                    y2="180"
+                    stroke="rgb(52, 211, 153)"
+                    strokeWidth="1"
+                    strokeDasharray="4 4"
+                    opacity="0.5"
+                  />
+                </g>
+              )}
+
               {[0, 1, 2, 3, 4].map((i) => (
                 <line key={i} x1="40" y1={20 + i * 40} x2="495" y2={20 + i * 40} stroke="rgba(255, 255, 255, 0.06)" strokeWidth="1" />
               ))}
@@ -971,7 +1452,9 @@ export default function AnalyticsPage() {
               ))}
 
               {[0, 1, 2, 3, 4].map((i) => {
-                const value = Math.round((summary.total_orders || 0) * (1 - i / 4));
+                const counts = ordersTrend.map(t => t.count);
+                const maxCount = counts.length > 0 ? Math.max(...counts) : 1;
+                const value = Math.round(maxCount * (1 - i / 4));
                 return (
                   <text key={i} x="35" y={23 + i * 40} textAnchor="end" className="fill-gray-500 text-[10px] font-medium">
                     {value}
@@ -980,12 +1463,28 @@ export default function AnalyticsPage() {
               })}
 
               <polygon
-                points="40,180 80,150 120,152 160,138 200,142 240,130 280,133 320,118 360,122 400,108 440,110 495,95 495,180"
+                points={ordersTrend.length > 0
+                  ? `40,180 ${ordersTrend.map((item, i) => {
+                      const x = 40 + (i / (ordersTrend.length - 1 || 1)) * 455;
+                      const maxCount = Math.max(...ordersTrend.map(t => t.count), 1);
+                      const y = 180 - ((item.count || 0) / maxCount) * 160;
+                      return `${x},${y}`;
+                    }).join(' ')} 495,180`
+                  : "40,180 495,180"
+                }
                 fill="url(#orderGradient)"
               />
 
               <polyline
-                points="40,150 80,150 120,152 160,138 200,142 240,130 280,133 320,118 360,122 400,108 440,110 495,95"
+                points={ordersTrend.length > 0
+                  ? ordersTrend.map((item, i) => {
+                      const x = 40 + (i / (ordersTrend.length - 1 || 1)) * 455;
+                      const maxCount = Math.max(...ordersTrend.map(t => t.count), 1);
+                      const y = 180 - ((item.count || 0) / maxCount) * 160;
+                      return `${x},${y}`;
+                    }).join(' ')
+                  : "40,180 495,180"
+                }
                 fill="none"
                 stroke="rgb(52, 211, 153)"
                 strokeWidth="2.5"
@@ -994,16 +1493,17 @@ export default function AnalyticsPage() {
                 strokeLinejoin="round"
               />
 
-              {[
-                {x: 40, y: 150}, {x: 80, y: 150}, {x: 120, y: 152}, {x: 160, y: 138},
-                {x: 200, y: 142}, {x: 240, y: 130}, {x: 280, y: 133}, {x: 320, y: 118},
-                {x: 360, y: 122}, {x: 400, y: 108}, {x: 440, y: 110}, {x: 495, y: 95}
-              ].map((point, i) => (
-                <g key={i}>
-                  <circle cx={point.x} cy={point.y} r="4" fill="rgb(52, 211, 153)" opacity="0.5" />
-                  <circle cx={point.x} cy={point.y} r="2.5" fill="rgb(167, 243, 208)" />
-                </g>
-              ))}
+              {ordersTrend.map((item, i) => {
+                const x = 40 + (i / (ordersTrend.length - 1 || 1)) * 455;
+                const maxCount = Math.max(...ordersTrend.map(t => t.count), 1);
+                const y = 180 - ((item.count || 0) / maxCount) * 160;
+                return (
+                  <g key={i}>
+                    <circle cx={x} cy={y} r="4" fill="rgb(52, 211, 153)" opacity="0.5" />
+                    <circle cx={x} cy={y} r="2.5" fill="rgb(167, 243, 208)" />
+                  </g>
+                );
+              })}
             </svg>
           </div>
 

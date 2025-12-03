@@ -172,7 +172,7 @@ export default function CRMPage() {
         <div className="absolute inset-0 flex items-center justify-center text-center text-white">
           <div>
             <p className="mb-2 text-xs font-medium tracking-wider uppercase">Admin Dashboard</p>
-            <p className="mb-5 text-base">쇼핑몰 통합 관리 시스템</p>
+            <p className="mb-5 text-base">오아시스 통합 관리 시스템</p>
             <div className="flex items-center justify-center gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

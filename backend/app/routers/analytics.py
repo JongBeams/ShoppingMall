@@ -119,7 +119,7 @@ async def get_analytics_summary(
         gift_satisfaction = sum(gift_satisfaction_list) / len(gift_satisfaction_list) if gift_satisfaction_list else 0
 
         # 전체 통계
-        users_count = supabase.table('users').select('id', count='exact').execute()
+        users_count = supabase.table('profiles').select('id', count='exact').execute()
         products_count = supabase.table('products').select('id', count='exact').execute()
         orders_count = supabase.table('orders').select('id', count='exact')\
             .gte('created_at', start_date.isoformat())\
@@ -294,6 +294,126 @@ async def get_gift_wizard_trend(days: int = 30, admin_user: dict = Depends(get_c
                 'sessions': stats['sessions'],
                 'completion_rate': round(stats['completed'] / stats['sessions'] * 100, 1),
                 'conversion_rate': round(stats['conversions'] / stats['sessions'] * 100, 1)
+            })
+
+        return {"trend": trend_data}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/users/trend")
+async def get_users_trend(days: int = 30, admin_user: dict = Depends(get_current_admin)):
+    """회원 가입 추세 조회"""
+    try:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+
+        data = supabase.table('profiles')\
+            .select('created_at')\
+            .gte('created_at', start_date.isoformat())\
+            .order('created_at')\
+            .execute()
+
+        # 전체 날짜 범위 초기화 (0으로 채우기)
+        daily_stats = {}
+        current_date = start_date
+        while current_date <= end_date:
+            date_key = current_date.strftime('%Y-%m-%d')
+            daily_stats[date_key] = {'date': date_key, 'count': 0}
+            current_date += timedelta(days=1)
+
+        # 실제 데이터로 업데이트
+        for user in data.data:
+            date_key = user['created_at'][:10]
+            if date_key in daily_stats:
+                daily_stats[date_key]['count'] += 1
+
+        trend_data = []
+        for date_key in sorted(daily_stats.keys()):
+            trend_data.append({
+                'date': daily_stats[date_key]['date'],
+                'count': daily_stats[date_key]['count']
+            })
+
+        return {"trend": trend_data}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/products/trend")
+async def get_products_trend(days: int = 30, admin_user: dict = Depends(get_current_admin)):
+    """상품 등록 추세 조회"""
+    try:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+
+        data = supabase.table('products')\
+            .select('created_at')\
+            .gte('created_at', start_date.isoformat())\
+            .order('created_at')\
+            .execute()
+
+        # 전체 날짜 범위 초기화 (0으로 채우기)
+        daily_stats = {}
+        current_date = start_date
+        while current_date <= end_date:
+            date_key = current_date.strftime('%Y-%m-%d')
+            daily_stats[date_key] = {'date': date_key, 'count': 0}
+            current_date += timedelta(days=1)
+
+        # 실제 데이터로 업데이트
+        for product in data.data:
+            date_key = product['created_at'][:10]
+            if date_key in daily_stats:
+                daily_stats[date_key]['count'] += 1
+
+        trend_data = []
+        for date_key in sorted(daily_stats.keys()):
+            trend_data.append({
+                'date': daily_stats[date_key]['date'],
+                'count': daily_stats[date_key]['count']
+            })
+
+        return {"trend": trend_data}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/orders/trend")
+async def get_orders_trend(days: int = 30, admin_user: dict = Depends(get_current_admin)):
+    """주문 추세 조회"""
+    try:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+
+        data = supabase.table('orders')\
+            .select('created_at')\
+            .gte('created_at', start_date.isoformat())\
+            .order('created_at')\
+            .execute()
+
+        # 전체 날짜 범위 초기화 (0으로 채우기)
+        daily_stats = {}
+        current_date = start_date
+        while current_date <= end_date:
+            date_key = current_date.strftime('%Y-%m-%d')
+            daily_stats[date_key] = {'date': date_key, 'count': 0}
+            current_date += timedelta(days=1)
+
+        # 실제 데이터로 업데이트
+        for order in data.data:
+            date_key = order['created_at'][:10]
+            if date_key in daily_stats:
+                daily_stats[date_key]['count'] += 1
+
+        trend_data = []
+        for date_key in sorted(daily_stats.keys()):
+            trend_data.append({
+                'date': daily_stats[date_key]['date'],
+                'count': daily_stats[date_key]['count']
             })
 
         return {"trend": trend_data}
