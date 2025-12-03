@@ -121,12 +121,23 @@ async def create_order(
         # subtotal = 포인트 사용 전 상품 금액 + 배송비 (total_amount + points_used)
         subtotal_before_points = request.total_amount + (request.points_used or 0)
 
-        # 배송비 계산: 상품 금액(배송비 제외)이 50,000원 미만이면 3,000원
-        # subtotal_before_points에서 배송비를 역산해야 함
-        # 프론트엔드에서 이미 배송비 포함해서 보냈으므로, 배송비를 추출해야 함
-        # 상품 금액 계산
+        # 배송비 계산: 시스템 설정에서 배송비 정책 조회
         product_total = sum(item.price * item.quantity for item in request.items)
-        shipping_fee = 0 if product_total >= 50000 else 3000
+        shipping_fee = 0
+
+        try:
+            settings_response = supabase.table("crm_system_settings").select("delivery_fee, free_delivery_threshold").limit(1).execute()
+            if settings_response.data:
+                settings = settings_response.data[0]
+                delivery_fee = settings.get("delivery_fee", 3000)
+                free_delivery_threshold = settings.get("free_delivery_threshold", 30000)
+                shipping_fee = 0 if product_total >= free_delivery_threshold else delivery_fee
+            else:
+                # 설정이 없으면 기본값 사용
+                shipping_fee = 0 if product_total >= 30000 else 3000
+        except Exception as e:
+            print(f"[WARNING] 배송비 설정 조회 실패, 기본값 사용: {str(e)}")
+            shipping_fee = 0 if product_total >= 30000 else 3000
 
         order_data = {
             "buyer_id": user_id,  # user_id -> buyer_id
@@ -679,6 +690,44 @@ async def update_order_status_admin(
                     supabase.table("products").update(
                         {"stock_quantity": new_stock}
                     ).eq("id", item["product_id"]).execute()
+
+        # 배송완료 시 포인트 적립 (시스템 설정에서 조회)
+        if request.status == "delivered" and old_status != "delivered":
+            try:
+                # 주문 정보 조회
+                order_full = (
+                    supabase.table("orders")
+                    .select("user_id, final_amount, points_used")
+                    .eq("id", order_id)
+                    .single()
+                    .execute()
+                )
+
+                if order_full.data:
+                    user_id = order_full.data["user_id"]
+                    final_amount = order_full.data["final_amount"]
+                    points_used = order_full.data.get("points_used", 0)
+
+                    # 시스템 설정에서 포인트 정책 조회
+                    settings_response = supabase.table("crm_system_settings").select("point_enabled, point_rate").limit(1).execute()
+                    if settings_response.data:
+                        settings = settings_response.data[0]
+                        if settings.get("point_enabled") and settings.get("point_rate", 0) > 0:
+                            from app.services.points import add_points
+                            point_rate = float(settings["point_rate"])
+                            # 포인트 사용액을 제외한 실제 결제금액에 대해서만 적립
+                            earn_amount = final_amount - points_used
+                            points_to_earn = int(earn_amount * point_rate / 100)
+
+                            if points_to_earn > 0:
+                                await add_points(
+                                    user_id=user_id,
+                                    amount=points_to_earn,
+                                    description=f"주문 적립 (주문번호: {order_id[:8]})"
+                                )
+                                print(f"[INFO] 구매확정 포인트 적립: {user_id} - {points_to_earn}P")
+            except Exception as e:
+                print(f"[WARNING] 구매확정 포인트 적립 실패 (무시): {str(e)}")
 
         supabase.table("orders").update(update_data).eq("id", order_id).execute()
 

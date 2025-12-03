@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CRMLayout from '../components/CRMLayout';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function SettingsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -11,12 +13,12 @@ export default function SettingsPage() {
   // 시스템 설정 상태
   const [settings, setSettings] = useState({
     // 기본 설정
-    adminEmail: 'admin@shoppingmall.com',
-    adminPhone: '02-1234-5678',
-    businessNumber: '123-45-67890',
-    businessName: '(주)쇼핑몰',
-    ceoName: '홍길동',
-    businessAddress: '서울특별시 강남구 테헤란로 123',
+    adminEmail: '',
+    adminPhone: '',
+    businessNumber: '',
+    businessName: '',
+    ceoName: '',
+    businessAddress: '',
 
     // 주문 설정
     orderCancelTime: 24,
@@ -39,14 +41,6 @@ export default function SettingsPage() {
     pointEnabled: true,
     pointRate: 1.0,
     signupPoint: 5000,
-
-    // 알림 설정
-    notifications: {
-      newOrder: true,
-      newVendor: true,
-      lowStock: true,
-      customerInquiry: true,
-    },
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -57,16 +51,97 @@ export default function SettingsPage() {
       router.push('/crm/login');
       return;
     }
-    setIsLoading(false);
+    fetchSettings();
   }, [router]);
 
-  const handleSave = () => {
+  const fetchSettings = async () => {
+    try {
+      const adminToken = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/admin/settings`, {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('설정을 불러오는데 실패했습니다.');
+      }
+
+      const data = await response.json();
+      setSettings({
+        adminEmail: data.admin_email,
+        adminPhone: data.admin_phone,
+        businessNumber: data.business_number,
+        businessName: data.business_name,
+        ceoName: data.ceo_name,
+        businessAddress: data.business_address,
+        orderCancelTime: data.order_cancel_time,
+        orderConfirmTime: data.order_confirm_time,
+        deliveryCompletionTime: data.delivery_completion_time,
+        paymentMethods: {
+          card: data.payment_card,
+          transfer: data.payment_transfer,
+          virtualAccount: data.payment_virtual_account,
+          phone: data.payment_phone,
+        },
+        deliveryFee: data.delivery_fee,
+        freeDeliveryThreshold: data.free_delivery_threshold,
+        pointEnabled: data.point_enabled,
+        pointRate: data.point_rate,
+        signupPoint: data.signup_point,
+      });
+    } catch (error) {
+      console.error('설정 불러오기 오류:', error);
+      alert('설정을 불러오는데 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
     setIsSaving(true);
-    // 실제로는 API 호출
-    setTimeout(() => {
+    try {
+      const adminToken = localStorage.getItem('admin_token');
+      const response = await fetch(`${API_URL}/admin/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({
+          admin_email: settings.adminEmail,
+          admin_phone: settings.adminPhone,
+          business_number: settings.businessNumber,
+          business_name: settings.businessName,
+          ceo_name: settings.ceoName,
+          business_address: settings.businessAddress,
+          order_cancel_time: settings.orderCancelTime,
+          order_confirm_time: settings.orderConfirmTime,
+          delivery_completion_time: settings.deliveryCompletionTime,
+          payment_card: settings.paymentMethods.card,
+          payment_transfer: settings.paymentMethods.transfer,
+          payment_virtual_account: settings.paymentMethods.virtualAccount,
+          payment_phone: settings.paymentMethods.phone,
+          delivery_fee: settings.deliveryFee,
+          free_delivery_threshold: settings.freeDeliveryThreshold,
+          point_enabled: settings.pointEnabled,
+          point_rate: settings.pointRate,
+          signup_point: settings.signupPoint,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('설정 저장에 실패했습니다.');
+      }
+
+      const data = await response.json();
+      alert(data.message || '설정이 저장되었습니다.');
+    } catch (error) {
+      console.error('설정 저장 오류:', error);
+      alert('설정 저장에 실패했습니다.');
+    } finally {
       setIsSaving(false);
-      alert('설정이 저장되었습니다.');
-    }, 1000);
+    }
   };
 
   if (isLoading) {
@@ -387,88 +462,6 @@ export default function SettingsPage() {
                   </div>
                 </>
               )}
-            </div>
-          </section>
-
-          {/* 알림 설정 */}
-          <section className="mb-4 border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-            <div className="border-b border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
-              <h2 className="text-base font-bold text-gray-900 dark:text-white">알림 설정</h2>
-              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                관리자 알림 수신 설정
-              </p>
-            </div>
-            <div className="space-y-3 p-4">
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={settings.notifications.newOrder}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      notifications: {
-                        ...settings.notifications,
-                        newOrder: e.target.checked,
-                      },
-                    })
-                  }
-                  className="h-4 w-4"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">신규 주문 알림</span>
-              </label>
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={settings.notifications.newVendor}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      notifications: {
-                        ...settings.notifications,
-                        newVendor: e.target.checked,
-                      },
-                    })
-                  }
-                  className="h-4 w-4"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  신규 판매자 승인 요청 알림
-                </span>
-              </label>
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={settings.notifications.lowStock}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      notifications: {
-                        ...settings.notifications,
-                        lowStock: e.target.checked,
-                      },
-                    })
-                  }
-                  className="h-4 w-4"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">재고 부족 알림</span>
-              </label>
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={settings.notifications.customerInquiry}
-                  onChange={(e) =>
-                    setSettings({
-                      ...settings,
-                      notifications: {
-                        ...settings.notifications,
-                        customerInquiry: e.target.checked,
-                      },
-                    })
-                  }
-                  className="h-4 w-4"
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300">고객 문의 알림</span>
-              </label>
             </div>
           </section>
 

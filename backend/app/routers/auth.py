@@ -203,6 +203,23 @@ async def register(user_data: UserRegisterRequest):
 
         profile = profile_response.data[0]
 
+        # 2.5. 회원가입 축하 포인트 지급 (시스템 설정에서 조회)
+        try:
+            settings_response = supabase_admin.table("crm_system_settings").select("point_enabled, signup_point").limit(1).execute()
+            if settings_response.data:
+                settings = settings_response.data[0]
+                if settings.get("point_enabled") and settings.get("signup_point", 0) > 0:
+                    from app.services.points import add_points
+                    signup_point = settings["signup_point"]
+                    await add_points(
+                        user_id=user_id,
+                        amount=signup_point,
+                        description="회원가입 축하 포인트"
+                    )
+                    print(f"[INFO] 회원가입 포인트 지급: {user_id} - {signup_point}P")
+        except Exception as e:
+            print(f"[WARNING] 회원가입 포인트 지급 실패 (무시): {str(e)}")
+
         # 3. seller인 경우 vendors 테이블에 판매자 정보 저장
         vendor = None
         if user_data.user_type == "seller":

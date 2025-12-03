@@ -124,54 +124,132 @@ export default function SalesPage() {
           </div>
         </section>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - 그라데이션 디자인 */}
         <section className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-            <p className="text-sm text-gray-600 dark:text-gray-400">오늘 매출</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-              {formatCurrency(salesData.todaySales)}
-            </p>
-            <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 12.5% 전일 대비</p>
+          <div className="group relative overflow-hidden border border-gray-200 bg-gradient-to-br from-blue-50 to-cyan-50 p-6 transition-shadow hover:shadow-lg dark:border-gray-700 dark:from-blue-900/20 dark:to-cyan-900/20">
+            <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-blue-500/10"></div>
+            <div className="relative z-10">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg">
+                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">오늘 매출</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                {formatCurrency(salesData.todaySales)}
+              </p>
+              <div className="mt-2 flex items-center gap-1">
+                <span className="text-xs font-medium text-green-600 dark:text-green-400">↑ 12.5%</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">전일 대비</span>
+              </div>
+            </div>
           </div>
 
-          <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-            <p className="text-sm text-gray-600 dark:text-gray-400">이번 달 매출</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-              {formatCurrency(salesData.monthSales)}
-            </p>
-            <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 8.3% 전월 대비</p>
+          <div className="group relative overflow-hidden border border-gray-200 bg-gradient-to-br from-purple-50 to-pink-50 p-6 transition-shadow hover:shadow-lg dark:border-gray-700 dark:from-purple-900/20 dark:to-pink-900/20">
+            <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-purple-500/10"></div>
+            <div className="relative z-10">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">이번 달 매출</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                {formatCurrency(salesData.monthSales)}
+              </p>
+              <div className="mt-2 flex items-center gap-1">
+                <span className="text-xs font-medium text-green-600 dark:text-green-400">↑ 8.3%</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">전월 대비</span>
+              </div>
+            </div>
           </div>
 
-          <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-            <p className="text-sm text-gray-600 dark:text-gray-400">올해 총 매출</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-              {formatCurrency(salesData.yearSales)}
-            </p>
-            <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 15.7% 전년 대비</p>
+          <div className="group relative overflow-hidden border border-gray-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 transition-shadow hover:shadow-lg dark:border-gray-700 dark:from-amber-900/20 dark:to-orange-900/20">
+            <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-amber-500/10"></div>
+            <div className="relative z-10">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg">
+                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">올해 총 매출</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                {formatCurrency(salesData.yearSales)}
+              </p>
+              <div className="mt-2 flex items-center gap-1">
+                <span className="text-xs font-medium text-green-600 dark:text-green-400">↑ 15.7%</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">전년 대비</span>
+              </div>
+            </div>
           </div>
 
-          <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-            <p className="text-sm text-gray-600 dark:text-gray-400">오늘 주문</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-              {salesData.todayOrders.toLocaleString()}건
-            </p>
-            <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 5.2% 전일 대비</p>
+          <div className="group relative overflow-hidden border border-gray-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-6 transition-shadow hover:shadow-lg dark:border-gray-700 dark:from-emerald-900/20 dark:to-teal-900/20">
+            <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500/10"></div>
+            <div className="relative z-10">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg">
+                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">오늘 주문</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                {salesData.todayOrders.toLocaleString()}건
+              </p>
+              <div className="mt-2 flex items-center gap-1">
+                <span className="text-xs font-medium text-green-600 dark:text-green-400">↑ 5.2%</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">전일 대비</span>
+              </div>
+            </div>
           </div>
 
-          <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-            <p className="text-sm text-gray-600 dark:text-gray-400">이번 달 주문</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-              {salesData.monthOrders.toLocaleString()}건
-            </p>
-            <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 9.1% 전월 대비</p>
+          <div className="group relative overflow-hidden border border-gray-200 bg-gradient-to-br from-rose-50 to-red-50 p-6 transition-shadow hover:shadow-lg dark:border-gray-700 dark:from-rose-900/20 dark:to-red-900/20">
+            <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-rose-500/10"></div>
+            <div className="relative z-10">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-red-500 shadow-lg">
+                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">이번 달 주문</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                {salesData.monthOrders.toLocaleString()}건
+              </p>
+              <div className="mt-2 flex items-center gap-1">
+                <span className="text-xs font-medium text-green-600 dark:text-green-400">↑ 9.1%</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">전월 대비</span>
+              </div>
+            </div>
           </div>
 
-          <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-            <p className="text-sm text-gray-600 dark:text-gray-400">평균 주문 금액</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-              {formatCurrency(salesData.averageOrderValue)}
-            </p>
-            <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 3.4% 전월 대비</p>
+          <div className="group relative overflow-hidden border border-gray-200 bg-gradient-to-br from-indigo-50 to-violet-50 p-6 transition-shadow hover:shadow-lg dark:border-gray-700 dark:from-indigo-900/20 dark:to-violet-900/20">
+            <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-indigo-500/10"></div>
+            <div className="relative z-10">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 shadow-lg">
+                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">평균 주문 금액</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                {formatCurrency(salesData.averageOrderValue)}
+              </p>
+              <div className="mt-2 flex items-center gap-1">
+                <span className="text-xs font-medium text-green-600 dark:text-green-400">↑ 3.4%</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">전월 대비</span>
+              </div>
+            </div>
           </div>
         </section>
 

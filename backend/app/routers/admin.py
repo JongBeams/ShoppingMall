@@ -705,3 +705,154 @@ async def migrate_existing_vendors(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"마이그레이션 중 오류가 발생했습니다: {str(e)}"
         )
+
+
+# ========== CRM 시스템 설정 ==========
+
+class SystemSettingsResponse(BaseModel):
+    # 기본 설정
+    admin_email: str
+    admin_phone: str
+    business_number: str
+    business_name: str
+    ceo_name: str
+    business_address: str
+    # 주문 설정
+    order_cancel_time: int
+    order_confirm_time: int
+    delivery_completion_time: int
+    # 결제 설정
+    payment_card: bool
+    payment_transfer: bool
+    payment_virtual_account: bool
+    payment_phone: bool
+    # 배송 설정
+    delivery_fee: int
+    # 포인트 설정
+    point_enabled: bool
+    point_rate: float
+    signup_point: int
+
+
+class SystemSettingsUpdateRequest(BaseModel):
+    # 기본 설정
+    admin_email: Optional[str] = None
+    admin_phone: Optional[str] = None
+    business_number: Optional[str] = None
+    business_name: Optional[str] = None
+    ceo_name: Optional[str] = None
+    business_address: Optional[str] = None
+    # 주문 설정
+    order_cancel_time: Optional[int] = None
+    order_confirm_time: Optional[int] = None
+    delivery_completion_time: Optional[int] = None
+    # 결제 설정
+    payment_card: Optional[bool] = None
+    payment_transfer: Optional[bool] = None
+    payment_virtual_account: Optional[bool] = None
+    payment_phone: Optional[bool] = None
+    # 배송 설정
+    delivery_fee: Optional[int] = None
+    free_delivery_threshold: Optional[int] = None
+    # 포인트 설정
+    point_enabled: Optional[bool] = None
+    point_rate: Optional[float] = None
+    signup_point: Optional[int] = None
+
+
+@router.get("/settings", response_model=SystemSettingsResponse)
+async def get_system_settings(current_admin: dict = Depends(get_current_admin)):
+    """CRM 시스템 설정 조회"""
+    supabase_admin = get_supabase_admin_client()
+
+    try:
+        # crm_system_settings 테이블에서 설정 조회 (첫 번째 행만)
+        response = supabase_admin.table("crm_system_settings").select("*").limit(1).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="시스템 설정을 찾을 수 없습니다."
+            )
+
+        settings = response.data[0]
+        return SystemSettingsResponse(
+            admin_email=settings["admin_email"],
+            admin_phone=settings["admin_phone"],
+            business_number=settings["business_number"],
+            business_name=settings["business_name"],
+            ceo_name=settings["ceo_name"],
+            business_address=settings["business_address"],
+            order_cancel_time=settings["order_cancel_time"],
+            order_confirm_time=settings["order_confirm_time"],
+            delivery_completion_time=settings["delivery_completion_time"],
+            payment_card=settings["payment_card"],
+            payment_transfer=settings["payment_transfer"],
+            payment_virtual_account=settings["payment_virtual_account"],
+            payment_phone=settings["payment_phone"],
+            delivery_fee=settings["delivery_fee"],
+            free_delivery_threshold=settings["free_delivery_threshold"],
+            point_enabled=settings["point_enabled"],
+            point_rate=float(settings["point_rate"]),
+            signup_point=settings["signup_point"],
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] 시스템 설정 조회 오류: {str(e)}")
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"시스템 설정 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.put("/settings", response_model=MessageResponse)
+async def update_system_settings(
+    request: SystemSettingsUpdateRequest,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """CRM 시스템 설정 업데이트"""
+    supabase_admin = get_supabase_admin_client()
+
+    try:
+        # 기존 설정 조회
+        response = supabase_admin.table("crm_system_settings").select("id").limit(1).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="시스템 설정을 찾을 수 없습니다."
+            )
+
+        settings_id = response.data[0]["id"]
+
+        # 업데이트할 데이터 구성
+        update_data = {}
+        for field, value in request.dict(exclude_unset=True).items():
+            if value is not None:
+                update_data[field] = value
+
+        if not update_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="업데이트할 데이터가 없습니다."
+            )
+
+        # 설정 업데이트
+        supabase_admin.table("crm_system_settings").update(update_data).eq("id", settings_id).execute()
+
+        return MessageResponse(message="시스템 설정이 저장되었습니다.")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] 시스템 설정 업데이트 오류: {str(e)}")
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"시스템 설정 업데이트 중 오류가 발생했습니다: {str(e)}"
+        )
