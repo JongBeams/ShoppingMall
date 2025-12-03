@@ -120,25 +120,44 @@ export default function AnalyticsPage() {
 
   return (
     <div>
-      {/* 헤더 */}
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-sm text-gray-900 dark:text-white">
-          CRM &gt; <span className="font-bold">성과 대시보드</span>
-        </h1>
-        <div className="flex gap-1">
-          {[7, 30, 90].map(days => (
-            <button
-              key={days}
-              onClick={() => setSelectedPeriod(days)}
-              className={`px-3 py-1 text-xs transition-colors ${
-                selectedPeriod === days
-                  ? 'border border-gray-900 bg-gray-900 font-bold text-white dark:border-white dark:bg-white dark:text-gray-900'
-                  : 'border border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800'
-              }`}
-            >
-              {days}일
-            </button>
-          ))}
+      {/* 헤더 - 더 세련되게 */}
+      <div className="mb-6 rounded-lg border border-gray-200 bg-gradient-to-r from-purple-50 via-blue-50 to-emerald-50 p-6 dark:border-gray-700 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-emerald-950/20">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
+              성과 대시보드
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              실시간 AI 기능 성과 분석 및 모니터링
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+              <div className="mb-1 text-xs text-gray-500 dark:text-gray-400">기간 선택</div>
+              <div className="flex gap-1">
+                {[7, 30, 90].map(days => (
+                  <button
+                    key={days}
+                    onClick={() => setSelectedPeriod(days)}
+                    className={`px-4 py-2 text-xs font-medium transition-all ${
+                      selectedPeriod === days
+                        ? 'border border-gray-900 bg-gray-900 text-white shadow-lg dark:border-white dark:bg-white dark:text-gray-900'
+                        : 'border border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {days}일
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-white p-3 text-center dark:border-gray-700 dark:bg-gray-900">
+              <div className="mb-1 text-xs text-gray-500 dark:text-gray-400">실시간 업데이트</div>
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 animate-pulse rounded-full bg-green-500"></div>
+                <span className="text-xs font-medium text-gray-900 dark:text-white">LIVE</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -220,15 +239,15 @@ export default function AnalyticsPage() {
         </div>
 
         {/* AI 선물 마법사 */}
-        <div className="relative overflow-hidden border border-gray-200 bg-gradient-to-br from-orange-50 to-red-50 dark:border-gray-700 dark:from-orange-950/20 dark:to-red-950/20">
+        <div className="relative overflow-hidden border border-gray-200 bg-gradient-to-br from-emerald-50 to-teal-50 dark:border-gray-700 dark:from-emerald-950/20 dark:to-teal-950/20">
           <div className="p-5">
             <div className="mb-3 flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900">
-                <svg className="h-5 w-5 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900">
+                <svg className="h-5 w-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                 </svg>
               </div>
-              <span className="text-xs font-medium text-orange-600 dark:text-orange-400">LLM</span>
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">LLM</span>
             </div>
             <h3 className="mb-1 text-base font-bold text-gray-900 dark:text-white">AI 선물 마법사</h3>
             <p className="mb-4 text-xs text-gray-600 dark:text-gray-400">맞춤형 선물 추천 서비스</p>
@@ -240,7 +259,7 @@ export default function AnalyticsPage() {
               </div>
               <div>
                 <div className="text-xs text-gray-600 dark:text-gray-400">완료율</div>
-                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{(summary.gift_wizard_completion_rate || 0).toFixed(1)}%</div>
+                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{(summary.gift_wizard_completion_rate || 0).toFixed(1)}%</div>
               </div>
               <div>
                 <div className="text-xs text-gray-600 dark:text-gray-400">전환율</div>
@@ -255,231 +274,445 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </div>
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-orange-200/30 dark:bg-orange-800/10"></div>
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-200/30 dark:bg-emerald-800/10"></div>
         </div>
       </section>
 
-      {/* 선 그래프 - 3열 */}
-      <section className="mb-4 grid gap-4 md:grid-cols-3">
+      {/* Grafana-style 차트 - 2열 */}
+      <section className="mb-4 grid gap-4 lg:grid-cols-2">
         {/* 원격 제어 추세 */}
-        <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">원격 제어 추세</h3>
-            <span className="text-xs text-gray-500 dark:text-gray-400">세션 수</span>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">원격 제어 세션</h3>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">WebRTC 실시간 원격 제어</p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                {rcTrend.reduce((sum, item) => sum + (item.sessions || 0), 0)}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">총 세션</div>
+            </div>
           </div>
 
-          {/* 선 그래프 */}
-          <div className="relative h-32">
-            <svg className="h-full w-full" viewBox="0 0 300 100" preserveAspectRatio="none">
-              {/* 격자선 */}
-              <line x1="0" y1="25" x2="300" y2="25" stroke="currentColor" strokeWidth="0.5" className="text-gray-200 dark:text-gray-700" strokeDasharray="2,2" />
-              <line x1="0" y1="50" x2="300" y2="50" stroke="currentColor" strokeWidth="0.5" className="text-gray-200 dark:text-gray-700" strokeDasharray="2,2" />
-              <line x1="0" y1="75" x2="300" y2="75" stroke="currentColor" strokeWidth="0.5" className="text-gray-200 dark:text-gray-700" strokeDasharray="2,2" />
+          {/* Grafana-style 차트 */}
+          <div className="relative h-48 p-4">
+            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+              {/* 수평 그리드 */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <line
+                  key={i}
+                  x1="40"
+                  y1={10 + i * 45}
+                  x2="500"
+                  y2={10 + i * 45}
+                  stroke="currentColor"
+                  strokeWidth="0.5"
+                  className="text-gray-300 dark:text-gray-700"
+                  strokeDasharray="3,3"
+                />
+              ))}
+
+              {/* Y축 레이블 */}
+              {[0, 1, 2, 3, 4].map((i) => {
+                const value = Math.round(maxRcSessions * (1 - i / 4));
+                return (
+                  <text
+                    key={i}
+                    x="35"
+                    y={15 + i * 45}
+                    textAnchor="end"
+                    className="fill-gray-500 text-[8px] dark:fill-gray-400"
+                  >
+                    {value}
+                  </text>
+                );
+              })}
+
+              {/* 그라데이션 영역 */}
+              <defs>
+                <linearGradient id="rcGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(147, 51, 234)" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="rgb(147, 51, 234)" stopOpacity="0.05" />
+                </linearGradient>
+              </defs>
+
+              <polygon
+                points={`40,190 ${rcTrend.map((item, i) => {
+                  const x = 40 + (i / (rcTrend.length - 1 || 1)) * 460;
+                  const y = 190 - ((item.sessions || 0) / maxRcSessions) * 170;
+                  return `${x},${y}`;
+                }).join(' ')} ${40 + 460},190`}
+                fill="url(#rcGradient)"
+              />
 
               {/* 선 그래프 */}
               <polyline
                 points={rcTrend.map((item, i) => {
-                  const x = (i / (rcTrend.length - 1 || 1)) * 300;
-                  const y = 100 - ((item.sessions || 0) / maxRcSessions) * 90;
+                  const x = 40 + (i / (rcTrend.length - 1 || 1)) * 460;
+                  const y = 190 - ((item.sessions || 0) / maxRcSessions) * 170;
                   return `${x},${y}`;
                 }).join(' ')}
                 fill="none"
                 stroke="rgb(147, 51, 234)"
-                strokeWidth="2"
-                className="drop-shadow-sm"
+                strokeWidth="2.5"
               />
-
-              {/* 점 */}
-              {rcTrend.map((item, i) => {
-                const x = (i / (rcTrend.length - 1 || 1)) * 300;
-                const y = 100 - ((item.sessions || 0) / maxRcSessions) * 90;
-                return (
-                  <circle
-                    key={i}
-                    cx={x}
-                    cy={y}
-                    r="3"
-                    fill="rgb(147, 51, 234)"
-                    className="drop-shadow"
-                  />
-                );
-              })}
             </svg>
           </div>
 
-          {/* 날짜 레이블 */}
-          <div className="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>{rcTrend[0] ? new Date(rcTrend[0].date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '-'}</span>
-            <span>{rcTrend[rcTrend.length - 1] ? new Date(rcTrend[rcTrend.length - 1].date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '-'}</span>
+          {/* 범례 */}
+          <div className="mt-3 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-purple-600"></div>
+              <span className="text-gray-600 dark:text-gray-400">세션 수</span>
+            </div>
+            <div className="flex gap-4 text-gray-500 dark:text-gray-400">
+              <span>평균: {Math.round(rcTrend.reduce((sum, item) => sum + (item.sessions || 0), 0) / (rcTrend.length || 1))}</span>
+              <span>최대: {maxRcSessions}</span>
+            </div>
           </div>
         </div>
 
         {/* RAG 챗봇 추세 */}
-        <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">챗봇 질문 추세</h3>
-            <span className="text-xs text-gray-500 dark:text-gray-400">질문 수</span>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">RAG AI 챗봇</h3>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">벡터 검색 기반 질문 답변</p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {ragTrend.reduce((sum, item) => sum + (item.queries || 0), 0)}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">총 질문</div>
+            </div>
           </div>
 
-          {/* 선 그래프 */}
-          <div className="relative h-32">
-            <svg className="h-full w-full" viewBox="0 0 300 100" preserveAspectRatio="none">
-              {/* 격자선 */}
-              <line x1="0" y1="25" x2="300" y2="25" stroke="currentColor" strokeWidth="0.5" className="text-gray-200 dark:text-gray-700" strokeDasharray="2,2" />
-              <line x1="0" y1="50" x2="300" y2="50" stroke="currentColor" strokeWidth="0.5" className="text-gray-200 dark:text-gray-700" strokeDasharray="2,2" />
-              <line x1="0" y1="75" x2="300" y2="75" stroke="currentColor" strokeWidth="0.5" className="text-gray-200 dark:text-gray-700" strokeDasharray="2,2" />
+          {/* Grafana-style 차트 */}
+          <div className="relative h-48 p-4">
+            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+              {/* 수평 그리드 */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <line
+                  key={i}
+                  x1="40"
+                  y1={10 + i * 45}
+                  x2="500"
+                  y2={10 + i * 45}
+                  stroke="currentColor"
+                  strokeWidth="0.5"
+                  className="text-gray-300 dark:text-gray-700"
+                  strokeDasharray="3,3"
+                />
+              ))}
+
+              {/* Y축 레이블 */}
+              {[0, 1, 2, 3, 4].map((i) => {
+                const value = Math.round(maxRagQueries * (1 - i / 4));
+                return (
+                  <text
+                    key={i}
+                    x="35"
+                    y={15 + i * 45}
+                    textAnchor="end"
+                    className="fill-gray-500 text-[8px] dark:fill-gray-400"
+                  >
+                    {value}
+                  </text>
+                );
+              })}
+
+              {/* 그라데이션 영역 */}
+              <defs>
+                <linearGradient id="ragGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(37, 99, 235)" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="rgb(37, 99, 235)" stopOpacity="0.05" />
+                </linearGradient>
+              </defs>
+
+              <polygon
+                points={`40,190 ${ragTrend.map((item, i) => {
+                  const x = 40 + (i / (ragTrend.length - 1 || 1)) * 460;
+                  const y = 190 - ((item.queries || 0) / maxRagQueries) * 170;
+                  return `${x},${y}`;
+                }).join(' ')} ${40 + 460},190`}
+                fill="url(#ragGradient)"
+              />
 
               {/* 선 그래프 */}
               <polyline
                 points={ragTrend.map((item, i) => {
-                  const x = (i / (ragTrend.length - 1 || 1)) * 300;
-                  const y = 100 - ((item.queries || 0) / maxRagQueries) * 90;
+                  const x = 40 + (i / (ragTrend.length - 1 || 1)) * 460;
+                  const y = 190 - ((item.queries || 0) / maxRagQueries) * 170;
                   return `${x},${y}`;
                 }).join(' ')}
                 fill="none"
                 stroke="rgb(37, 99, 235)"
-                strokeWidth="2"
-                className="drop-shadow-sm"
+                strokeWidth="2.5"
               />
-
-              {/* 점 */}
-              {ragTrend.map((item, i) => {
-                const x = (i / (ragTrend.length - 1 || 1)) * 300;
-                const y = 100 - ((item.queries || 0) / maxRagQueries) * 90;
-                return (
-                  <circle
-                    key={i}
-                    cx={x}
-                    cy={y}
-                    r="3"
-                    fill="rgb(37, 99, 235)"
-                    className="drop-shadow"
-                  />
-                );
-              })}
             </svg>
           </div>
 
-          {/* 날짜 레이블 */}
-          <div className="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>{ragTrend[0] ? new Date(ragTrend[0].date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '-'}</span>
-            <span>{ragTrend[ragTrend.length - 1] ? new Date(ragTrend[ragTrend.length - 1].date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '-'}</span>
+          {/* 범례 */}
+          <div className="mt-3 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-blue-600"></div>
+              <span className="text-gray-600 dark:text-gray-400">질문 수</span>
+            </div>
+            <div className="flex gap-4 text-gray-500 dark:text-gray-400">
+              <span>평균: {Math.round(ragTrend.reduce((sum, item) => sum + (item.queries || 0), 0) / (ragTrend.length || 1))}</span>
+              <span>최대: {maxRagQueries}</span>
+            </div>
           </div>
         </div>
 
         {/* 선물 마법사 추세 */}
-        <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">선물 마법사 추세</h3>
-            <span className="text-xs text-gray-500 dark:text-gray-400">세션 수</span>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">AI 선물 마법사</h3>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">LLM 기반 맞춤 선물 추천</p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                {giftTrend.reduce((sum, item) => sum + (item.sessions || 0), 0)}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">총 세션</div>
+            </div>
           </div>
 
-          {/* 선 그래프 */}
-          <div className="relative h-32">
-            <svg className="h-full w-full" viewBox="0 0 300 100" preserveAspectRatio="none">
-              {/* 격자선 */}
-              <line x1="0" y1="25" x2="300" y2="25" stroke="currentColor" strokeWidth="0.5" className="text-gray-200 dark:text-gray-700" strokeDasharray="2,2" />
-              <line x1="0" y1="50" x2="300" y2="50" stroke="currentColor" strokeWidth="0.5" className="text-gray-200 dark:text-gray-700" strokeDasharray="2,2" />
-              <line x1="0" y1="75" x2="300" y2="75" stroke="currentColor" strokeWidth="0.5" className="text-gray-200 dark:text-gray-700" strokeDasharray="2,2" />
+          {/* Grafana-style 차트 - 더 넓게 */}
+          <div className="relative h-48 p-4">
+            <svg className="h-full w-full" viewBox="0 0 1000 200" preserveAspectRatio="none">
+              {/* 수평 그리드 */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <line
+                  key={i}
+                  x1="40"
+                  y1={10 + i * 45}
+                  x2="1000"
+                  y2={10 + i * 45}
+                  stroke="currentColor"
+                  strokeWidth="0.5"
+                  className="text-gray-300 dark:text-gray-700"
+                  strokeDasharray="3,3"
+                />
+              ))}
+
+              {/* Y축 레이블 */}
+              {[0, 1, 2, 3, 4].map((i) => {
+                const value = Math.round(maxGiftSessions * (1 - i / 4));
+                return (
+                  <text
+                    key={i}
+                    x="35"
+                    y={15 + i * 45}
+                    textAnchor="end"
+                    className="fill-gray-500 text-[8px] dark:fill-gray-400"
+                  >
+                    {value}
+                  </text>
+                );
+              })}
+
+              {/* 그라데이션 영역 */}
+              <defs>
+                <linearGradient id="giftGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(16, 185, 129)" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="rgb(16, 185, 129)" stopOpacity="0.05" />
+                </linearGradient>
+              </defs>
+
+              <polygon
+                points={`40,190 ${giftTrend.map((item, i) => {
+                  const x = 40 + (i / (giftTrend.length - 1 || 1)) * 960;
+                  const y = 190 - ((item.sessions || 0) / maxGiftSessions) * 170;
+                  return `${x},${y}`;
+                }).join(' ')} ${40 + 960},190`}
+                fill="url(#giftGradient)"
+              />
 
               {/* 선 그래프 */}
               <polyline
                 points={giftTrend.map((item, i) => {
-                  const x = (i / (giftTrend.length - 1 || 1)) * 300;
-                  const y = 100 - ((item.sessions || 0) / maxGiftSessions) * 90;
+                  const x = 40 + (i / (giftTrend.length - 1 || 1)) * 960;
+                  const y = 190 - ((item.sessions || 0) / maxGiftSessions) * 170;
                   return `${x},${y}`;
                 }).join(' ')}
                 fill="none"
-                stroke="rgb(234, 88, 12)"
-                strokeWidth="2"
-                className="drop-shadow-sm"
+                stroke="rgb(16, 185, 129)"
+                strokeWidth="2.5"
               />
-
-              {/* 점 */}
-              {giftTrend.map((item, i) => {
-                const x = (i / (giftTrend.length - 1 || 1)) * 300;
-                const y = 100 - ((item.sessions || 0) / maxGiftSessions) * 90;
-                return (
-                  <circle
-                    key={i}
-                    cx={x}
-                    cy={y}
-                    r="3"
-                    fill="rgb(234, 88, 12)"
-                    className="drop-shadow"
-                  />
-                );
-              })}
             </svg>
           </div>
 
-          {/* 날짜 레이블 */}
-          <div className="mt-2 flex justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>{giftTrend[0] ? new Date(giftTrend[0].date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '-'}</span>
-            <span>{giftTrend[giftTrend.length - 1] ? new Date(giftTrend[giftTrend.length - 1].date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) : '-'}</span>
+          {/* 범례 */}
+          <div className="mt-3 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-emerald-600"></div>
+              <span className="text-gray-600 dark:text-gray-400">세션 수</span>
+            </div>
+            <div className="flex gap-4 text-gray-500 dark:text-gray-400">
+              <span>평균: {Math.round(giftTrend.reduce((sum, item) => sum + (item.sessions || 0), 0) / (giftTrend.length || 1))}</span>
+              <span>최대: {maxGiftSessions}</span>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 성과 개선 비교 */}
-      <section className="mb-4 border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-          <h2 className="text-base font-bold text-gray-900 dark:text-white">성과 개선 (Before → After)</h2>
+      {/* 성능 비교 & 실시간 활동 - 복잡한 레이아웃 */}
+      <section className="mb-4 grid gap-4 lg:grid-cols-3">
+        {/* 기능별 성능 비교 */}
+        <div className="border border-gray-200 bg-white p-6 lg:col-span-2 dark:border-gray-700 dark:bg-gray-900">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-gray-900 dark:text-white">기능별 성능 비교</h2>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">핵심 지표 요약</p>
+            </div>
+            <div className="rounded-full border border-green-500 bg-green-50 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-400">
+              ↑ 평균 28% 개선
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* 원격 제어 */}
+            <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-950/20">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center">
+                  <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <span className="text-sm font-bold text-purple-900 dark:text-purple-300">원격 제어</span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600 dark:text-gray-400">성공률</span>
+                  <span className="font-bold text-purple-700 dark:text-purple-300">{(summary.remote_control_success_rate || 0).toFixed(1)}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-purple-200 dark:bg-purple-900">
+                  <div className="h-full bg-purple-600" style={{ width: `${summary.remote_control_success_rate || 0}%` }}></div>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600 dark:text-gray-400">평균 시간</span>
+                  <span className="font-bold text-purple-700 dark:text-purple-300">{((summary.remote_control_avg_duration || 0) / 60).toFixed(1)}분</span>
+                </div>
+              </div>
+            </div>
+
+            {/* RAG 챗봇 */}
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/20">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
+                  <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                </div>
+                <span className="text-sm font-bold text-blue-900 dark:text-blue-300">RAG 챗봇</span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600 dark:text-gray-400">정확도</span>
+                  <span className="font-bold text-blue-700 dark:text-blue-300">{(summary.rag_accuracy || 0).toFixed(1)}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-blue-200 dark:bg-blue-900">
+                  <div className="h-full bg-blue-600" style={{ width: `${summary.rag_accuracy || 0}%` }}></div>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600 dark:text-gray-400">응답 시간</span>
+                  <span className="font-bold text-blue-700 dark:text-blue-300">{((summary.rag_avg_response_time || 0) / 1000).toFixed(2)}초</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 선물 마법사 */}
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center">
+                  <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                  </svg>
+                </div>
+                <span className="text-sm font-bold text-emerald-900 dark:text-emerald-300">선물 마법사</span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600 dark:text-gray-400">완료율</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300">{(summary.gift_wizard_completion_rate || 0).toFixed(1)}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-emerald-200 dark:bg-emerald-900">
+                  <div className="h-full bg-emerald-600" style={{ width: `${summary.gift_wizard_completion_rate || 0}%` }}></div>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600 dark:text-gray-400">전환율</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300">{(summary.gift_wizard_conversion_rate || 0).toFixed(1)}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="grid gap-6 p-6 md:grid-cols-4">
-          <div className="text-center">
-            <div className="mb-2 text-xs text-gray-600 dark:text-gray-400">평균 상담 시간</div>
-            <div className="mb-3 flex items-center justify-center gap-3">
-              <span className="text-xl text-gray-400 line-through">20분</span>
-              <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">{((summary.remote_control_avg_duration || 0) / 60).toFixed(1)}분</span>
-            </div>
-            <div className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700 dark:bg-green-900 dark:text-green-300">
-              75% ↓
+
+        {/* 실시간 활동 피드 */}
+        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">실시간 활동</h2>
+            <div className="flex items-center gap-1">
+              <div className="h-2 w-2 animate-pulse rounded-full bg-red-500"></div>
+              <span className="text-xs text-gray-500 dark:text-gray-400">LIVE</span>
             </div>
           </div>
 
-          <div className="text-center">
-            <div className="mb-2 text-xs text-gray-600 dark:text-gray-400">챗봇 응답 시간</div>
-            <div className="mb-3 flex items-center justify-center gap-3">
-              <span className="text-xl text-gray-400 line-through">3분</span>
-              <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">{((summary.rag_avg_response_time || 0) / 1000).toFixed(1)}초</span>
+          <div className="space-y-3">
+            <div className="flex gap-3 rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-800 dark:bg-purple-950/20">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-purple-600">
+                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-gray-900 dark:text-white">원격 제어 세션 시작</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">사용자 #1234</p>
+                <p className="mt-1 text-xs text-gray-400">방금 전</p>
+              </div>
             </div>
-            <div className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700 dark:bg-green-900 dark:text-green-300">
-              95% ↑
-            </div>
-          </div>
 
-          <div className="text-center">
-            <div className="mb-2 text-xs text-gray-600 dark:text-gray-400">선물 구매 전환율</div>
-            <div className="mb-3 flex items-center justify-center gap-3">
-              <span className="text-xl text-gray-400 line-through">2%</span>
-              <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">{(summary.gift_wizard_conversion_rate || 0).toFixed(1)}%</span>
+            <div className="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-600">
+                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-gray-900 dark:text-white">AI 챗봇 질문</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">"상품 추천 문의"</p>
+                <p className="mt-1 text-xs text-gray-400">2분 전</p>
+              </div>
             </div>
-            <div className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700 dark:bg-green-900 dark:text-green-300">
-              {(((summary.gift_wizard_conversion_rate || 0) / 2 - 1) * 100).toFixed(0)}% ↑
-            </div>
-          </div>
 
-          <div className="text-center">
-            <div className="mb-2 text-xs text-gray-600 dark:text-gray-400">운영 비용</div>
-            <div className="mb-3 flex items-center justify-center gap-3">
-              <span className="text-xl text-gray-400 line-through">100%</span>
-              <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">40%</span>
+            <div className="flex gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/20">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-600">
+                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-gray-900 dark:text-white">선물 추천 완료</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">3개 추천 생성</p>
+                <p className="mt-1 text-xs text-gray-400">5분 전</p>
+              </div>
             </div>
-            <div className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700 dark:bg-green-900 dark:text-green-300">
-              60% ↓
+
+            <div className="flex gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-600">
+                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-gray-900 dark:text-white">구매 전환 성공</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">₩45,000</p>
+                <p className="mt-1 text-xs text-gray-400">12분 전</p>
+              </div>
             </div>
           </div>
         </div>
