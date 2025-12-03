@@ -682,7 +682,8 @@ async def confirm_order(
             if settings_response.data:
                 settings = settings_response.data[0]
                 if settings.get("point_enabled") and settings.get("point_rate", 0) > 0:
-                    from app.services.points import add_points
+                    from app.services.points import earn_points
+                    from uuid import UUID
                     point_rate = float(settings["point_rate"])
                     # 포인트 사용액을 제외한 실제 결제금액에 대해서만 적립
                     total_amount = order["total"]
@@ -691,10 +692,12 @@ async def confirm_order(
                     points_to_earn = int(earn_amount * point_rate / 100)
 
                     if points_to_earn > 0:
-                        await add_points(
-                            user_id=user_id,
+                        await earn_points(
+                            supabase=supabase,
+                            user_id=UUID(user_id),
                             amount=points_to_earn,
-                            description=f"주문 적립 (주문번호: {order_id[:8]})"
+                            reason=f"주문 적립 (주문번호: {order_id[:8]})",
+                            order_id=UUID(order_id)
                         )
                         print(f"[INFO] 구매확정 포인트 적립: {user_id} - {points_to_earn}P")
 

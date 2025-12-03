@@ -209,12 +209,14 @@ async def register(user_data: UserRegisterRequest):
             if settings_response.data:
                 settings = settings_response.data[0]
                 if settings.get("point_enabled") and settings.get("signup_point", 0) > 0:
-                    from app.services.points import add_points
+                    from app.services.points import earn_points
+                    from uuid import UUID
                     signup_point = settings["signup_point"]
-                    await add_points(
-                        user_id=user_id,
+                    await earn_points(
+                        supabase=supabase_admin,
+                        user_id=UUID(user_id),
                         amount=signup_point,
-                        description="회원가입 축하 포인트"
+                        reason="회원가입 축하 포인트"
                     )
                     print(f"[INFO] 회원가입 포인트 지급: {user_id} - {signup_point}P")
         except Exception as e:
