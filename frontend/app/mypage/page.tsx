@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Product } from '../types';
 import UserInfo from '../components/mypage/UserInfo';
 import Profile from '../components/mypage/Profile';
 import Orders from '../components/mypage/Orders';
@@ -19,29 +18,7 @@ import DeliveryManagement from '../components/mypage/DeliveryManagement';
 import InquiryManagement from '../components/mypage/InquiryManagement';
 import SellerCoupons from '../components/mypage/SellerCoupons';
 import EventManagement from '../components/mypage/EventManagement';
-import VendorAuthGuard from '../components/auth/VendorAuthGuard';
 
-// 임시 더미 데이터 (찜목록)
-const dummyWishList: Product[] = [
-  {
-    id: '2',
-    name: '스마트워치',
-    description: '다양한 기능을 갖춘 스마트워치',
-    price: 250000,
-    category: '전자제품',
-    imageUrl: '/placeholder-product.jpg',
-    stock: 30,
-  },
-  {
-    id: '4',
-    name: '머그컵 세트',
-    description: '모던한 디자인의 머그컵 4개 세트',
-    price: 32000,
-    category: '생활용품',
-    imageUrl: '/placeholder-product.jpg',
-    stock: 100,
-  },
-];
 
 export default function MyPage() {
   const router = useRouter();
@@ -128,7 +105,7 @@ export default function MyPage() {
             {activeTab === 'inquiries' && user?.user_type === 'seller' && <InquiryManagement />}
             {activeTab === 'seller-coupons' && user?.user_type === 'seller' && <SellerCoupons />}
             {activeTab === 'events' && user?.user_type === 'seller' && <EventManagement />}
-            {activeTab === 'wishlist' && user?.user_type !== 'seller' && <Wishlist dummyWishList={dummyWishList} />}
+            {activeTab === 'wishlist' && user?.user_type !== 'seller' && <Wishlist />}
             {activeTab === 'recent' && user?.user_type !== 'seller' && <RecentProducts />}
             {activeTab === 'inquiry' && <Inquiry />}
             {activeTab === 'subscription' && <Subscription user={user} />}

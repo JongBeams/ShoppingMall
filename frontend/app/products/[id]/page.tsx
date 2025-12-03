@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Button from '@/app/components/common/Button';
 import { Product } from '@/app/types';
-import { productAPI, cartAPI } from '@/app/lib/api';
+import { productAPI, cartAPI, wishlistAPI } from '@/app/lib/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -48,6 +48,9 @@ export default function ProductDetailPage() {
   const [aiSummary, setAiSummary] = useState<string>('');
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const [showAiSummary, setShowAiSummary] = useState(false);
+  // 찜 상태 state
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   // RAG Analytics - 검색에서 상품 클릭 추적
   useEffect(() => {
@@ -210,6 +213,60 @@ export default function ProductDetailPage() {
       mounted = false;
     };
   }, [productId]);
+
+  // 찜 상태 확인
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token || !productId) return;
+
+      try {
+        const status = await wishlistAPI.checkWishlistStatus(productId, token);
+        setIsWishlisted(status.is_wishlisted);
+      } catch (err) {
+        console.error('찜 상태 확인 실패:', err);
+      }
+    };
+
+    checkWishlistStatus();
+  }, [productId]);
+
+  // 찜하기 토글 함수
+  const handleToggleWishlist = async () => {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+      alert('로그인이 필요한 서비스입니다.');
+      router.push('/login');
+      return;
+    }
+
+    if (!productId) {
+      alert('상품 정보를 불러올 수 없습니다.');
+      return;
+    }
+
+    setWishlistLoading(true);
+
+    try {
+      if (isWishlisted) {
+        // 찜 해제
+        await wishlistAPI.removeFromWishlist(productId, token);
+        setIsWishlisted(false);
+        alert('찜 목록에서 삭제되었습니다.');
+      } else {
+        // 찜 추가
+        await wishlistAPI.addToWishlist(productId, token);
+        setIsWishlisted(true);
+        alert('찜 목록에 추가되었습니다.');
+      }
+    } catch (err: any) {
+      console.error('찜하기 실패:', err);
+      alert(err.message || '찜하기에 실패했습니다.');
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
 
   // AI 리뷰 요약 생성 함수
   const generateAiSummary = async () => {
@@ -610,6 +667,35 @@ export default function ProductDetailPage() {
               >
                 바로 구매
               </Button>
+              <Button
+                onClick={handleToggleWishlist}
+                variant="outline"
+                className="text-xs px-6 flex items-center gap-2"
+                disabled={wishlistLoading}
+              >
+                {wishlistLoading ? (
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg
+                    className="h-4 w-4"
+                    fill={isWishlisted ? "currentColor" : "none"}
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"
+                    />
+                  </svg>
+                )}
+                {isWishlisted ? '찜 해제' : '찜 하기'}
+              </Button>
+
             </div>
 
             {/* 상품 정보 */}

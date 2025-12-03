@@ -533,3 +533,47 @@ export const pointApi = {
     return response.json();
   },
 };
+
+
+//찜 목록 관련
+export const wishlistAPI = {
+  // 찜 목록 조회
+  getWishlist: async (token: string) => {
+    return fetchAPI('/wishlist', {
+      method: 'GET',
+      token,
+    });
+  },
+
+  // 찜 상태 확인
+  checkWishlistStatus: async (productId: string, token: string) => {
+    return fetchAPI(`/wishlist/check/${productId}`, {
+      method: 'GET',
+      token,
+    });
+  },
+
+  // 찜 추가
+  addToWishlist: async (productId: string, token: string) => {
+    return fetchAPI(`/wishlist/${productId}`, {
+      method: 'POST',
+      token,
+    });
+  },
+
+  // 찜 삭제
+  removeFromWishlist: async (productId: string, token: string) => {
+    return fetchAPI(`/wishlist/${productId}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+
+  // 찜 목록 전체 비우기
+  clearWishlist: async (token: string) => {
+    return fetchAPI('/wishlist', {
+      method: 'DELETE',
+      token,
+    });
+  },
+};
