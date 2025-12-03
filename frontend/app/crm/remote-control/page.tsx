@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 export default function RemoteControlPage() {
   const searchParams = useSearchParams();
@@ -15,6 +16,8 @@ export default function RemoteControlPage() {
   const ws = useRef<WebSocket | null>(null);
   const screenRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const sessionStartTime = useRef<number>(Date.now());
+  const [clickCount, setClickCount] = useState(0);
 
   useEffect(() => {
     if (!roomId) return;
@@ -25,6 +28,7 @@ export default function RemoteControlPage() {
     websocket.onopen = () => {
       console.log('✅ 원격 제어 WebSocket 연결됨');
       setIsConnected(true);
+      sessionStartTime.current = Date.now();
     };
 
     websocket.onmessage = (event) => {
@@ -47,6 +51,18 @@ export default function RemoteControlPage() {
     websocket.onclose = () => {
       console.log('❌ WebSocket 연결 종료');
       setIsConnected(false);
+
+      // Analytics 기록
+      const durationSeconds = Math.floor((Date.now() - sessionStartTime.current) / 1000);
+      fetch(`${API_BASE_URL}/analytics/remote-control`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          duration_seconds: durationSeconds,
+          success: clickCount > 0, // 클릭이 있었으면 성공으로 간주
+          user_satisfaction: 4 // 기본값
+        })
+      }).catch(err => console.error('Analytics 기록 실패:', err));
     };
 
     ws.current = websocket;
@@ -54,7 +70,7 @@ export default function RemoteControlPage() {
     return () => {
       websocket.close();
     };
-  }, [roomId]);
+  }, [roomId, clickCount]);
 
   // 화면 클릭 처리
   const handleScreenClick = (e: React.MouseEvent<HTMLImageElement>) => {
@@ -77,6 +93,7 @@ export default function RemoteControlPage() {
       y: y
     }));
 
+    setClickCount(prev => prev + 1);
     console.log('🖱️ 원격 클릭 전송:', x, y);
   };
 

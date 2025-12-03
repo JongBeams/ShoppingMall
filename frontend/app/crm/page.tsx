@@ -376,7 +376,7 @@ export default function CRMPage() {
         {/* 건의함 대기 */}
         <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">건의함 대기</h2>
+            <h2 className="whitespace-nowrap text-base font-bold text-gray-900 dark:text-white">건의함 대기</h2>
             <Link href="/crm/inquiries?status=pending" className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400">
               +
             </Link>
@@ -389,10 +389,10 @@ export default function CRMPage() {
                   href={`/crm/inquiries?id=${inquiry.id}`}
                   className="group flex items-center justify-between border-b border-gray-100 pb-3 last:border-b-0 dark:border-gray-800"
                 >
-                  <div>
+                  <div className="flex-1 overflow-hidden">
                     <div className="mb-1 flex items-center gap-2">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">[{inquiry.category}]</span>
-                      <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                      <span className="flex-shrink-0 text-xs text-gray-500 dark:text-gray-400">[{inquiry.category}]</span>
+                      <h3 className="truncate text-sm font-medium text-gray-900 dark:text-white">
                         {inquiry.title}
                       </h3>
                     </div>
