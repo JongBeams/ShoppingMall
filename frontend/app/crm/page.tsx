@@ -197,7 +197,7 @@ export default function CRMPage() {
           <div className="grid grid-cols-3 gap-4 sm:grid-cols-5 md:grid-cols-10">
             {[
               {
-                name: '📊 성과 대시보드',
+                name: '대시보드',
                 href: '/crm/analytics',
                 icon: (
                   <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -373,10 +373,10 @@ export default function CRMPage() {
           </div>
         </div>
 
-        {/* 건의하기 대기 */}
+        {/* 건의함 대기 */}
         <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">건의하기 대기</h2>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">건의함 대기</h2>
             <Link href="/crm/inquiries?status=pending" className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400">
               +
             </Link>

@@ -254,3 +254,49 @@ async def get_rag_trend(days: int = 30, admin_user: dict = Depends(get_current_a
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/gift-wizard/trend")
+async def get_gift_wizard_trend(days: int = 30, admin_user: dict = Depends(get_current_admin)):
+    """선물 마법사 추세 조회"""
+    try:
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+
+        data = supabase.table('gift_wizard_metrics')\
+            .select('*')\
+            .gte('timestamp', start_date.isoformat())\
+            .order('timestamp')\
+            .execute()
+
+        # 일별 그룹화
+        daily_stats = {}
+        for session in data.data:
+            date_key = session['timestamp'][:10]
+            if date_key not in daily_stats:
+                daily_stats[date_key] = {
+                    'date': date_key,
+                    'sessions': 0,
+                    'completed': 0,
+                    'conversions': 0
+                }
+            daily_stats[date_key]['sessions'] += 1
+            if session['completed']:
+                daily_stats[date_key]['completed'] += 1
+            if session.get('purchased'):
+                daily_stats[date_key]['conversions'] += 1
+
+        # 평균 계산
+        trend_data = []
+        for date_key, stats in sorted(daily_stats.items()):
+            trend_data.append({
+                'date': stats['date'],
+                'sessions': stats['sessions'],
+                'completion_rate': round(stats['completed'] / stats['sessions'] * 100, 1),
+                'conversion_rate': round(stats['conversions'] / stats['sessions'] * 100, 1)
+            })
+
+        return {"trend": trend_data}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -562,42 +562,6 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </section>
-
-      {/* 기술 스택 */}
-      <section className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-        <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">기술 스택 하이라이트</h2>
-        </div>
-        <div className="grid gap-4 p-6 md:grid-cols-3">
-          <div className="border-l-4 border-purple-600 bg-gradient-to-r from-purple-50 to-transparent p-4 dark:from-purple-950/20">
-            <h3 className="mb-2 text-sm font-bold text-gray-900 dark:text-white">실시간 원격 제어</h3>
-            <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-              <div>• WebRTC P2P 화면 공유</div>
-              <div>• WebSocket 시그널링</div>
-              <div>• DOM 이벤트 재현</div>
-              <div>• STUN 서버 NAT 통과</div>
-            </div>
-          </div>
-          <div className="border-l-4 border-blue-600 bg-gradient-to-r from-blue-50 to-transparent p-4 dark:from-blue-950/20">
-            <h3 className="mb-2 text-sm font-bold text-gray-900 dark:text-white">RAG AI 챗봇</h3>
-            <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-              <div>• BAAI/bge-m3 임베딩</div>
-              <div>• Supabase pgvector</div>
-              <div>• 코사인 유사도 검색</div>
-              <div>• Ollama LLM 통합</div>
-            </div>
-          </div>
-          <div className="border-l-4 border-orange-600 bg-gradient-to-r from-orange-50 to-transparent p-4 dark:from-orange-950/20">
-            <h3 className="mb-2 text-sm font-bold text-gray-900 dark:text-white">AI 선물 마법사</h3>
-            <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-              <div>• 다단계 필터링 알고리즘</div>
-              <div>• LLM 추천 생성</div>
-              <div>• 감성 메시지 3가지 톤</div>
-              <div>• 선물 히스토리 관리</div>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
