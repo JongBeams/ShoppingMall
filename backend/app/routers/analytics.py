@@ -420,3 +420,164 @@ async def get_orders_trend(days: int = 30, admin_user: dict = Depends(get_curren
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sales/statistics")
+async def get_sales_statistics(admin_user: dict = Depends(get_current_admin)):
+    """매출 통계 조회 (관리자용)"""
+    try:
+        now = datetime.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        year_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        # 오늘 매출 및 주문
+        today_orders = supabase.table('orders')\
+            .select('total, created_at, id')\
+            .gte('created_at', today_start.isoformat())\
+            .in_('status', ['paid', 'confirmed', 'shipping', 'delivered'])\
+            .execute()
+
+        today_sales = sum(order['total'] for order in today_orders.data)
+        today_orders_count = len(today_orders.data)
+
+        # 어제 매출 (전일 대비 계산용)
+        yesterday_start = (today_start - timedelta(days=1))
+        yesterday_end = today_start
+        yesterday_orders = supabase.table('orders')\
+            .select('total')\
+            .gte('created_at', yesterday_start.isoformat())\
+            .lt('created_at', yesterday_end.isoformat())\
+            .in_('status', ['paid', 'confirmed', 'shipping', 'delivered'])\
+            .execute()
+
+        yesterday_sales = sum(order['total'] for order in yesterday_orders.data)
+        yesterday_orders_count = len(yesterday_orders.data)
+
+        # 이번 달 매출 및 주문
+        month_orders = supabase.table('orders')\
+            .select('total, id')\
+            .gte('created_at', month_start.isoformat())\
+            .in_('status', ['paid', 'confirmed', 'shipping', 'delivered'])\
+            .execute()
+
+        month_sales = sum(order['total'] for order in month_orders.data)
+        month_orders_count = len(month_orders.data)
+
+        # 지난달 매출 (전월 대비 계산용)
+        if month_start.month == 1:
+            last_month_start = month_start.replace(year=month_start.year - 1, month=12)
+        else:
+            last_month_start = month_start.replace(month=month_start.month - 1)
+
+        last_month_orders = supabase.table('orders')\
+            .select('total')\
+            .gte('created_at', last_month_start.isoformat())\
+            .lt('created_at', month_start.isoformat())\
+            .in_('status', ['paid', 'confirmed', 'shipping', 'delivered'])\
+            .execute()
+
+        last_month_sales = sum(order['total'] for order in last_month_orders.data)
+        last_month_orders_count = len(last_month_orders.data)
+
+        # 올해 매출
+        year_orders = supabase.table('orders')\
+            .select('total')\
+            .gte('created_at', year_start.isoformat())\
+            .in_('status', ['paid', 'confirmed', 'shipping', 'delivered'])\
+            .execute()
+
+        year_sales = sum(order['total'] for order in year_orders.data)
+
+        # 작년 매출 (전년 대비 계산용)
+        last_year_start = year_start.replace(year=year_start.year - 1)
+        last_year_end = year_start
+        last_year_orders = supabase.table('orders')\
+            .select('total')\
+            .gte('created_at', last_year_start.isoformat())\
+            .lt('created_at', last_year_end.isoformat())\
+            .in_('status', ['paid', 'confirmed', 'shipping', 'delivered'])\
+            .execute()
+
+        last_year_sales = sum(order['total'] for order in last_year_orders.data)
+
+        # 평균 주문 금액
+        average_order_value = month_sales / month_orders_count if month_orders_count > 0 else 0
+
+        # 월별 매출 (올해 1월~12월)
+        monthly_sales = []
+        for month_num in range(1, 13):
+            month_date = now.replace(month=month_num, day=1, hour=0, minute=0, second=0, microsecond=0)
+            if month_num == 12:
+                next_month_date = month_date.replace(year=month_date.year + 1, month=1)
+            else:
+                next_month_date = month_date.replace(month=month_num + 1)
+
+            month_data = supabase.table('orders')\
+                .select('total')\
+                .gte('created_at', month_date.isoformat())\
+                .lt('created_at', next_month_date.isoformat())\
+                .in_('status', ['paid', 'confirmed', 'shipping', 'delivered'])\
+                .execute()
+
+            sales = sum(order['total'] for order in month_data.data)
+            monthly_sales.append({
+                'month': f"{month_num}월",
+                'sales': sales
+            })
+
+        # 인기 상품 TOP 5 (이번 달 기준)
+        month_order_items = supabase.table('order_items')\
+            .select('product_id, product_name, quantity, price, order_id')\
+            .execute()
+
+        # 이번 달 주문 ID 목록
+        month_order_ids = [order['id'] for order in month_orders.data]
+
+        # 상품별 판매 통계
+        product_stats = {}
+        for item in month_order_items.data:
+            if item['order_id'] in month_order_ids:
+                product_id = item['product_id']
+                if product_id not in product_stats:
+                    product_stats[product_id] = {
+                        'name': item['product_name'],
+                        'count': 0,
+                        'sales': 0
+                    }
+                product_stats[product_id]['count'] += item['quantity']
+                product_stats[product_id]['sales'] += item['price'] * item['quantity']
+
+        # 매출액 기준 상위 5개
+        top_products = sorted(product_stats.values(), key=lambda x: x['sales'], reverse=True)[:5]
+
+        # 증감률 계산
+        today_sales_change = ((today_sales - yesterday_sales) / yesterday_sales * 100) if yesterday_sales > 0 else 0
+        month_sales_change = ((month_sales - last_month_sales) / last_month_sales * 100) if last_month_sales > 0 else 0
+        year_sales_change = ((year_sales - last_year_sales) / last_year_sales * 100) if last_year_sales > 0 else 0
+        today_orders_change = ((today_orders_count - yesterday_orders_count) / yesterday_orders_count * 100) if yesterday_orders_count > 0 else 0
+        month_orders_change = ((month_orders_count - last_month_orders_count) / last_month_orders_count * 100) if last_month_orders_count > 0 else 0
+
+        # 지난달 평균 주문 금액
+        last_month_avg = last_month_sales / last_month_orders_count if last_month_orders_count > 0 else 0
+        avg_order_change = ((average_order_value - last_month_avg) / last_month_avg * 100) if last_month_avg > 0 else 0
+
+        return {
+            "today_sales": today_sales,
+            "today_sales_change": round(today_sales_change, 1),
+            "month_sales": month_sales,
+            "month_sales_change": round(month_sales_change, 1),
+            "year_sales": year_sales,
+            "year_sales_change": round(year_sales_change, 1),
+            "today_orders": today_orders_count,
+            "today_orders_change": round(today_orders_change, 1),
+            "month_orders": month_orders_count,
+            "month_orders_change": round(month_orders_change, 1),
+            "average_order_value": average_order_value,
+            "average_order_value_change": round(avg_order_change, 1),
+            "monthly_sales": monthly_sales,
+            "top_products": top_products
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

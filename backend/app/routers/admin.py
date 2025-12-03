@@ -728,6 +728,7 @@ class SystemSettingsResponse(BaseModel):
     payment_phone: bool
     # 배송 설정
     delivery_fee: int
+    free_delivery_threshold: int
     # 포인트 설정
     point_enabled: bool
     point_rate: float

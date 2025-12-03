@@ -624,6 +624,101 @@ class UpdateOrderStatusRequest(BaseModel):
     status: str  # paid, preparing, shipping, delivered, cancelled
 
 
+@router.post("/{order_id}/confirm", summary="[구매자] 구매확정")
+async def confirm_order(
+    order_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    구매자가 배송완료된 주문을 구매확정합니다.
+    구매확정 시 포인트가 적립됩니다.
+    """
+    supabase = get_supabase_admin_client()
+    user_id = current_user["id"]
+
+    try:
+        # 주문 조회 및 권한 확인
+        order_response = (
+            supabase.table("orders")
+            .select("id, buyer_id, status, total, points_used")
+            .eq("id", order_id)
+            .single()
+            .execute()
+        )
+
+        if not order_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="주문을 찾을 수 없습니다."
+            )
+
+        order = order_response.data
+
+        # 본인 주문 확인
+        if order["buyer_id"] != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="본인의 주문만 확정할 수 있습니다."
+            )
+
+        # 배송완료 상태 확인
+        if order["status"] != "delivered":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="배송완료된 주문만 구매확정할 수 있습니다."
+            )
+
+        # 구매확정 처리
+        update_data = {
+            "status": "confirmed",
+            "confirmed_at": datetime.now().isoformat()
+        }
+
+        supabase.table("orders").update(update_data).eq("id", order_id).execute()
+
+        # 포인트 적립 (시스템 설정에서 조회)
+        try:
+            settings_response = supabase.table("crm_system_settings").select("point_enabled, point_rate").limit(1).execute()
+            if settings_response.data:
+                settings = settings_response.data[0]
+                if settings.get("point_enabled") and settings.get("point_rate", 0) > 0:
+                    from app.services.points import add_points
+                    point_rate = float(settings["point_rate"])
+                    # 포인트 사용액을 제외한 실제 결제금액에 대해서만 적립
+                    total_amount = order["total"]
+                    points_used = order.get("points_used", 0)
+                    earn_amount = total_amount - points_used
+                    points_to_earn = int(earn_amount * point_rate / 100)
+
+                    if points_to_earn > 0:
+                        await add_points(
+                            user_id=user_id,
+                            amount=points_to_earn,
+                            description=f"주문 적립 (주문번호: {order_id[:8]})"
+                        )
+                        print(f"[INFO] 구매확정 포인트 적립: {user_id} - {points_to_earn}P")
+
+                        return {
+                            "message": "구매가 확정되었습니다.",
+                            "points_earned": points_to_earn
+                        }
+        except Exception as e:
+            print(f"[WARNING] 구매확정 포인트 적립 실패 (무시): {str(e)}")
+
+        return {
+            "message": "구매가 확정되었습니다.",
+            "points_earned": 0
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"구매확정 처리 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
 @router.patch("/{order_id}/status", summary="[관리자] 주문 상태 변경")
 async def update_order_status_admin(
     order_id: str,
@@ -634,7 +729,7 @@ async def update_order_status_admin(
     """
     supabase = get_supabase_admin_client()
 
-    valid_statuses = ["paid", "shipping", "delivered", "cancelled"]
+    valid_statuses = ["paid", "shipping", "delivered", "confirmed", "cancelled"]
     if request.status not in valid_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -690,44 +785,6 @@ async def update_order_status_admin(
                     supabase.table("products").update(
                         {"stock_quantity": new_stock}
                     ).eq("id", item["product_id"]).execute()
-
-        # 배송완료 시 포인트 적립 (시스템 설정에서 조회)
-        if request.status == "delivered" and old_status != "delivered":
-            try:
-                # 주문 정보 조회
-                order_full = (
-                    supabase.table("orders")
-                    .select("user_id, final_amount, points_used")
-                    .eq("id", order_id)
-                    .single()
-                    .execute()
-                )
-
-                if order_full.data:
-                    user_id = order_full.data["user_id"]
-                    final_amount = order_full.data["final_amount"]
-                    points_used = order_full.data.get("points_used", 0)
-
-                    # 시스템 설정에서 포인트 정책 조회
-                    settings_response = supabase.table("crm_system_settings").select("point_enabled, point_rate").limit(1).execute()
-                    if settings_response.data:
-                        settings = settings_response.data[0]
-                        if settings.get("point_enabled") and settings.get("point_rate", 0) > 0:
-                            from app.services.points import add_points
-                            point_rate = float(settings["point_rate"])
-                            # 포인트 사용액을 제외한 실제 결제금액에 대해서만 적립
-                            earn_amount = final_amount - points_used
-                            points_to_earn = int(earn_amount * point_rate / 100)
-
-                            if points_to_earn > 0:
-                                await add_points(
-                                    user_id=user_id,
-                                    amount=points_to_earn,
-                                    description=f"주문 적립 (주문번호: {order_id[:8]})"
-                                )
-                                print(f"[INFO] 구매확정 포인트 적립: {user_id} - {points_to_earn}P")
-            except Exception as e:
-                print(f"[WARNING] 구매확정 포인트 적립 실패 (무시): {str(e)}")
 
         supabase.table("orders").update(update_data).eq("id", order_id).execute()
 

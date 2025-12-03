@@ -83,7 +83,8 @@ export default function Orders({ user }: OrdersProps) {
       paid: { label: '주문완료', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' },
       preparing: { label: '주문완료', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' },
       shipping: { label: '배송중', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' },
-      delivered: { label: '배송완료', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
+      delivered: { label: '배송완료', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300' },
+      confirmed: { label: '구매확정', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' },
       cancelled: { label: '주문취소', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300' },
     };
     return statusMap[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
@@ -113,6 +114,38 @@ export default function Orders({ user }: OrdersProps) {
     } catch (error) {
       console.error('주문 취소 실패:', error);
       alert('주문 취소 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleConfirmOrder = async (orderId: string) => {
+    if (!confirm('구매를 확정하시겠습니까? 확정 시 포인트가 적립됩니다.')) return;
+
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders/${orderId}/confirm`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.points_earned > 0) {
+          alert(`구매가 확정되었습니다! ${data.points_earned}P가 적립되었습니다.`);
+        } else {
+          alert('구매가 확정되었습니다!');
+        }
+        fetchOrders();
+      } else {
+        const error = await response.json();
+        alert(error.detail || '구매확정에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('구매확정 실패:', error);
+      alert('구매확정 중 오류가 발생했습니다.');
     }
   };
 
@@ -236,7 +269,7 @@ export default function Orders({ user }: OrdersProps) {
                       <p className="text-sm font-bold text-gray-900 dark:text-white">
                         {Math.floor(item.subtotal || (item.price * item.quantity) || 0).toLocaleString()}원
                       </p>
-                      {order.status === 'delivered' && user?.user_type !== 'seller' && (
+                      {(order.status === 'delivered' || order.status === 'confirmed') && user?.user_type !== 'seller' && (
                         writtenReviewProductIds.has(item.product_id) ? (
                           <span className="mt-2 inline-block border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
                             리뷰작성완료
@@ -292,13 +325,21 @@ export default function Orders({ user }: OrdersProps) {
                     주문취소
                   </button>
                 )}
-                {order.status === 'delivered' && (
-                  <button
-                    onClick={() => alert('교환/반품 신청 기능은 준비중입니다.')}
-                    className="border border-gray-300 px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    교환/반품
-                  </button>
+                {order.status === 'delivered' && user?.user_type !== 'seller' && (
+                  <>
+                    <button
+                      onClick={() => handleConfirmOrder(order.id)}
+                      className="border border-purple-500 bg-purple-500 px-4 py-2 text-xs font-bold text-white transition hover:bg-purple-600"
+                    >
+                      구매확정
+                    </button>
+                    <button
+                      onClick={() => alert('교환/반품 신청 기능은 준비중입니다.')}
+                      className="border border-gray-300 px-4 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                    >
+                      교환/반품
+                    </button>
+                  </>
                 )}
               </div>
             </div>

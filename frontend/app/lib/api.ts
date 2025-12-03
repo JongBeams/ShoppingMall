@@ -336,6 +336,13 @@ export const adminAPI = {
       method: 'GET',
       token,
     }),
+
+  // 매출 통계 조회
+  getSalesStatistics: (token: string) =>
+    fetchAPI('/analytics/sales/statistics', {
+      method: 'GET',
+      token,
+    }),
 };
 
 
