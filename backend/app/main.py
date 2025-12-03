@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 load_dotenv()
 
 # Routers
-from app.routers import auth, admin, product, vendor, notice, faq, inquiry, chat, cart, documents, orders, reviews, payment, gift_wizard, subscriptions, points
+from app.routers import auth, admin, product, vendor, notice, faq, inquiry, chat, cart, documents, orders, reviews, payment, gift_wizard, subscriptions, points, analytics
 
 # Scheduler
 from app.services.scheduler import start_scheduler, stop_scheduler
@@ -22,16 +22,16 @@ async def lifespan(app: FastAPI):
     - 종료 시: 스케줄러 중지
     """
     # 시작
-    print("🚀 애플리케이션 시작 중...")
+    print("[STARTUP] Application starting...")
     start_scheduler()
-    print("✅ 스케줄러 시작 완료")
+    print("[STARTUP] Scheduler started")
 
     yield
 
     # 종료
-    print("🛑 애플리케이션 종료 중...")
+    print("[SHUTDOWN] Application shutting down...")
     stop_scheduler()
-    print("✅ 스케줄러 중지 완료")
+    print("[SHUTDOWN] Scheduler stopped")
 
 
 app = FastAPI(title="ShoppingMall API", version="1.0.0", lifespan=lifespan)
@@ -63,6 +63,7 @@ app.include_router(payment.router)
 app.include_router(gift_wizard.router)
 app.include_router(subscriptions.router)
 app.include_router(points.router)
+app.include_router(analytics.router)
 
 @app.get("/")
 async def root():

@@ -335,8 +335,16 @@ export default function Header() {
     {
       name: '대시보드',
       href: '/crm',
-      submenu: [],
-      rightLinks: []
+      submenu: [
+        { name: '📊 성과 대시보드', href: '/crm/analytics', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=200&q=80' },
+        { name: '📈 매출 통계', href: '/crm/sales', image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=200&q=80' },
+        { name: '👥 회원 현황', href: '/crm/users', image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=200&q=80' },
+        { name: '📦 주문 현황', href: '/crm/orders', image: 'https://images.unsplash.com/photo-1578574577315-3fbeb0cecdc2?w=200&q=80' },
+      ],
+      rightLinks: [
+        { name: 'CRM 홈', href: '/crm' },
+        { name: '실시간 모니터링', href: '/crm/monitoring' },
+      ]
     },
     {
       name: '회원 관리',

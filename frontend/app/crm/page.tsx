@@ -194,8 +194,18 @@ export default function CRMPage() {
       {/* Quick Menu - App Icon Style */}
       <section className="mt-3 bg-white py-8 dark:bg-gray-900">
         <div className="mx-auto max-w-6xl px-4">
-          <div className="grid grid-cols-3 gap-4 sm:grid-cols-5 md:grid-cols-9">
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-5 md:grid-cols-10">
             {[
+              {
+                name: '📊 성과 대시보드',
+                href: '/crm/analytics',
+                icon: (
+                  <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                ),
+                gradient: 'from-gradient-to-r from-purple-500 to-pink-600'
+              },
               {
                 name: '회원관리',
                 href: '/crm/users',
