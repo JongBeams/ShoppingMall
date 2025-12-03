@@ -3,6 +3,22 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CRMLayout from '../components/CRMLayout';
+import { productAPI } from '@/app/lib/api';
+
+interface Product {
+  id: string;
+  name: string;
+  vendor_id?: string;
+  vendor_name?: string;
+  category?: string;
+  category_slug?: string;
+  price: number;
+  stock_quantity: number;
+  status?: string;
+  is_active?: boolean;
+  created_at?: string;
+  image_url?: string;
+}
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -10,110 +26,7 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-
-  // 가짜 상품 데이터
-  const [products] = useState([
-    {
-      id: 'PRD-2025-001250',
-      name: '프리미엄 유기농 쌀 10kg',
-      storeName: 'OO농장',
-      category: '농산물',
-      price: 45000,
-      stock: 150,
-      status: 'active',
-      registeredAt: '2025-11-15 14:30',
-    },
-    {
-      id: 'PRD-2025-001249',
-      name: '제주 흑돼지 삼겹살 1kg',
-      storeName: '정육점',
-      category: '축산물',
-      price: 28000,
-      stock: 85,
-      status: 'active',
-      registeredAt: '2025-11-14 10:20',
-    },
-    {
-      id: 'PRD-2025-001248',
-      name: '친환경 사과 5kg',
-      storeName: 'OO농장',
-      category: '과일',
-      price: 32000,
-      stock: 0,
-      status: 'out_of_stock',
-      registeredAt: '2025-11-13 16:45',
-    },
-    {
-      id: 'PRD-2025-001247',
-      name: '제주 한라봉 3kg',
-      storeName: '제주특산물',
-      category: '과일',
-      price: 38000,
-      stock: 200,
-      status: 'active',
-      registeredAt: '2025-11-12 09:15',
-    },
-    {
-      id: 'PRD-2025-001246',
-      name: '국내산 한우 등심 500g',
-      storeName: '정육점',
-      category: '축산물',
-      price: 55000,
-      stock: 45,
-      status: 'active',
-      registeredAt: '2025-11-11 11:30',
-    },
-    {
-      id: 'PRD-2025-001245',
-      name: '유기농 토마토 2kg',
-      storeName: 'OO농장',
-      category: '채소',
-      price: 18000,
-      stock: 120,
-      status: 'active',
-      registeredAt: '2025-11-10 14:00',
-    },
-    {
-      id: 'PRD-2025-001244',
-      name: '신선한 고등어 10마리',
-      storeName: '신선마켓',
-      category: '수산물',
-      price: 25000,
-      stock: 30,
-      status: 'active',
-      registeredAt: '2025-11-09 08:45',
-    },
-    {
-      id: 'PRD-2025-001243',
-      name: '무농약 배추 1포기',
-      storeName: 'OO농장',
-      category: '채소',
-      price: 5000,
-      stock: 0,
-      status: 'inactive',
-      registeredAt: '2025-11-08 15:20',
-    },
-    {
-      id: 'PRD-2025-001242',
-      name: '제주 갈치 5마리',
-      storeName: '신선마켓',
-      category: '수산물',
-      price: 42000,
-      stock: 60,
-      status: 'active',
-      registeredAt: '2025-11-07 10:10',
-    },
-    {
-      id: 'PRD-2025-001241',
-      name: '찰보리쌀 5kg',
-      storeName: 'OO농장',
-      category: '농산물',
-      price: 22000,
-      stock: 95,
-      status: 'active',
-      registeredAt: '2025-11-06 13:50',
-    },
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     const adminToken = localStorage.getItem('admin_token');
@@ -121,8 +34,22 @@ export default function ProductsPage() {
       router.push('/crm/login');
       return;
     }
-    setIsLoading(false);
+    fetchProducts();
   }, [router]);
+
+  const fetchProducts = async () => {
+    setIsLoading(true);
+    try {
+      const data = await productAPI.getAll();
+      console.log('Products data:', data.products); // 디버깅용
+      setProducts(data.products || []);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      setProducts([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; color: string }> = {
@@ -148,14 +75,56 @@ export default function ProductsPage() {
     );
   };
 
+  const getProductStatus = (product: Product) => {
+    if (product.stock_quantity === 0) return 'out_of_stock';
+    if (product.is_active === false) return 'inactive';
+    return 'active';
+  };
+
+  const categoryMap: Record<string, string> = {
+    'electronics': '가전/디지털',
+    'fashion': '패션',
+    'beauty': '뷰티',
+    'living': '생활/건강',
+    'food': '식품',
+    'sports': '스포츠',
+    'books': '도서',
+    'baby': '완구',
+  };
+
+  const getCategoryName = (categorySlug?: string) => {
+    return categorySlug ? categoryMap[categorySlug] || categorySlug : '미분류';
+  };
+
+  // 실제 등록된 상품들의 카테고리 목록 추출
+  const availableCategories = Array.from(
+    new Set(
+      products
+        .map((p) => p.category_slug)
+        .filter((slug): slug is string => !!slug)
+    )
+  ).map((slug) => ({
+    slug,
+    name: getCategoryName(slug),
+  }));
+
   const filteredProducts = products.filter((product) => {
+    const vendorName = product.vendor_name || '';
+    const category = product.category || product.category_slug || '';
     const matchesSearch =
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.storeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      category.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
-    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
+
+    const productStatus = getProductStatus(product);
+    const matchesStatus = statusFilter === 'all' || productStatus === statusFilter;
+
+    const categoryName = getCategoryName(product.category_slug);
+    const matchesCategory = categoryFilter === 'all' ||
+                           categoryName === categoryFilter ||
+                           product.category === categoryFilter ||
+                           product.category_slug === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
@@ -256,56 +225,19 @@ export default function ProductsPage() {
             >
               전체 카테고리
             </button>
-            <button
-              onClick={() => setCategoryFilter('농산물')}
-              className={`px-3 py-1.5 text-xs font-medium transition ${
-                categoryFilter === '농산물'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
-              }`}
-            >
-              농산물
-            </button>
-            <button
-              onClick={() => setCategoryFilter('축산물')}
-              className={`px-3 py-1.5 text-xs font-medium transition ${
-                categoryFilter === '축산물'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
-              }`}
-            >
-              축산물
-            </button>
-            <button
-              onClick={() => setCategoryFilter('수산물')}
-              className={`px-3 py-1.5 text-xs font-medium transition ${
-                categoryFilter === '수산물'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
-              }`}
-            >
-              수산물
-            </button>
-            <button
-              onClick={() => setCategoryFilter('과일')}
-              className={`px-3 py-1.5 text-xs font-medium transition ${
-                categoryFilter === '과일'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
-              }`}
-            >
-              과일
-            </button>
-            <button
-              onClick={() => setCategoryFilter('채소')}
-              className={`px-3 py-1.5 text-xs font-medium transition ${
-                categoryFilter === '채소'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
-              }`}
-            >
-              채소
-            </button>
+            {availableCategories.map((category) => (
+              <button
+                key={category.slug}
+                onClick={() => setCategoryFilter(category.name)}
+                className={`px-3 py-1.5 text-xs font-medium transition ${
+                  categoryFilter === category.name
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                    : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
+                }`}
+              >
+                {category.name}
+              </button>
+            ))}
           </div>
         </section>
 
@@ -321,75 +253,88 @@ export default function ProductsPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         상품번호
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         상품명
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         가맹점
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         카테고리
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
                         가격
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
                         재고
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         상태
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         등록일시
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <th className="whitespace-nowrap px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
                         관리
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredProducts.map((product) => (
-                      <tr
-                        key={product.id}
-                        className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
-                      >
-                        <td className="px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
-                          {product.id}
-                        </td>
-                        <td className="px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
-                          {product.name}
-                        </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                          {product.storeName}
-                        </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                          {product.category}
-                        </td>
-                        <td className="px-3 py-3 text-right text-xs font-medium text-gray-900 dark:text-white">
-                          {product.price.toLocaleString()}원
-                        </td>
-                        <td className="px-3 py-3 text-right text-xs text-gray-600 dark:text-gray-400">
-                          {product.stock.toLocaleString()}개
-                        </td>
-                        <td className="px-3 py-3">{getStatusBadge(product.status)}</td>
-                        <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                          {product.registeredAt}
-                        </td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <button className="border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                              상세
-                            </button>
-                            <button className="border border-gray-900 bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
-                              수정
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredProducts.map((product) => {
+                      const productStatus = getProductStatus(product);
+                      const formattedDate = product.created_at
+                        ? new Date(product.created_at).toLocaleString('ko-KR', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : '-';
+
+                      return (
+                        <tr
+                          key={product.id}
+                          className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
+                        >
+                          <td className="px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
+                            {product.id}
+                          </td>
+                          <td className="px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
+                            {product.name}
+                          </td>
+                          <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                            {product.vendor_name || '-'}
+                          </td>
+                          <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                            {getCategoryName(product.category_slug)}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 text-right text-xs font-medium text-gray-900 dark:text-white">
+                            {product.price.toLocaleString()}원
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 text-right text-xs text-gray-600 dark:text-gray-400">
+                            {product.stock_quantity.toLocaleString()}개
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3">{getStatusBadge(productStatus)}</td>
+                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                            {formattedDate}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3">
+                            <div className="flex items-center justify-end gap-2">
+                              <button className="border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                                상세
+                              </button>
+                              <button className="border border-gray-900 bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
+                                수정
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

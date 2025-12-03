@@ -40,6 +40,14 @@ export default function CRMPage() {
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalPendingVendors, setTotalPendingVendors] = useState(0);
+  const [recentActivities, setRecentActivities] = useState<Array<{
+    type: 'vendor' | 'inquiry' | 'user';
+    id: string;
+    title: string;
+    subtitle: string;
+    time: string;
+    link?: string;
+  }>>([]);
 
   useEffect(() => {
     // 관리자 로그인 체크
@@ -138,6 +146,64 @@ export default function CRMPage() {
 
     fetchTotalProducts();
   }, []);
+
+  // 최근 활동 통합
+  useEffect(() => {
+    const activities: Array<{
+      type: 'vendor' | 'inquiry' | 'user';
+      id: string;
+      title: string;
+      subtitle: string;
+      time: string;
+      created_at: Date;
+      link?: string;
+    }> = [];
+
+    // 판매자 승인 요청
+    pendingVendors.forEach((vendor) => {
+      activities.push({
+        type: 'vendor',
+        id: vendor.id,
+        title: '새로운 판매자 승인 요청',
+        subtitle: `${vendor.store_name || vendor.business_name} - ${getTimeAgo(vendor.created_at)}`,
+        time: getTimeAgo(vendor.created_at),
+        created_at: new Date(vendor.created_at),
+        link: `/crm/vendors?status=pending`,
+      });
+    });
+
+    // 문의 대기
+    pendingInquiries.forEach((inquiry) => {
+      activities.push({
+        type: 'inquiry',
+        id: inquiry.id,
+        title: '새로운 문의',
+        subtitle: `${inquiry.title} - ${getTimeAgo(inquiry.created_at)}`,
+        time: getTimeAgo(inquiry.created_at),
+        created_at: new Date(inquiry.created_at),
+        link: `/crm/inquiries?id=${inquiry.id}`,
+      });
+    });
+
+    // 신규 회원 가입
+    newUsers.forEach((user) => {
+      activities.push({
+        type: 'user',
+        id: user.id,
+        title: '신규 회원 가입',
+        subtitle: `${user.full_name} - ${getTimeAgo(user.created_at)}`,
+        time: getTimeAgo(user.created_at),
+        created_at: new Date(user.created_at),
+        link: `/crm/users/${user.id}`,
+      });
+    });
+
+    // 시간순으로 정렬 (최신순)
+    activities.sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+
+    // 최근 4개만 표시
+    setRecentActivities(activities.slice(0, 4));
+  }, [newUsers, pendingInquiries, pendingVendors]);
 
   // 시간 계산 함수
   const getTimeAgo = (dateString: string) => {
@@ -594,57 +660,74 @@ export default function CRMPage() {
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">최근 활동</h2>
         </div>
         <div className="p-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-700">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900">
-                  <svg className="h-5 w-5 text-yellow-600 dark:text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">새로운 판매자 승인 요청</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">OO농장 - 5분 전</p>
-                </div>
-              </div>
-              <button className="border border-gray-900 bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
-                확인
-              </button>
+          {recentActivities.length > 0 ? (
+            <div className="space-y-4">
+              {recentActivities.map((activity, index) => {
+                const isLast = index === recentActivities.length - 1;
+                let iconBg = 'bg-gray-100 dark:bg-gray-800';
+                let iconColor = 'text-gray-600 dark:text-gray-400';
+                let icon = null;
+
+                if (activity.type === 'vendor') {
+                  iconBg = 'bg-yellow-100 dark:bg-yellow-900';
+                  iconColor = 'text-yellow-600 dark:text-yellow-400';
+                  icon = (
+                    <svg className={`h-5 w-5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  );
+                } else if (activity.type === 'user') {
+                  iconBg = 'bg-blue-100 dark:bg-blue-900';
+                  iconColor = 'text-blue-600 dark:text-blue-400';
+                  icon = (
+                    <svg className={`h-5 w-5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  );
+                } else if (activity.type === 'inquiry') {
+                  iconBg = 'bg-purple-100 dark:bg-purple-900';
+                  iconColor = 'text-purple-600 dark:text-purple-400';
+                  icon = (
+                    <svg className={`h-5 w-5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                  );
+                }
+
+                return (
+                  <div
+                    key={activity.id}
+                    className={`flex items-center justify-between ${!isLast ? 'border-b border-gray-100 pb-4 dark:border-gray-700' : ''}`}
+                  >
+                    <Link
+                      href={activity.link || '#'}
+                      className="flex items-center gap-3 flex-1"
+                    >
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${iconBg}`}>
+                        {icon}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{activity.title}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{activity.subtitle}</p>
+                      </div>
+                    </Link>
+                    {activity.type === 'vendor' && (
+                      <Link
+                        href={activity.link || '#'}
+                        className="border border-gray-900 bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                      >
+                        확인
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex items-center gap-3 border-b border-gray-100 pb-4 dark:border-gray-700">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
-                <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">신규 회원 가입</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">김철수 - 10분 전</p>
-              </div>
+          ) : (
+            <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+              최근 활동이 없습니다
             </div>
-            <div className="flex items-center gap-3 border-b border-gray-100 pb-4 dark:border-gray-700">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
-                <svg className="h-5 w-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">새 주문 발생</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">주문번호: ORD-2025-001250 - 15분 전</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">
-                <svg className="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">상품 등록 완료</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">프리미엄 유기농 쌀 - 30분 전</p>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
     </div>
