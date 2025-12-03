@@ -7,12 +7,15 @@ import Link from 'next/link';
 import { cartAPI } from '../lib/api';
 import { CartItem } from '../types';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function CartPage() {
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [deliverySettings, setDeliverySettings] = useState({ fee: 3000, freeThreshold: 30000 });
 
   // 장바구니 조회
   const fetchCart = async () => {
@@ -88,8 +91,25 @@ export default function CartPage() {
     }
   };
 
+  // 배송비 설정 조회
+  const fetchDeliverySettings = async () => {
+    try {
+      const response = await fetch(`${API_URL}/admin/settings/public`);
+      if (response.ok) {
+        const data = await response.json();
+        setDeliverySettings({
+          fee: data.delivery_fee || 3000,
+          freeThreshold: data.free_delivery_threshold || 30000,
+        });
+      }
+    } catch (error) {
+      console.error('배송비 설정 조회 실패:', error);
+    }
+  };
+
   useEffect(() => {
     fetchCart();
+    fetchDeliverySettings();
   }, []);
 
   // 장바구니 로드 후 전체 선택
@@ -139,8 +159,8 @@ export default function CartPage() {
     return sum + (originalPrice * item.quantity);
   }, 0);
   const totalDiscount = totalOriginalPrice - totalPrice;
-  // 배송비 계산: 5만원 이상 무료, 미만시 3,000원
-  const deliveryFee = totalPrice >= 50000 ? 0 : 3000;
+  // 배송비 계산: 시스템 설정값 사용
+  const deliveryFee = totalPrice >= deliverySettings.freeThreshold ? 0 : deliverySettings.fee;
   // 최종 결제 금액
   const finalAmount = totalPrice + deliveryFee;
 

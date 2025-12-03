@@ -761,9 +761,40 @@ class SystemSettingsUpdateRequest(BaseModel):
     signup_point: Optional[int] = None
 
 
+@router.get("/settings/public")
+async def get_public_system_settings():
+    """공개 시스템 설정 조회 (인증 불필요)"""
+    supabase_admin = get_supabase_admin_client()
+
+    try:
+        response = supabase_admin.table("crm_system_settings").select("business_name, delivery_fee, free_delivery_threshold").limit(1).execute()
+
+        if not response.data:
+            return {
+                "business_name": "SHOP",
+                "delivery_fee": 3000,
+                "free_delivery_threshold": 30000
+            }
+
+        settings = response.data[0]
+        return {
+            "business_name": settings.get("business_name", "SHOP"),
+            "delivery_fee": settings.get("delivery_fee", 3000),
+            "free_delivery_threshold": settings.get("free_delivery_threshold", 30000)
+        }
+
+    except Exception as e:
+        print(f"[ERROR] 공개 설정 조회 오류: {str(e)}")
+        return {
+            "business_name": "SHOP",
+            "delivery_fee": 3000,
+            "free_delivery_threshold": 30000
+        }
+
+
 @router.get("/settings", response_model=SystemSettingsResponse)
 async def get_system_settings(current_admin: dict = Depends(get_current_admin)):
-    """CRM 시스템 설정 조회"""
+    """CRM 시스템 설정 조회 (관리자 전용)"""
     supabase_admin = get_supabase_admin_client()
 
     try:

@@ -5,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { cartAPI } from '@/app/lib/api';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
@@ -18,6 +20,7 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const [businessName, setBusinessName] = useState('SHOP');
 
   // CRM 경로 확인
   const isCRMPage = pathname?.startsWith('/crm');
@@ -35,8 +38,24 @@ export default function Header() {
     }
   };
 
+  // 상호명 조회
+  const fetchBusinessName = async () => {
+    try {
+      const response = await fetch(`${API_URL}/admin/settings/public`);
+      if (response.ok) {
+        const data = await response.json();
+        setBusinessName(data.business_name || 'SHOP');
+      }
+    } catch (error) {
+      console.error('상호명 조회 실패:', error);
+    }
+  };
+
   // 로그인 상태 확인
   useEffect(() => {
+    // 상호명 조회 (모든 페이지에서)
+    fetchBusinessName();
+
     if (isCRMPage) {
       // CRM 페이지: 관리자 인증 확인
       const adminToken = localStorage.getItem('admin_token');
@@ -389,7 +408,7 @@ export default function Header() {
           {/* Logo */}
           <div className="flex lg:flex-1">
             <Link href={isCRMPage ? '/crm' : '/'} className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-              {isCRMPage ? 'CRM ADMIN' : 'SHOP'}
+              {businessName}
             </Link>
           </div>
 

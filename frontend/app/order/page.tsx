@@ -47,6 +47,23 @@ export default function OrderPage() {
   const [paymentPopup, setPaymentPopup] = useState<Window | null>(null);
   const [availablePoints, setAvailablePoints] = useState(0);
   const [pointsToUse, setPointsToUse] = useState(0);
+  const [deliverySettings, setDeliverySettings] = useState({ fee: 3000, freeThreshold: 30000 });
+
+  // 배송비 설정 조회
+  const fetchDeliverySettings = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/settings/public`);
+      if (response.ok) {
+        const data = await response.json();
+        setDeliverySettings({
+          fee: data.delivery_fee || 3000,
+          freeThreshold: data.free_delivery_threshold || 30000,
+        });
+      }
+    } catch (error) {
+      console.error('배송비 설정 조회 실패:', error);
+    }
+  };
 
   // 사용자 정보 및 장바구니 조회
   useEffect(() => {
@@ -71,6 +88,8 @@ export default function OrderPage() {
       fetchSavedAccounts(token);
       // 포인트 잔액 불러오기
       fetchPointBalance(token);
+      // 배송비 설정 불러오기
+      fetchDeliverySettings();
     } catch (e) {
       console.error('Failed to parse user data:', e);
     }
@@ -416,7 +435,7 @@ export default function OrderPage() {
 
   // 금액 계산
   const totalPrice = cartItems.reduce((sum, item) => sum + item.total_price, 0);
-  const deliveryFee = totalPrice >= 50000 ? 0 : 3000;
+  const deliveryFee = totalPrice >= deliverySettings.freeThreshold ? 0 : deliverySettings.fee;
   const finalPrice = totalPrice + deliveryFee - pointsToUse;
 
   if (loading) {

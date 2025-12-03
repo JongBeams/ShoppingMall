@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface CRMLayoutProps {
   children: React.ReactNode;
 }
@@ -12,6 +14,7 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [adminUser, setAdminUser] = useState<any>(null);
+  const [businessName, setBusinessName] = useState('CRM');
 
   useEffect(() => {
     const adminToken = localStorage.getItem('admin_token');
@@ -25,11 +28,25 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
     try {
       const admin = JSON.parse(adminData);
       setAdminUser(admin);
+      fetchBusinessName();
     } catch (e) {
       console.error('Failed to parse admin data:', e);
       router.push('/crm/login');
     }
   }, [router]);
+
+  const fetchBusinessName = async () => {
+    try {
+      const response = await fetch(`${API_URL}/admin/settings/public`);
+
+      if (response.ok) {
+        const data = await response.json();
+        setBusinessName(data.business_name || 'CRM');
+      }
+    } catch (error) {
+      console.error('상호명 조회 실패:', error);
+    }
+  };
 
   const menuItems = [
     {
@@ -173,7 +190,7 @@ export default function CRMLayout({ children }: CRMLayoutProps) {
         {/* Logo */}
         <div className="border-b border-gray-200 p-6 dark:border-gray-700">
           <Link href="/crm" className="block">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">CRM 관리자</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">{businessName} ADMIN</h1>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">통합 관리 시스템</p>
           </Link>
         </div>
