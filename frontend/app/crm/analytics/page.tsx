@@ -119,197 +119,253 @@ export default function AnalyticsPage() {
   const maxGiftSessions = Math.max(...giftTrend.map(t => t.sessions || 0), 1);
 
   return (
-    <div>
-      {/* 헤더 - 더 세련되게 */}
-      <div className="mb-6 rounded-lg border border-gray-200 bg-gradient-to-r from-purple-50 via-blue-50 to-emerald-50 p-6 dark:border-gray-700 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-emerald-950/20">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
-              성과 대시보드
-            </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              실시간 AI 기능 성과 분석 및 모니터링
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-              <div className="mb-1 text-xs text-gray-500 dark:text-gray-400">기간 선택</div>
-              <div className="flex gap-1">
-                {[7, 30, 90].map(days => (
-                  <button
-                    key={days}
-                    onClick={() => setSelectedPeriod(days)}
-                    className={`px-4 py-2 text-xs font-medium transition-all ${
-                      selectedPeriod === days
-                        ? 'border border-gray-900 bg-gray-900 text-white shadow-lg dark:border-white dark:bg-white dark:text-gray-900'
-                        : 'border border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    {days}일
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-3 text-center dark:border-gray-700 dark:bg-gray-900">
-              <div className="mb-1 text-xs text-gray-500 dark:text-gray-400">실시간 업데이트</div>
-              <div className="flex items-center gap-1">
-                <div className="h-2 w-2 animate-pulse rounded-full bg-green-500"></div>
-                <span className="text-xs font-medium text-gray-900 dark:text-white">LIVE</span>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 px-4 pb-4">
+      {/* Grafana 스타일 헤더 */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-white">
+            Real-time AI Performance Analytics & Monitoring
+          </h1>
+          <span className="flex items-center gap-1.5">
+            <div className="h-2 w-2 animate-pulse rounded-full bg-green-500"></div>
+            <span className="text-xs font-medium text-green-400">LIVE</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* 기간 선택 */}
+          <div className="rounded-lg bg-gray-900/50 p-3 ring-1 ring-white/10 backdrop-blur-sm">
+            <div className="mb-2 text-xs text-gray-400">Time Range</div>
+            <div className="flex gap-1">
+              {[7, 30, 90].map(days => (
+                <button
+                  key={days}
+                  onClick={() => setSelectedPeriod(days)}
+                  className={`rounded px-3 py-1.5 text-xs font-medium transition-all ${
+                    selectedPeriod === days
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/50'
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                  }`}
+                >
+                  {days}d
+                </button>
+              ))}
             </div>
           </div>
+
+          {/* 새로고침 버튼 */}
+          <button
+            onClick={() => fetchAnalytics(selectedPeriod)}
+            className="rounded-lg bg-gray-900/50 p-3 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:bg-gray-800/50"
+          >
+            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      {/* 핵심 지표 카드 - 3열 */}
-      <section className="mb-4 grid gap-4 md:grid-cols-3">
+      {/* 핵심 지표 + 실시간 활동 */}
+      <section className="mb-4 grid gap-4 lg:grid-cols-4">
         {/* 원격 제어 */}
-        <div className="relative overflow-hidden border border-gray-200 bg-gradient-to-br from-purple-50 to-pink-50 dark:border-gray-700 dark:from-purple-950/20 dark:to-pink-950/20">
-          <div className="p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">
-                <svg className="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        <div className="group relative overflow-hidden rounded-lg bg-gray-900/50 p-5 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:ring-purple-500/50">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/20">
+                <svg className="h-5 w-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <span className="text-xs font-medium text-purple-600 dark:text-purple-400">WebRTC</span>
-            </div>
-            <h3 className="mb-1 text-base font-bold text-gray-900 dark:text-white">실시간 원격 제어</h3>
-            <p className="mb-4 text-xs text-gray-600 dark:text-gray-400">P2P 화면 공유 및 원격 지원</p>
-
-            <div className="grid grid-cols-2 gap-3">
               <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">세션</div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary.remote_control_sessions}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">성공률</div>
-                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{summary.remote_control_success_rate}%</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">평균 시간</div>
-                <div className="text-lg font-bold text-gray-900 dark:text-white">{((summary.remote_control_avg_duration || 0) / 60).toFixed(1)}분</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">만족도</div>
-                <div className="flex items-center gap-1">
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">{(summary.remote_control_satisfaction || 0).toFixed(1)}</span>
-                  <span className="text-yellow-400">★</span>
-                </div>
+                <h3 className="text-xs font-medium text-gray-400">원격 제어</h3>
+                <p className="text-xs text-gray-500">WebRTC P2P</p>
               </div>
             </div>
           </div>
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-purple-200/30 dark:bg-purple-800/10"></div>
+          <div className="space-y-3">
+            <div>
+              <div className="mb-1 flex items-end justify-between">
+                <span className="text-xs text-gray-400">세션</span>
+                <span className="text-2xl font-bold text-white">{summary.remote_control_sessions}</span>
+              </div>
+              <div className="h-1 overflow-hidden rounded-full bg-gray-800">
+                <div className="h-full bg-purple-500" style={{ width: '75%' }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-end justify-between">
+                <span className="text-xs text-gray-400">성공률</span>
+                <span className="text-lg font-semibold text-purple-400">{summary.remote_control_success_rate}%</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* RAG 챗봇 */}
-        <div className="relative overflow-hidden border border-gray-200 bg-gradient-to-br from-blue-50 to-cyan-50 dark:border-gray-700 dark:from-blue-950/20 dark:to-cyan-950/20">
-          <div className="p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
-                <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        <div className="group relative overflow-hidden rounded-lg bg-gray-900/50 p-5 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:ring-blue-500/50">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/20">
+                <svg className="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
               </div>
-              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">RAG AI</span>
-            </div>
-            <h3 className="mb-1 text-base font-bold text-gray-900 dark:text-white">RAG AI 챗봇</h3>
-            <p className="mb-4 text-xs text-gray-600 dark:text-gray-400">벡터 기반 상품 추천 챗봇</p>
-
-            <div className="grid grid-cols-2 gap-3">
               <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">질문</div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary.rag_queries || 0}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">정확도</div>
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{(summary.rag_accuracy || 0).toFixed(1)}%</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">응답 시간</div>
-                <div className="text-lg font-bold text-gray-900 dark:text-white">{(summary.rag_avg_response_time || 0).toFixed(0)}ms</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">전환율</div>
-                <div className="text-lg font-bold text-green-600 dark:text-green-400">{(summary.rag_conversion_rate || 0).toFixed(1)}%</div>
+                <h3 className="text-xs font-medium text-gray-400">RAG 챗봇</h3>
+                <p className="text-xs text-gray-500">벡터 검색 AI</p>
               </div>
             </div>
           </div>
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-blue-200/30 dark:bg-blue-800/10"></div>
+          <div className="space-y-3">
+            <div>
+              <div className="mb-1 flex items-end justify-between">
+                <span className="text-xs text-gray-400">질문</span>
+                <span className="text-2xl font-bold text-white">{summary.rag_queries || 0}</span>
+              </div>
+              <div className="h-1 overflow-hidden rounded-full bg-gray-800">
+                <div className="h-full bg-blue-500" style={{ width: '60%' }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-end justify-between">
+                <span className="text-xs text-gray-400">정확도</span>
+                <span className="text-lg font-semibold text-blue-400">{(summary.rag_accuracy || 0).toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* AI 선물 마법사 */}
-        <div className="relative overflow-hidden border border-gray-200 bg-gradient-to-br from-emerald-50 to-teal-50 dark:border-gray-700 dark:from-emerald-950/20 dark:to-teal-950/20">
-          <div className="p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900">
-                <svg className="h-5 w-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+        {/* 선물 마법사 */}
+        <div className="group relative overflow-hidden rounded-lg bg-gray-900/50 p-5 ring-1 ring-white/10 backdrop-blur-sm transition-all hover:ring-emerald-500/50">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/20">
+                <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                 </svg>
               </div>
-              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">LLM</span>
-            </div>
-            <h3 className="mb-1 text-base font-bold text-gray-900 dark:text-white">AI 선물 마법사</h3>
-            <p className="mb-4 text-xs text-gray-600 dark:text-gray-400">맞춤형 선물 추천 서비스</p>
-
-            <div className="grid grid-cols-2 gap-3">
               <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">세션</div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{summary.gift_wizard_sessions || 0}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">완료율</div>
-                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{(summary.gift_wizard_completion_rate || 0).toFixed(1)}%</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">전환율</div>
-                <div className="text-lg font-bold text-green-600 dark:text-green-400">{(summary.gift_wizard_conversion_rate || 0).toFixed(1)}%</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-600 dark:text-gray-400">만족도</div>
-                <div className="flex items-center gap-1">
-                  <span className="text-lg font-bold text-gray-900 dark:text-white">{(summary.gift_wizard_satisfaction || 0).toFixed(1)}</span>
-                  <span className="text-yellow-400">★</span>
-                </div>
+                <h3 className="text-xs font-medium text-gray-400">선물 마법사</h3>
+                <p className="text-xs text-gray-500">LLM 추천</p>
               </div>
             </div>
           </div>
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-200/30 dark:bg-emerald-800/10"></div>
+          <div className="space-y-3">
+            <div>
+              <div className="mb-1 flex items-end justify-between">
+                <span className="text-xs text-gray-400">세션</span>
+                <span className="text-2xl font-bold text-white">{summary.gift_wizard_sessions || 0}</span>
+              </div>
+              <div className="h-1 overflow-hidden rounded-full bg-gray-800">
+                <div className="h-full bg-emerald-500" style={{ width: '85%' }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-end justify-between">
+                <span className="text-xs text-gray-400">완료율</span>
+                <span className="text-lg font-semibold text-emerald-400">{(summary.gift_wizard_completion_rate || 0).toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 전체 통계 */}
+        <div className="group relative overflow-hidden rounded-lg bg-gradient-to-br from-indigo-900/50 to-purple-900/50 p-5 ring-1 ring-indigo-500/30 backdrop-blur-sm transition-all hover:ring-indigo-500/50">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/30">
+                <svg className="h-5 w-5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xs font-medium text-indigo-300">전체 통계</h3>
+                <p className="text-xs text-indigo-400/70">종합 현황</p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <div className="mb-1 flex items-end justify-between">
+                <span className="text-xs text-indigo-300/70">총 활동</span>
+                <span className="text-2xl font-bold text-white">{(summary.remote_control_sessions || 0) + (summary.rag_queries || 0) + (summary.gift_wizard_sessions || 0)}</span>
+              </div>
+              <div className="h-1 overflow-hidden rounded-full bg-indigo-900/50">
+                <div className="h-full bg-indigo-400" style={{ width: '90%' }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 flex items-end justify-between">
+                <span className="text-xs text-indigo-300/70">만족도</span>
+                <span className="text-lg font-semibold text-amber-400">{(((summary.remote_control_satisfaction || 0) + (summary.gift_wizard_satisfaction || 0)) / 2).toFixed(1)} ★</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Grafana-style 차트 - 2열 */}
-      <section className="mb-4 grid gap-4 lg:grid-cols-2">
+      {/* 차트 - 3열 한줄 */}
+      <section className="mb-4 grid gap-4 lg:grid-cols-3">
         {/* 원격 제어 추세 */}
-        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-xl border border-gray-200/50 bg-gradient-to-br from-gray-900 to-gray-800 p-5 shadow-lg dark:border-gray-700/50">
+          {/* Grafana 스타일 배경 그리드 */}
+          <div className="absolute inset-0 opacity-5" style={{
+            backgroundImage: 'linear-gradient(rgba(147, 51, 234, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(147, 51, 234, 0.1) 1px, transparent 1px)',
+            backgroundSize: '20px 20px'
+          }}></div>
+
+          <div className="relative mb-4 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white">원격 제어 세션</h3>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">WebRTC 실시간 원격 제어</p>
+              <h3 className="text-sm font-bold text-white">원격 제어 세션</h3>
+              <p className="mt-1 text-xs text-gray-400">총 세션 수</p>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {rcTrend.reduce((sum, item) => sum + (item.sessions || 0), 0)}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">총 세션</div>
+            <div className="rounded-lg bg-purple-600/20 px-3 py-1.5 text-xl font-bold text-purple-400 shadow-inner">
+              {rcTrend.reduce((sum, item) => sum + (item.sessions || 0), 0)}
             </div>
           </div>
 
-          {/* Grafana-style 차트 */}
-          <div className="relative h-48 p-4">
+          {/* 차트 */}
+          <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
             <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
-              {/* 수평 그리드 */}
+              <defs>
+                {/* 그라데이션 영역 */}
+                <linearGradient id="rcGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(147, 51, 234)" stopOpacity="0.4" />
+                  <stop offset="50%" stopColor="rgb(147, 51, 234)" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="rgb(147, 51, 234)" stopOpacity="0.05" />
+                </linearGradient>
+                {/* 라인 글로우 효과 */}
+                <filter id="rcGlow">
+                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+
+              {/* 수평 그리드 라인 */}
               {[0, 1, 2, 3, 4].map((i) => (
                 <line
                   key={i}
                   x1="40"
-                  y1={10 + i * 45}
-                  x2="500"
-                  y2={10 + i * 45}
-                  stroke="currentColor"
-                  strokeWidth="0.5"
-                  className="text-gray-300 dark:text-gray-700"
-                  strokeDasharray="3,3"
+                  y1={20 + i * 40}
+                  x2="495"
+                  y2={20 + i * 40}
+                  stroke="rgba(255, 255, 255, 0.06)"
+                  strokeWidth="1"
+                />
+              ))}
+
+              {/* 수직 그리드 라인 */}
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                <line
+                  key={i}
+                  x1={40 + i * 65}
+                  y1="20"
+                  x2={40 + i * 65}
+                  y2="180"
+                  stroke="rgba(255, 255, 255, 0.04)"
+                  strokeWidth="1"
                 />
               ))}
 
@@ -320,9 +376,9 @@ export default function AnalyticsPage() {
                   <text
                     key={i}
                     x="35"
-                    y={15 + i * 45}
+                    y={23 + i * 40}
                     textAnchor="end"
-                    className="fill-gray-500 text-[8px] dark:fill-gray-400"
+                    className="fill-gray-500 text-[10px] font-medium"
                   >
                     {value}
                   </text>
@@ -330,79 +386,118 @@ export default function AnalyticsPage() {
               })}
 
               {/* 그라데이션 영역 */}
-              <defs>
-                <linearGradient id="rcGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="rgb(147, 51, 234)" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="rgb(147, 51, 234)" stopOpacity="0.05" />
-                </linearGradient>
-              </defs>
-
               <polygon
-                points={`40,190 ${rcTrend.map((item, i) => {
-                  const x = 40 + (i / (rcTrend.length - 1 || 1)) * 460;
-                  const y = 190 - ((item.sessions || 0) / maxRcSessions) * 170;
+                points={`40,180 ${rcTrend.map((item, i) => {
+                  const x = 40 + (i / (rcTrend.length - 1 || 1)) * 455;
+                  const y = 180 - ((item.sessions || 0) / maxRcSessions) * 160;
                   return `${x},${y}`;
-                }).join(' ')} ${40 + 460},190`}
+                }).join(' ')} 495,180`}
                 fill="url(#rcGradient)"
               />
 
               {/* 선 그래프 */}
               <polyline
                 points={rcTrend.map((item, i) => {
-                  const x = 40 + (i / (rcTrend.length - 1 || 1)) * 460;
-                  const y = 190 - ((item.sessions || 0) / maxRcSessions) * 170;
+                  const x = 40 + (i / (rcTrend.length - 1 || 1)) * 455;
+                  const y = 180 - ((item.sessions || 0) / maxRcSessions) * 160;
                   return `${x},${y}`;
                 }).join(' ')}
                 fill="none"
-                stroke="rgb(147, 51, 234)"
+                stroke="rgb(168, 85, 247)"
                 strokeWidth="2.5"
+                filter="url(#rcGlow)"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
+
+              {/* 데이터 포인트 */}
+              {rcTrend.map((item, i) => {
+                const x = 40 + (i / (rcTrend.length - 1 || 1)) * 455;
+                const y = 180 - ((item.sessions || 0) / maxRcSessions) * 160;
+                return (
+                  <g key={i}>
+                    <circle cx={x} cy={y} r="4" fill="rgb(168, 85, 247)" opacity="0.5" />
+                    <circle cx={x} cy={y} r="2.5" fill="rgb(216, 180, 254)" />
+                  </g>
+                );
+              })}
             </svg>
           </div>
 
-          {/* 범례 */}
-          <div className="mt-3 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-purple-600"></div>
-              <span className="text-gray-600 dark:text-gray-400">세션 수</span>
+          {/* 통계 */}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">평균</div>
+              <div className="mt-1 text-sm font-bold text-purple-400">
+                {rcTrend.length > 0 ? Math.round(rcTrend.reduce((sum, item) => sum + (item.sessions || 0), 0) / rcTrend.length) : 0}
+              </div>
             </div>
-            <div className="flex gap-4 text-gray-500 dark:text-gray-400">
-              <span>평균: {Math.round(rcTrend.reduce((sum, item) => sum + (item.sessions || 0), 0) / (rcTrend.length || 1))}</span>
-              <span>최대: {maxRcSessions}</span>
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">최대</div>
+              <div className="mt-1 text-sm font-bold text-purple-400">{maxRcSessions}</div>
             </div>
           </div>
         </div>
 
         {/* RAG 챗봇 추세 */}
-        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-xl border border-gray-200/50 bg-gradient-to-br from-gray-900 to-gray-800 p-5 shadow-lg dark:border-gray-700/50">
+          {/* Grafana 스타일 배경 그리드 */}
+          <div className="absolute inset-0 opacity-5" style={{
+            backgroundImage: 'linear-gradient(rgba(37, 99, 235, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(37, 99, 235, 0.1) 1px, transparent 1px)',
+            backgroundSize: '20px 20px'
+          }}></div>
+
+          <div className="relative mb-4 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white">RAG AI 챗봇</h3>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">벡터 검색 기반 질문 답변</p>
+              <h3 className="text-sm font-bold text-white">RAG AI 챗봇</h3>
+              <p className="mt-1 text-xs text-gray-400">총 질문 수</p>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {ragTrend.reduce((sum, item) => sum + (item.queries || 0), 0)}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">총 질문</div>
+            <div className="rounded-lg bg-blue-600/20 px-3 py-1.5 text-xl font-bold text-blue-400 shadow-inner">
+              {ragTrend.reduce((sum, item) => sum + (item.queries || 0), 0)}
             </div>
           </div>
 
-          {/* Grafana-style 차트 */}
-          <div className="relative h-48 p-4">
+          {/* 차트 */}
+          <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
             <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
-              {/* 수평 그리드 */}
+              <defs>
+                <linearGradient id="ragGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(37, 99, 235)" stopOpacity="0.4" />
+                  <stop offset="50%" stopColor="rgb(37, 99, 235)" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="rgb(37, 99, 235)" stopOpacity="0.05" />
+                </linearGradient>
+                <filter id="ragGlow">
+                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+
+              {/* 수평 그리드 라인 */}
               {[0, 1, 2, 3, 4].map((i) => (
                 <line
                   key={i}
                   x1="40"
-                  y1={10 + i * 45}
-                  x2="500"
-                  y2={10 + i * 45}
-                  stroke="currentColor"
-                  strokeWidth="0.5"
-                  className="text-gray-300 dark:text-gray-700"
-                  strokeDasharray="3,3"
+                  y1={20 + i * 40}
+                  x2="495"
+                  y2={20 + i * 40}
+                  stroke="rgba(255, 255, 255, 0.06)"
+                  strokeWidth="1"
+                />
+              ))}
+
+              {/* 수직 그리드 라인 */}
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                <line
+                  key={i}
+                  x1={40 + i * 65}
+                  y1="20"
+                  x2={40 + i * 65}
+                  y2="180"
+                  stroke="rgba(255, 255, 255, 0.04)"
+                  strokeWidth="1"
                 />
               ))}
 
@@ -413,9 +508,9 @@ export default function AnalyticsPage() {
                   <text
                     key={i}
                     x="35"
-                    y={15 + i * 45}
+                    y={23 + i * 40}
                     textAnchor="end"
-                    className="fill-gray-500 text-[8px] dark:fill-gray-400"
+                    className="fill-gray-500 text-[10px] font-medium"
                   >
                     {value}
                   </text>
@@ -423,79 +518,118 @@ export default function AnalyticsPage() {
               })}
 
               {/* 그라데이션 영역 */}
-              <defs>
-                <linearGradient id="ragGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="rgb(37, 99, 235)" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="rgb(37, 99, 235)" stopOpacity="0.05" />
-                </linearGradient>
-              </defs>
-
               <polygon
-                points={`40,190 ${ragTrend.map((item, i) => {
-                  const x = 40 + (i / (ragTrend.length - 1 || 1)) * 460;
-                  const y = 190 - ((item.queries || 0) / maxRagQueries) * 170;
+                points={`40,180 ${ragTrend.map((item, i) => {
+                  const x = 40 + (i / (ragTrend.length - 1 || 1)) * 455;
+                  const y = 180 - ((item.queries || 0) / maxRagQueries) * 160;
                   return `${x},${y}`;
-                }).join(' ')} ${40 + 460},190`}
+                }).join(' ')} 495,180`}
                 fill="url(#ragGradient)"
               />
 
               {/* 선 그래프 */}
               <polyline
                 points={ragTrend.map((item, i) => {
-                  const x = 40 + (i / (ragTrend.length - 1 || 1)) * 460;
-                  const y = 190 - ((item.queries || 0) / maxRagQueries) * 170;
+                  const x = 40 + (i / (ragTrend.length - 1 || 1)) * 455;
+                  const y = 180 - ((item.queries || 0) / maxRagQueries) * 160;
                   return `${x},${y}`;
                 }).join(' ')}
                 fill="none"
-                stroke="rgb(37, 99, 235)"
+                stroke="rgb(59, 130, 246)"
                 strokeWidth="2.5"
+                filter="url(#ragGlow)"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
+
+              {/* 데이터 포인트 */}
+              {ragTrend.map((item, i) => {
+                const x = 40 + (i / (ragTrend.length - 1 || 1)) * 455;
+                const y = 180 - ((item.queries || 0) / maxRagQueries) * 160;
+                return (
+                  <g key={i}>
+                    <circle cx={x} cy={y} r="4" fill="rgb(59, 130, 246)" opacity="0.5" />
+                    <circle cx={x} cy={y} r="2.5" fill="rgb(147, 197, 253)" />
+                  </g>
+                );
+              })}
             </svg>
           </div>
 
-          {/* 범례 */}
-          <div className="mt-3 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-blue-600"></div>
-              <span className="text-gray-600 dark:text-gray-400">질문 수</span>
+          {/* 통계 */}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">평균</div>
+              <div className="mt-1 text-sm font-bold text-blue-400">
+                {ragTrend.length > 0 ? Math.round(ragTrend.reduce((sum, item) => sum + (item.queries || 0), 0) / ragTrend.length) : 0}
+              </div>
             </div>
-            <div className="flex gap-4 text-gray-500 dark:text-gray-400">
-              <span>평균: {Math.round(ragTrend.reduce((sum, item) => sum + (item.queries || 0), 0) / (ragTrend.length || 1))}</span>
-              <span>최대: {maxRagQueries}</span>
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">최대</div>
+              <div className="mt-1 text-sm font-bold text-blue-400">{maxRagQueries}</div>
             </div>
           </div>
         </div>
 
         {/* 선물 마법사 추세 */}
-        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900 lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-xl border border-gray-200/50 bg-gradient-to-br from-gray-900 to-gray-800 p-5 shadow-lg dark:border-gray-700/50">
+          {/* Grafana 스타일 배경 그리드 */}
+          <div className="absolute inset-0 opacity-5" style={{
+            backgroundImage: 'linear-gradient(rgba(16, 185, 129, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 185, 129, 0.1) 1px, transparent 1px)',
+            backgroundSize: '20px 20px'
+          }}></div>
+
+          <div className="relative mb-4 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white">AI 선물 마법사</h3>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">LLM 기반 맞춤 선물 추천</p>
+              <h3 className="text-sm font-bold text-white">AI 선물 마법사</h3>
+              <p className="mt-1 text-xs text-gray-400">총 세션 수</p>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {giftTrend.reduce((sum, item) => sum + (item.sessions || 0), 0)}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">총 세션</div>
+            <div className="rounded-lg bg-emerald-600/20 px-3 py-1.5 text-xl font-bold text-emerald-400 shadow-inner">
+              {giftTrend.reduce((sum, item) => sum + (item.sessions || 0), 0)}
             </div>
           </div>
 
-          {/* Grafana-style 차트 - 더 넓게 */}
-          <div className="relative h-48 p-4">
-            <svg className="h-full w-full" viewBox="0 0 1000 200" preserveAspectRatio="none">
-              {/* 수평 그리드 */}
+          {/* 차트 */}
+          <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
+            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="giftGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(16, 185, 129)" stopOpacity="0.4" />
+                  <stop offset="50%" stopColor="rgb(16, 185, 129)" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="rgb(16, 185, 129)" stopOpacity="0.05" />
+                </linearGradient>
+                <filter id="giftGlow">
+                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+
+              {/* 수평 그리드 라인 */}
               {[0, 1, 2, 3, 4].map((i) => (
                 <line
                   key={i}
                   x1="40"
-                  y1={10 + i * 45}
-                  x2="1000"
-                  y2={10 + i * 45}
-                  stroke="currentColor"
-                  strokeWidth="0.5"
-                  className="text-gray-300 dark:text-gray-700"
-                  strokeDasharray="3,3"
+                  y1={20 + i * 40}
+                  x2="495"
+                  y2={20 + i * 40}
+                  stroke="rgba(255, 255, 255, 0.06)"
+                  strokeWidth="1"
+                />
+              ))}
+
+              {/* 수직 그리드 라인 */}
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                <line
+                  key={i}
+                  x1={40 + i * 65}
+                  y1="20"
+                  x2={40 + i * 65}
+                  y2="180"
+                  stroke="rgba(255, 255, 255, 0.04)"
+                  strokeWidth="1"
                 />
               ))}
 
@@ -506,9 +640,9 @@ export default function AnalyticsPage() {
                   <text
                     key={i}
                     x="35"
-                    y={15 + i * 45}
+                    y={23 + i * 40}
                     textAnchor="end"
-                    className="fill-gray-500 text-[8px] dark:fill-gray-400"
+                    className="fill-gray-500 text-[10px] font-medium"
                   >
                     {value}
                   </text>
@@ -516,281 +650,376 @@ export default function AnalyticsPage() {
               })}
 
               {/* 그라데이션 영역 */}
-              <defs>
-                <linearGradient id="giftGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="rgb(16, 185, 129)" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="rgb(16, 185, 129)" stopOpacity="0.05" />
-                </linearGradient>
-              </defs>
-
               <polygon
-                points={`40,190 ${giftTrend.map((item, i) => {
-                  const x = 40 + (i / (giftTrend.length - 1 || 1)) * 960;
-                  const y = 190 - ((item.sessions || 0) / maxGiftSessions) * 170;
+                points={`40,180 ${giftTrend.map((item, i) => {
+                  const x = 40 + (i / (giftTrend.length - 1 || 1)) * 455;
+                  const y = 180 - ((item.sessions || 0) / maxGiftSessions) * 160;
                   return `${x},${y}`;
-                }).join(' ')} ${40 + 960},190`}
+                }).join(' ')} 495,180`}
                 fill="url(#giftGradient)"
               />
 
               {/* 선 그래프 */}
               <polyline
                 points={giftTrend.map((item, i) => {
-                  const x = 40 + (i / (giftTrend.length - 1 || 1)) * 960;
-                  const y = 190 - ((item.sessions || 0) / maxGiftSessions) * 170;
+                  const x = 40 + (i / (giftTrend.length - 1 || 1)) * 455;
+                  const y = 180 - ((item.sessions || 0) / maxGiftSessions) * 160;
                   return `${x},${y}`;
                 }).join(' ')}
                 fill="none"
-                stroke="rgb(16, 185, 129)"
+                stroke="rgb(52, 211, 153)"
                 strokeWidth="2.5"
+                filter="url(#giftGlow)"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
+
+              {/* 데이터 포인트 */}
+              {giftTrend.map((item, i) => {
+                const x = 40 + (i / (giftTrend.length - 1 || 1)) * 455;
+                const y = 180 - ((item.sessions || 0) / maxGiftSessions) * 160;
+                return (
+                  <g key={i}>
+                    <circle cx={x} cy={y} r="4" fill="rgb(52, 211, 153)" opacity="0.5" />
+                    <circle cx={x} cy={y} r="2.5" fill="rgb(167, 243, 208)" />
+                  </g>
+                );
+              })}
             </svg>
           </div>
 
-          {/* 범례 */}
-          <div className="mt-3 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-600"></div>
-              <span className="text-gray-600 dark:text-gray-400">세션 수</span>
+          {/* 통계 */}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">평균</div>
+              <div className="mt-1 text-sm font-bold text-emerald-400">
+                {giftTrend.length > 0 ? Math.round(giftTrend.reduce((sum, item) => sum + (item.sessions || 0), 0) / giftTrend.length) : 0}
+              </div>
             </div>
-            <div className="flex gap-4 text-gray-500 dark:text-gray-400">
-              <span>평균: {Math.round(giftTrend.reduce((sum, item) => sum + (item.sessions || 0), 0) / (giftTrend.length || 1))}</span>
-              <span>최대: {maxGiftSessions}</span>
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">최대</div>
+              <div className="mt-1 text-sm font-bold text-emerald-400">{maxGiftSessions}</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 성능 비교 & 실시간 활동 - 복잡한 레이아웃 */}
+
+      {/* 전체 통계 차트 */}
       <section className="mb-4 grid gap-4 lg:grid-cols-3">
-        {/* 기능별 성능 비교 */}
-        <div className="border border-gray-200 bg-white p-6 lg:col-span-2 dark:border-gray-700 dark:bg-gray-900">
-          <div className="mb-5 flex items-center justify-between">
+        {/* 총 회원 */}
+        <div className="relative overflow-hidden rounded-xl border border-gray-200/50 bg-gradient-to-br from-gray-900 to-gray-800 p-5 shadow-lg dark:border-gray-700/50">
+          {/* Grafana 스타일 배경 그리드 */}
+          <div className="absolute inset-0 opacity-5" style={{
+            backgroundImage: 'linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)',
+            backgroundSize: '20px 20px'
+          }}></div>
+
+          <div className="relative mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold text-gray-900 dark:text-white">기능별 성능 비교</h2>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">핵심 지표 요약</p>
+              <h3 className="text-sm font-bold text-white">총 회원</h3>
+              <p className="mt-1 text-xs text-gray-400">Total Users</p>
             </div>
-            <div className="rounded-full border border-green-500 bg-green-50 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-950 dark:text-green-400">
-              ↑ 평균 28% 개선
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {/* 원격 제어 */}
-            <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-950/20">
-              <div className="mb-3 flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center">
-                  <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <span className="text-sm font-bold text-purple-900 dark:text-purple-300">원격 제어</span>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600 dark:text-gray-400">성공률</span>
-                  <span className="font-bold text-purple-700 dark:text-purple-300">{(summary.remote_control_success_rate || 0).toFixed(1)}%</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-purple-200 dark:bg-purple-900">
-                  <div className="h-full bg-purple-600" style={{ width: `${summary.remote_control_success_rate || 0}%` }}></div>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600 dark:text-gray-400">평균 시간</span>
-                  <span className="font-bold text-purple-700 dark:text-purple-300">{((summary.remote_control_avg_duration || 0) / 60).toFixed(1)}분</span>
-                </div>
-              </div>
-            </div>
-
-            {/* RAG 챗봇 */}
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/20">
-              <div className="mb-3 flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-                  <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                  </svg>
-                </div>
-                <span className="text-sm font-bold text-blue-900 dark:text-blue-300">RAG 챗봇</span>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600 dark:text-gray-400">정확도</span>
-                  <span className="font-bold text-blue-700 dark:text-blue-300">{(summary.rag_accuracy || 0).toFixed(1)}%</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-blue-200 dark:bg-blue-900">
-                  <div className="h-full bg-blue-600" style={{ width: `${summary.rag_accuracy || 0}%` }}></div>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600 dark:text-gray-400">응답 시간</span>
-                  <span className="font-bold text-blue-700 dark:text-blue-300">{((summary.rag_avg_response_time || 0) / 1000).toFixed(2)}초</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 선물 마법사 */}
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/20">
-              <div className="mb-3 flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center">
-                  <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                  </svg>
-                </div>
-                <span className="text-sm font-bold text-emerald-900 dark:text-emerald-300">선물 마법사</span>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600 dark:text-gray-400">완료율</span>
-                  <span className="font-bold text-emerald-700 dark:text-emerald-300">{(summary.gift_wizard_completion_rate || 0).toFixed(1)}%</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-emerald-200 dark:bg-emerald-900">
-                  <div className="h-full bg-emerald-600" style={{ width: `${summary.gift_wizard_completion_rate || 0}%` }}></div>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-600 dark:text-gray-400">전환율</span>
-                  <span className="font-bold text-emerald-700 dark:text-emerald-300">{(summary.gift_wizard_conversion_rate || 0).toFixed(1)}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 실시간 활동 피드 */}
-        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">실시간 활동</h2>
-            <div className="flex items-center gap-1">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-red-500"></div>
-              <span className="text-xs text-gray-500 dark:text-gray-400">LIVE</span>
+            <div className="rounded-lg bg-blue-600/20 px-3 py-1.5 text-xl font-bold text-blue-400 shadow-inner">
+              {(summary.total_users || 0).toLocaleString()}
             </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex gap-3 rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-800 dark:bg-purple-950/20">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-purple-600">
-                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          {/* 차트 */}
+          <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
+            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(59, 130, 246)" stopOpacity="0.4" />
+                  <stop offset="50%" stopColor="rgb(59, 130, 246)" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="rgb(59, 130, 246)" stopOpacity="0.05" />
+                </linearGradient>
+                <filter id="userGlow">
+                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+
+              {/* 수평 그리드 라인 */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <line
+                  key={i}
+                  x1="40"
+                  y1={20 + i * 40}
+                  x2="495"
+                  y2={20 + i * 40}
+                  stroke="rgba(255, 255, 255, 0.06)"
+                  strokeWidth="1"
+                />
+              ))}
+
+              {/* 수직 그리드 라인 */}
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                <line
+                  key={i}
+                  x1={40 + i * 65}
+                  y1="20"
+                  x2={40 + i * 65}
+                  y2="180"
+                  stroke="rgba(255, 255, 255, 0.04)"
+                  strokeWidth="1"
+                />
+              ))}
+
+              {/* Y축 레이블 */}
+              {[0, 1, 2, 3, 4].map((i) => {
+                const value = Math.round((summary.total_users || 0) * (1 - i / 4));
+                return (
+                  <text
+                    key={i}
+                    x="35"
+                    y={23 + i * 40}
+                    textAnchor="end"
+                    className="fill-gray-500 text-[10px] font-medium"
+                  >
+                    {value}
+                  </text>
+                );
+              })}
+
+              {/* 그라데이션 영역 */}
+              <polygon
+                points="40,180 80,140 120,145 160,120 200,130 240,110 280,115 320,95 360,100 400,85 440,90 495,75 495,180"
+                fill="url(#userGradient)"
+              />
+
+              {/* 선 그래프 */}
+              <polyline
+                points="40,140 80,140 120,145 160,120 200,130 240,110 280,115 320,95 360,100 400,85 440,90 495,75"
+                fill="none"
+                stroke="rgb(59, 130, 246)"
+                strokeWidth="2.5"
+                filter="url(#userGlow)"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {/* 데이터 포인트 */}
+              {[
+                {x: 40, y: 140}, {x: 80, y: 140}, {x: 120, y: 145}, {x: 160, y: 120},
+                {x: 200, y: 130}, {x: 240, y: 110}, {x: 280, y: 115}, {x: 320, y: 95},
+                {x: 360, y: 100}, {x: 400, y: 85}, {x: 440, y: 90}, {x: 495, y: 75}
+              ].map((point, i) => (
+                <g key={i}>
+                  <circle cx={point.x} cy={point.y} r="4" fill="rgb(59, 130, 246)" opacity="0.5" />
+                  <circle cx={point.x} cy={point.y} r="2.5" fill="rgb(147, 197, 253)" />
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          {/* 통계 */}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">증가율</div>
+              <div className="mt-1 flex items-center gap-1 text-sm font-bold text-green-400">
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-medium text-gray-900 dark:text-white">원격 제어 세션 시작</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">사용자 #1234</p>
-                <p className="mt-1 text-xs text-gray-400">방금 전</p>
+                12%
               </div>
             </div>
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">이번 달</div>
+              <div className="mt-1 text-sm font-bold text-blue-400">+{Math.round((summary.total_users || 0) * 0.12)}</div>
+            </div>
+          </div>
+        </div>
 
-            <div className="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-600">
-                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        {/* 총 상품 */}
+        <div className="relative overflow-hidden rounded-xl border border-gray-200/50 bg-gradient-to-br from-gray-900 to-gray-800 p-5 shadow-lg dark:border-gray-700/50">
+          <div className="absolute inset-0 opacity-5" style={{
+            backgroundImage: 'linear-gradient(rgba(168, 85, 247, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(168, 85, 247, 0.1) 1px, transparent 1px)',
+            backgroundSize: '20px 20px'
+          }}></div>
+
+          <div className="relative mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-white">총 상품</h3>
+              <p className="mt-1 text-xs text-gray-400">Total Products</p>
+            </div>
+            <div className="rounded-lg bg-purple-600/20 px-3 py-1.5 text-xl font-bold text-purple-400 shadow-inner">
+              {(summary.total_products || 0).toLocaleString()}
+            </div>
+          </div>
+
+          <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
+            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="productGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(168, 85, 247)" stopOpacity="0.4" />
+                  <stop offset="50%" stopColor="rgb(168, 85, 247)" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="rgb(168, 85, 247)" stopOpacity="0.05" />
+                </linearGradient>
+                <filter id="productGlow">
+                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+
+              {[0, 1, 2, 3, 4].map((i) => (
+                <line key={i} x1="40" y1={20 + i * 40} x2="495" y2={20 + i * 40} stroke="rgba(255, 255, 255, 0.06)" strokeWidth="1" />
+              ))}
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                <line key={i} x1={40 + i * 65} y1="20" x2={40 + i * 65} y2="180" stroke="rgba(255, 255, 255, 0.04)" strokeWidth="1" />
+              ))}
+
+              {[0, 1, 2, 3, 4].map((i) => {
+                const value = Math.round((summary.total_products || 0) * (1 - i / 4));
+                return (
+                  <text key={i} x="35" y={23 + i * 40} textAnchor="end" className="fill-gray-500 text-[10px] font-medium">
+                    {value}
+                  </text>
+                );
+              })}
+
+              <polygon
+                points="40,180 80,145 120,148 160,135 200,138 240,128 280,130 320,120 360,115 400,108 440,105 495,100 495,180"
+                fill="url(#productGradient)"
+              />
+
+              <polyline
+                points="40,145 80,145 120,148 160,135 200,138 240,128 280,130 320,120 360,115 400,108 440,105 495,100"
+                fill="none"
+                stroke="rgb(168, 85, 247)"
+                strokeWidth="2.5"
+                filter="url(#productGlow)"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {[
+                {x: 40, y: 145}, {x: 80, y: 145}, {x: 120, y: 148}, {x: 160, y: 135},
+                {x: 200, y: 138}, {x: 240, y: 128}, {x: 280, y: 130}, {x: 320, y: 120},
+                {x: 360, y: 115}, {x: 400, y: 108}, {x: 440, y: 105}, {x: 495, y: 100}
+              ].map((point, i) => (
+                <g key={i}>
+                  <circle cx={point.x} cy={point.y} r="4" fill="rgb(168, 85, 247)" opacity="0.5" />
+                  <circle cx={point.x} cy={point.y} r="2.5" fill="rgb(216, 180, 254)" />
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">증가율</div>
+              <div className="mt-1 flex items-center gap-1 text-sm font-bold text-green-400">
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-medium text-gray-900 dark:text-white">AI 챗봇 질문</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">"상품 추천 문의"</p>
-                <p className="mt-1 text-xs text-gray-400">2분 전</p>
+                8%
               </div>
             </div>
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">이번 달</div>
+              <div className="mt-1 text-sm font-bold text-purple-400">+{Math.round((summary.total_products || 0) * 0.08)}</div>
+            </div>
+          </div>
+        </div>
 
-            <div className="flex gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/20">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-600">
-                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+        {/* 총 주문 */}
+        <div className="relative overflow-hidden rounded-xl border border-gray-200/50 bg-gradient-to-br from-gray-900 to-gray-800 p-5 shadow-lg dark:border-gray-700/50">
+          <div className="absolute inset-0 opacity-5" style={{
+            backgroundImage: 'linear-gradient(rgba(52, 211, 153, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(52, 211, 153, 0.1) 1px, transparent 1px)',
+            backgroundSize: '20px 20px'
+          }}></div>
+
+          <div className="relative mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-white">총 주문</h3>
+              <p className="mt-1 text-xs text-gray-400">Total Orders</p>
+            </div>
+            <div className="rounded-lg bg-emerald-600/20 px-3 py-1.5 text-xl font-bold text-emerald-400 shadow-inner">
+              {(summary.total_orders || 0).toLocaleString()}
+            </div>
+          </div>
+
+          <div className="relative h-48 rounded-lg bg-gray-950/50 p-4 ring-1 ring-white/5">
+            <svg className="h-full w-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="orderGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(52, 211, 153)" stopOpacity="0.4" />
+                  <stop offset="50%" stopColor="rgb(52, 211, 153)" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="rgb(52, 211, 153)" stopOpacity="0.05" />
+                </linearGradient>
+                <filter id="orderGlow">
+                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+
+              {[0, 1, 2, 3, 4].map((i) => (
+                <line key={i} x1="40" y1={20 + i * 40} x2="495" y2={20 + i * 40} stroke="rgba(255, 255, 255, 0.06)" strokeWidth="1" />
+              ))}
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                <line key={i} x1={40 + i * 65} y1="20" x2={40 + i * 65} y2="180" stroke="rgba(255, 255, 255, 0.04)" strokeWidth="1" />
+              ))}
+
+              {[0, 1, 2, 3, 4].map((i) => {
+                const value = Math.round((summary.total_orders || 0) * (1 - i / 4));
+                return (
+                  <text key={i} x="35" y={23 + i * 40} textAnchor="end" className="fill-gray-500 text-[10px] font-medium">
+                    {value}
+                  </text>
+                );
+              })}
+
+              <polygon
+                points="40,180 80,150 120,152 160,138 200,142 240,130 280,133 320,118 360,122 400,108 440,110 495,95 495,180"
+                fill="url(#orderGradient)"
+              />
+
+              <polyline
+                points="40,150 80,150 120,152 160,138 200,142 240,130 280,133 320,118 360,122 400,108 440,110 495,95"
+                fill="none"
+                stroke="rgb(52, 211, 153)"
+                strokeWidth="2.5"
+                filter="url(#orderGlow)"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {[
+                {x: 40, y: 150}, {x: 80, y: 150}, {x: 120, y: 152}, {x: 160, y: 138},
+                {x: 200, y: 142}, {x: 240, y: 130}, {x: 280, y: 133}, {x: 320, y: 118},
+                {x: 360, y: 122}, {x: 400, y: 108}, {x: 440, y: 110}, {x: 495, y: 95}
+              ].map((point, i) => (
+                <g key={i}>
+                  <circle cx={point.x} cy={point.y} r="4" fill="rgb(52, 211, 153)" opacity="0.5" />
+                  <circle cx={point.x} cy={point.y} r="2.5" fill="rgb(167, 243, 208)" />
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">증가율</div>
+              <div className="mt-1 flex items-center gap-1 text-sm font-bold text-green-400">
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-medium text-gray-900 dark:text-white">선물 추천 완료</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">3개 추천 생성</p>
-                <p className="mt-1 text-xs text-gray-400">5분 전</p>
+                15%
               </div>
             </div>
-
-            <div className="flex gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-600">
-                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-medium text-gray-900 dark:text-white">구매 전환 성공</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">₩45,000</p>
-                <p className="mt-1 text-xs text-gray-400">12분 전</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 전체 통계 */}
-      <section className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">총 회원</p>
-              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{(summary.total_users || 0).toLocaleString()}</p>
-              <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 12% 증가</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center bg-blue-100 dark:bg-blue-900">
-              <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">총 상품</p>
-              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{(summary.total_products || 0).toLocaleString()}</p>
-              <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 8% 증가</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center bg-purple-100 dark:bg-purple-900">
-              <svg className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">총 주문</p>
-              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{(summary.total_orders || 0).toLocaleString()}</p>
-              <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 15% 증가</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center bg-green-100 dark:bg-green-900">
-              <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">대기 문의</p>
-              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{summary.pending_inquiries || 0}</p>
-              <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-400">처리 필요</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center bg-yellow-100 dark:bg-yellow-900">
-              <svg className="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">승인 대기</p>
-              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{summary.pending_vendors || 0}</p>
-              <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-400">처리 필요</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center bg-orange-100 dark:bg-orange-900">
-              <svg className="h-6 w-6 text-orange-600 dark:text-orange-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
+              <div className="text-[10px] text-gray-500">이번 달</div>
+              <div className="mt-1 text-sm font-bold text-emerald-400">+{Math.round((summary.total_orders || 0) * 0.15)}</div>
             </div>
           </div>
         </div>
