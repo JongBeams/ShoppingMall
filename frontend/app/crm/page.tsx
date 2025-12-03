@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminAPI } from '@/app/lib/api';
+import { adminAPI, productAPI } from '@/app/lib/api';
 
 interface NewUser {
   id: string;
@@ -37,6 +37,9 @@ export default function CRMPage() {
   const [newUsers, setNewUsers] = useState<NewUser[]>([]);
   const [pendingInquiries, setPendingInquiries] = useState<PendingInquiry[]>([]);
   const [pendingVendors, setPendingVendors] = useState<PendingVendor[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalPendingVendors, setTotalPendingVendors] = useState(0);
 
   useEffect(() => {
     // 관리자 로그인 체크
@@ -66,6 +69,8 @@ export default function CRMPage() {
 
       try {
         const data = await adminAPI.getUsers(adminToken);
+        // 전체 회원 수 저장
+        setTotalUsers(data.users.length);
         // 최근 3명만 가져오기
         setNewUsers(data.users.slice(0, 3));
       } catch (error: any) {
@@ -108,7 +113,9 @@ export default function CRMPage() {
 
       try {
         const data = await adminAPI.getVendors(adminToken, 'pending');
-        // 최근 2개만
+        // 전체 개수 저장
+        setTotalPendingVendors(data.length);
+        // 표시용으로 최근 2개만
         setPendingVendors(data.slice(0, 2));
       } catch (error) {
         console.error('Failed to fetch pending vendors:', error);
@@ -116,6 +123,20 @@ export default function CRMPage() {
     };
 
     fetchPendingVendors();
+  }, []);
+
+  // 총 상품 수 조회
+  useEffect(() => {
+    const fetchTotalProducts = async () => {
+      try {
+        const data = await productAPI.getAll();
+        setTotalProducts(data.products?.length || 0);
+      } catch (error) {
+        console.error('Failed to fetch total products:', error);
+      }
+    };
+
+    fetchTotalProducts();
   }, []);
 
   // 시간 계산 함수
@@ -510,8 +531,8 @@ export default function CRMPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">총 회원</p>
-              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">1,234</p>
-              <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 12% 증가</p>
+              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{totalUsers.toLocaleString()}</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">최근 가입 {newUsers.length}명</p>
             </div>
             <div className="flex h-12 w-12 items-center justify-center bg-blue-100 dark:bg-blue-900">
               <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -524,8 +545,8 @@ export default function CRMPage() {
         <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">승인 대기</p>
-              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">23</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">판매자 승인 대기</p>
+              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{totalPendingVendors}</p>
               <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-400">처리 필요</p>
             </div>
             <div className="flex h-12 w-12 items-center justify-center bg-yellow-100 dark:bg-yellow-900">
@@ -540,8 +561,8 @@ export default function CRMPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">총 상품</p>
-              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">5,678</p>
-              <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 8% 증가</p>
+              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{totalProducts.toLocaleString()}</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">등록된 상품</p>
             </div>
             <div className="flex h-12 w-12 items-center justify-center bg-purple-100 dark:bg-purple-900">
               <svg className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -554,13 +575,13 @@ export default function CRMPage() {
         <div className="border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">오늘 주문</p>
-              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">145</p>
-              <p className="mt-1 text-xs text-green-600 dark:text-green-400">↑ 15% 증가</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">신규 회원</p>
+              <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{newUsers.length}</p>
+              <p className="mt-1 text-xs text-green-600 dark:text-green-400">최근 가입</p>
             </div>
             <div className="flex h-12 w-12 items-center justify-center bg-green-100 dark:bg-green-900">
               <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
               </svg>
             </div>
           </div>

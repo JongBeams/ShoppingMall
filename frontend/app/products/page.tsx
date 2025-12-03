@@ -11,6 +11,7 @@ import { productAPI } from '../lib/api';
 type SortOption = 'ranking' | 'price_low' | 'price_high' | 'sales' | 'latest' | 'discount';
 
 const ITEMS_PER_PAGE = 20;
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 export default function ProductsPage() {
   const searchParams = useSearchParams();
@@ -28,18 +29,39 @@ export default function ProductsPage() {
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
+  const queryStartTime = useMemo(() => Date.now(), [searchQuery]);
 
   // 상품 목록 조회 (검색어가 있으면 검색, 없으면 전체 조회)
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       setError(null);
+      const startTime = Date.now();
+
       try {
         let response;
         if (searchQuery && searchQuery.trim().length >= 2) {
+          // 검색어를 sessionStorage에 저장 (클릭 추적용)
+          sessionStorage.setItem('last_search_query', searchQuery);
+
           // 검색
           response = await productAPI.search(searchQuery);
+
+          // RAG Analytics 기록
+          const responseTime = Date.now() - startTime;
+          fetch(`${API_BASE_URL}/analytics/rag-query`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: searchQuery,
+              response_time_ms: responseTime,
+              documents_found: response.products?.length || 0
+            })
+          }).catch(err => console.error('Analytics 기록 실패:', err));
         } else {
+          // 전체 조회 시 sessionStorage 초기화
+          sessionStorage.removeItem('last_search_query');
+
           // 전체 조회
           response = await productAPI.getAll();
         }

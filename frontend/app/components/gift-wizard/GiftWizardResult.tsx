@@ -3,16 +3,20 @@
 import { useState } from 'react'
 import Link from 'next/link'
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
 interface GiftWizardResultProps {
   recommendations: any
   answers: any
   onRestart: () => void
+  sessionId: string
 }
 
 export default function GiftWizardResult({
   recommendations,
   answers,
   onRestart,
+  sessionId,
 }: GiftWizardResultProps) {
   const [selectedMessage, setSelectedMessage] = useState<{ [key: number]: number }>({})
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null)
@@ -22,6 +26,21 @@ export default function GiftWizardResult({
     setSelectedMessage({ ...selectedMessage, [recIndex]: msgIndex })
     setCopiedMessage(message)
     setTimeout(() => setCopiedMessage(null), 2000)
+  }
+
+  const handleProductClick = (productId: string) => {
+    // Analytics: 추천 상품 클릭 기록
+    fetch(`${API_BASE_URL}/analytics/gift-wizard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sessionId,
+        completed: true,
+        recommendations_count: recs.length,
+        clicked_recommendation: productId,
+        purchased: false
+      })
+    }).catch(err => console.error('Analytics 기록 실패:', err));
   }
 
   const recs = recommendations.recommendations || []
@@ -223,6 +242,7 @@ export default function GiftWizardResult({
                       {rec.product_id && (
                         <Link
                           href={`/products/${rec.product_id}`}
+                          onClick={() => handleProductClick(rec.product_id)}
                           className="px-6 py-4 bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 transition text-center tracking-wide dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                         >
                           상품 보기

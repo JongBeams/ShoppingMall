@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import GiftWizardChat from '../components/gift-wizard/GiftWizardChat'
 import GiftWizardResult from '../components/gift-wizard/GiftWizardResult'
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 export default function GiftWizardPage() {
   const [step, setStep] = useState<'intro' | 'chat' | 'loading' | 'result'>('intro')
@@ -10,6 +12,7 @@ export default function GiftWizardPage() {
   const [recommendations, setRecommendations] = useState<any>(null)
   const [loadingLogs, setLoadingLogs] = useState<string[]>([])
   const [currentProgress, setCurrentProgress] = useState(0)
+  const sessionId = useRef<string>(`gw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
 
   const handleStart = () => {
     setStep('chat')
@@ -20,6 +23,18 @@ export default function GiftWizardPage() {
     setStep('loading')
     setLoadingLogs([])
     setCurrentProgress(0)
+
+    // Analytics: 세션 완료 기록
+    fetch(`${API_BASE_URL}/analytics/gift-wizard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sessionId.current,
+        completed: true,
+        recommendations_count: 0, // 아직 추천 전
+        purchased: false
+      })
+    }).catch(err => console.error('Analytics 기록 실패:', err));
 
     // 로딩 로그 시뮬레이션
     simulateLoadingProcess()
@@ -84,6 +99,19 @@ export default function GiftWizardPage() {
       setTimeout(() => {
         setRecommendations(data)
         setStep('result')
+
+        // Analytics: 추천 결과 조회 기록
+        const recommendationsCount = data.recommendations?.length || 0;
+        fetch(`${API_BASE_URL}/analytics/gift-wizard`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sessionId.current,
+            completed: true,
+            recommendations_count: recommendationsCount,
+            purchased: false
+          })
+        }).catch(err => console.error('Analytics 기록 실패:', err));
       }, 1000)
     } catch (error: any) {
       console.error('추천 오류:', error)
@@ -383,6 +411,7 @@ export default function GiftWizardPage() {
           recommendations={recommendations}
           answers={answers}
           onRestart={handleRestart}
+          sessionId={sessionId.current}
         />
       )}
     </div>

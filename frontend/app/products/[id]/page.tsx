@@ -49,6 +49,27 @@ export default function ProductDetailPage() {
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const [showAiSummary, setShowAiSummary] = useState(false);
 
+  // RAG Analytics - 검색에서 상품 클릭 추적
+  useEffect(() => {
+    const lastSearchQuery = sessionStorage.getItem('last_search_query');
+    if (lastSearchQuery && productId) {
+      // 검색에서 상품 클릭한 경우, analytics에 기록
+      fetch(`${API_BASE_URL}/analytics/rag-query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: lastSearchQuery,
+          response_time_ms: 0,
+          documents_found: 0,
+          clicked_product: productId
+        })
+      }).catch(err => console.error('Analytics 기록 실패:', err));
+
+      // 기록 후 삭제 (중복 방지)
+      sessionStorage.removeItem('last_search_query');
+    }
+  }, [productId]);
+
   // 옵션 선택 핸들러
   const handleOptionChange = (optionId: string, valueId: string) => {
     setSelectedOptions(prev => ({
