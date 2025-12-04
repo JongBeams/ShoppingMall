@@ -499,7 +499,7 @@ async def search_products_by_image(
         result = supabase.rpc("match_products_by_image", {
             "query_embedding": query_embedding,
             "match_threshold": 0.3,  # 유사도 30% 이상
-            "match_count": 3  # 상위 3개만 반환
+            "match_count": 5  # 상위 5개만 반환
         }).execute()
 
         products = result.data or []
