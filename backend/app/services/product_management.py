@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from app.services.supabase import get_supabase_admin_client
 from fastapi import HTTPException, status, UploadFile
 from app.models.product import CreateProductRequset, VendorProductResponse
+from app.services.image_embedding import get_image_embedding_service
 
 
 #======================================================
@@ -413,6 +414,32 @@ class CreateProduct:
                 if len(self.product_data.options) > 0:
                     self._save_product_options(product_id, self.product_data.options)
 
+            # 🔥 상품 수정 시 이미지 임베딩 재생성
+            # 1. 기존 임베딩 삭제
+            try:
+                self.supabase_admin.table("products").update({
+                    "image_embedding": None
+                }).eq("id", product_id).execute()
+                print(f"[ProductUpdate] Deleted old image embedding for product {product_id}")
+            except Exception as e:
+                print(f"[ProductUpdate] Warning: Failed to delete old embedding: {e}")
+
+            # 2. 현재 이미지의 임베딩 재생성
+            if product.get("thumbnail_url"):
+                try:
+                    from app.services.image_embedding import get_image_embedding_service
+                    embedding_service = get_image_embedding_service()
+                    embedding = embedding_service.generate_embedding(product["thumbnail_url"])
+
+                    # 임베딩 DB에 저장
+                    self.supabase_admin.table("products").update({
+                        "image_embedding": embedding
+                    }).eq("id", product_id).execute()
+
+                    print(f"[ProductUpdate] Regenerated image embedding for product {product_id}")
+                except Exception as e:
+                    print(f"[ProductUpdate] Warning: Failed to regenerate image embedding: {e}")
+
             return product
 
     def _save_product_options(self, product_id: str, options: list):
@@ -497,15 +524,20 @@ class DeleteProduct:
     def execute(self):
         """
         상품을 삭제합니다. 판매자 본인의 상품만 삭제 가능합니다.
+
+        삭제 항목:
+        1. Supabase Storage의 이미지 파일들 (thumbnail + images)
+        2. products 테이블 레코드 (image_embedding 벡터 포함)
+        3. product_options, product_option_values (CASCADE로 자동 삭제)
         """
         # 판매자 권한 확인 및 vendor_id 조회 (헬퍼 함수 사용)
         vendor_id = get_vendor_id(self.current_user)
 
-        # 상품 존재 여부 및 소유권 확인
+        # 상품 존재 여부 및 소유권 확인 + 이미지 URL 가져오기
         try:
             product_response = (
                 self.supabase_admin.table("products")
-                .select("id, vendor_id")
+                .select("id, vendor_id, thumbnail_url, images")
                 .eq("id", self.product_id)
                 .single()
                 .execute()
@@ -531,7 +563,13 @@ class DeleteProduct:
                 detail=f"상품 조회 중 오류가 발생했습니다: {str(e)}"
             )
 
-        # 상품 삭제
+        # 🔥 1. Supabase Storage에서 이미지 파일들 삭제
+        self._delete_product_images(product)
+
+        # 🔥 2. 상품 옵션 삭제 (product_options, product_option_values)
+        self._delete_product_options(self.product_id)
+
+        # 🔥 3. products 테이블 삭제 (image_embedding 벡터도 함께 삭제됨)
         try:
             (
                 self.supabase_admin.table("products")
@@ -539,6 +577,7 @@ class DeleteProduct:
                 .eq("id", self.product_id)
                 .execute()
             )
+            print(f"[DeleteProduct] Deleted product {self.product_id} from DB (including image_embedding)")
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -546,6 +585,46 @@ class DeleteProduct:
             )
 
         return {"message": "상품이 삭제되었습니다.", "product_id": self.product_id}
+
+    def _delete_product_images(self, product: dict):
+        """
+        Supabase Storage에서 상품 이미지 파일들을 삭제합니다.
+
+        Args:
+            product: 상품 데이터 (thumbnail_url, images 포함)
+        """
+        bucket_name = "ProductImage"
+        storage_paths = []
+
+        try:
+            # thumbnail_url에서 storage path 추출
+            thumbnail_url = product.get("thumbnail_url")
+            if thumbnail_url and "ProductImage" in thumbnail_url:
+                # URL 예시: https://.../storage/v1/object/public/ProductImage/products/{vendor_id}/{uuid}.jpg
+                path = thumbnail_url.split("ProductImage/")[-1]
+                storage_paths.append(path)
+
+            # images 배열에서 storage path 추출
+            images = product.get("images")
+            if images and isinstance(images, list):
+                for img_url in images:
+                    if img_url and "ProductImage" in img_url:
+                        path = img_url.split("ProductImage/")[-1]
+                        storage_paths.append(path)
+
+            # Storage에서 파일 삭제
+            if storage_paths:
+                for path in storage_paths:
+                    try:
+                        self.supabase_admin.storage.from_(bucket_name).remove([path])
+                        print(f"[DeleteProduct] Deleted image from storage: {path}")
+                    except Exception as e:
+                        print(f"[DeleteProduct] Warning: Failed to delete {path}: {e}")
+                        # 파일 삭제 실패해도 계속 진행 (이미 삭제됐을 수도 있음)
+
+        except Exception as e:
+            print(f"[DeleteProduct] Warning: Error during image deletion: {e}")
+            # 이미지 삭제 실패해도 상품 DB 레코드는 삭제 진행
 
 
 #이미지 업로드
@@ -619,9 +698,20 @@ class UploadProductImage:
         try:
             public_url = self.supabase_admin.storage.from_(self.bucket_name).get_public_url(storage_path)
 
+            # 이미지 임베딩 생성 (CLIP 모델)
+            embedding = None
+            try:
+                embedding_service = get_image_embedding_service()
+                embedding = embedding_service.generate_embedding_from_bytes(file_content)
+                print(f"[UploadProductImage] Image embedding generated: {len(embedding)} dimensions")
+            except Exception as e:
+                print(f"[UploadProductImage] Warning: Failed to generate image embedding: {e}")
+                # 임베딩 실패해도 이미지 업로드는 성공시킴
+
             return {
                 "image_url": public_url,
-                "storage_path": storage_path
+                "storage_path": storage_path,
+                "image_embedding": embedding  # 512차원 float 리스트 (또는 None)
             }
         except Exception as e:
             raise HTTPException(

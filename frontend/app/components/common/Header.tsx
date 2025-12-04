@@ -21,6 +21,7 @@ export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [businessName, setBusinessName] = useState('SHOP');
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
   // CRM 경로 확인
   const isCRMPage = pathname?.startsWith('/crm');
@@ -128,6 +129,7 @@ export default function Header() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (searchQuery.trim()) {
       if (isCRMPage) {
         // 관리자: CRM 통합 검색
@@ -151,6 +153,61 @@ export default function Header() {
 
   const handleClearSearch = () => {
     setSearchQuery('');
+  };
+
+  const handleImageSearch = async (file: File) => {
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(`${API_URL}/products/search-by-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        alert('이미지 검색에 실패했습니다.');
+        return;
+      }
+
+      const data = await response.json();
+
+      // 🔥 모든 검색 결과 표시 (백엔드에서 유사도순으로 정렬된 결과)
+      const products = data.products || [];
+
+      if (products.length === 0) {
+        alert('유사한 상품을 찾지 못했습니다.');
+        return;
+      }
+
+      // 검색 결과를 sessionStorage에 저장
+      sessionStorage.setItem('image_search_results', JSON.stringify(products));
+
+      // ✅ 이미 이미지 검색 페이지에 있으면 강제 새로고침
+      if (window.location.pathname === '/products' && window.location.search.includes('image_search=true')) {
+        window.location.href = '/products?image_search=true';
+      } else {
+        // products 페이지로 이동 (이미지 검색 모드)
+        router.push('/products?image_search=true');
+      }
+    } catch (error) {
+      console.error('Image search error:', error);
+      alert('이미지 검색 중 오류가 발생했습니다.');
+    } finally {
+      setSelectedImage(null);
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      handleImageSearch(file); // ✅ 이미지 선택하자마자 바로 검색
+    }
+    // ✅ 같은 파일을 다시 선택할 수 있도록 input value 초기화
+    e.target.value = '';
   };
 
   // 더미 알림 데이터 - CRM vs 일반 사용자
@@ -472,7 +529,7 @@ export default function Header() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={isCRMPage ? '판매스토어, 회원 검색' : (userType === 'seller' ? '상품+주문+문의 통합검색' : '상품 검색...')}
-                  className="w-full border border-gray-300 bg-white px-4 py-2 pr-20 text-sm text-gray-900 placeholder-gray-500 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-white"
+                  className="w-full border border-gray-300 bg-white px-4 py-2 pr-24 text-sm text-gray-900 placeholder-gray-500 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 dark:focus:border-white"
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                   {searchQuery && (
@@ -486,6 +543,30 @@ export default function Header() {
                       </svg>
                     </button>
                   )}
+
+                  {/* 🔥 이미지 검색 아이콘 (검색창 안) */}
+                  {!isCRMPage && userType !== 'seller' && (
+                    <div className="relative group">
+                      <input
+                        type="file"
+                        id="image-search-input"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                      />
+                      <label
+                        htmlFor="image-search-input"
+                        className="cursor-pointer text-gray-400 transition hover:text-gray-900 dark:hover:text-white"
+                        title="이미지로 검색"
+                      >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* 텍스트 검색 버튼 */}
                   <button
                     type="submit"
                     className="text-gray-400 transition hover:text-gray-900 dark:hover:text-white"

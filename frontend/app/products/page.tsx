@@ -16,6 +16,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:80
 export default function ProductsPage() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams?.get('search') || '';
+  const isImageSearch = searchParams?.get('image_search') === 'true';
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -31,7 +32,7 @@ export default function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const queryStartTime = useMemo(() => Date.now(), [searchQuery]);
 
-  // 상품 목록 조회 (검색어가 있으면 검색, 없으면 전체 조회)
+  // 상품 목록 조회 (검색어가 있으면 검색, 이미지 검색이면 sessionStorage, 없으면 전체 조회)
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
@@ -40,6 +41,22 @@ export default function ProductsPage() {
 
       try {
         let response;
+
+        // 🔥 이미지 검색 결과 표시
+        if (isImageSearch) {
+          const imageResults = sessionStorage.getItem('image_search_results');
+          if (imageResults) {
+            const parsedResults = JSON.parse(imageResults);
+            setProducts(parsedResults);
+            // ✅ sessionStorage 삭제 안 함 (useEffect가 여러 번 실행되어도 데이터 유지)
+          } else {
+            // sessionStorage가 없으면 빈 배열
+            setProducts([]);
+          }
+          setLoading(false);
+          return;
+        }
+
         if (searchQuery && searchQuery.trim().length >= 2) {
           // 검색어를 sessionStorage에 저장 (클릭 추적용)
           sessionStorage.setItem('last_search_query', searchQuery);
@@ -75,7 +92,7 @@ export default function ProductsPage() {
     };
 
     fetchProducts();
-  }, [searchQuery]);
+  }, [searchQuery, isImageSearch]);
 
   // 카테고리 목록 조회
   useEffect(() => {
@@ -131,6 +148,11 @@ export default function ProductsPage() {
       filtered = filtered.filter(p => p.price >= min && p.price <= max);
     }
 
+    // 🔥 이미지 검색일 때는 정렬하지 않고 백엔드의 유사도 순서 유지
+    if (isImageSearch) {
+      return filtered;
+    }
+
     // 할인 중인지 확인하는 함수
     const isOnSale = (product: Product) => {
       if (!product.discount_price || !product.discount_start || !product.discount_end) return false;
@@ -171,7 +193,7 @@ export default function ProductsPage() {
     });
 
     return sorted;
-  }, [products, selectedCategory, freeShipping, sortBy, selectedRating, priceRange, minPrice, maxPrice]);
+  }, [products, selectedCategory, freeShipping, sortBy, selectedRating, priceRange, minPrice, maxPrice, isImageSearch]);
 
   // 페이지네이션
   const totalPages = Math.ceil(filteredAndSortedProducts.length / ITEMS_PER_PAGE);
@@ -188,7 +210,11 @@ export default function ProductsPage() {
   return (
     <div>
       <h1 className="mb-6 text-sm text-gray-900 dark:text-white">
-        {searchQuery ? (
+        {isImageSearch ? (
+          <>
+            전체 &gt; <span className="font-bold text-blue-600 dark:text-blue-400">이미지 검색 결과</span>
+          </>
+        ) : searchQuery ? (
           <>
             전체 &gt; <span className="font-bold">'{searchQuery}'</span>
           </>
@@ -381,7 +407,14 @@ export default function ProductsPage() {
         {/* 오른쪽 상품 목록 */}
         <div className="flex-1">
           {/* 검색 결과 안내 */}
-          {searchQuery && (
+          {isImageSearch && (
+            <div className="mb-2">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                <span className="font-bold">이미지와 유사한 상품</span>을 찾았습니다. 유사도 순으로 정렬되어 있습니다.
+              </p>
+            </div>
+          )}
+          {searchQuery && !isImageSearch && (
             <div className="mb-2">
               <p className="text-sm text-gray-700 dark:text-gray-300">
                 <span className="font-bold text-blue-600 dark:text-blue-400">'{searchQuery}'</span>에 대한 검색결과
@@ -393,68 +426,77 @@ export default function ProductsPage() {
           <div className="mb-4 flex items-center justify-between border-b border-gray-200 bg-white pb-3 dark:border-gray-700 dark:bg-gray-900">
             {/* 왼쪽: 정렬 버튼들 */}
             <div className="flex items-center gap-4">
-              {/* 정렬 버튼들 */}
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setSortBy('ranking')}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs transition-colors ${
-                    sortBy === 'ranking'
-                      ? 'font-bold text-blue-600 dark:text-blue-500'
-                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-                  }`}
-                >
-                  {sortBy === 'ranking' && <span>✓</span>}
-                  인기순
-                </button>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <button
-                  onClick={() => setSortBy('price_low')}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs transition-colors ${
-                    sortBy === 'price_low'
-                      ? 'font-bold text-blue-600 dark:text-blue-500'
-                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-                  }`}
-                >
-                  {sortBy === 'price_low' && <span>✓</span>}
-                  낮은가격순
-                </button>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <button
-                  onClick={() => setSortBy('price_high')}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs transition-colors ${
-                    sortBy === 'price_high'
-                      ? 'font-bold text-blue-600 dark:text-blue-500'
-                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-                  }`}
-                >
-                  {sortBy === 'price_high' && <span>✓</span>}
-                  판매량순
-                </button>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <button
-                  onClick={() => setSortBy('discount')}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs transition-colors ${
-                    sortBy === 'discount'
-                      ? 'font-bold text-blue-600 dark:text-blue-500'
-                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-                  }`}
-                >
-                  {sortBy === 'discount' && <span>✓</span>}
-                  할인순
-                </button>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <button
-                  onClick={() => setSortBy('latest')}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs transition-colors ${
-                    sortBy === 'latest'
-                      ? 'font-bold text-blue-600 dark:text-blue-500'
-                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
-                  }`}
-                >
-                  {sortBy === 'latest' && <span>✓</span>}
-                  최신순
-                </button>
-              </div>
+              {/* 🔥 이미지 검색일 때는 정렬 옵션 숨기기 (유사도 순서 유지) */}
+              {!isImageSearch && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setSortBy('ranking')}
+                    className={`flex items-center gap-1 px-3 py-1 text-xs transition-colors ${
+                      sortBy === 'ranking'
+                        ? 'font-bold text-blue-600 dark:text-blue-500'
+                        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    {sortBy === 'ranking' && <span>✓</span>}
+                    인기순
+                  </button>
+                  <span className="text-gray-300 dark:text-gray-600">|</span>
+                  <button
+                    onClick={() => setSortBy('price_low')}
+                    className={`flex items-center gap-1 px-3 py-1 text-xs transition-colors ${
+                      sortBy === 'price_low'
+                        ? 'font-bold text-blue-600 dark:text-blue-500'
+                        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    {sortBy === 'price_low' && <span>✓</span>}
+                    낮은가격순
+                  </button>
+                  <span className="text-gray-300 dark:text-gray-600">|</span>
+                  <button
+                    onClick={() => setSortBy('price_high')}
+                    className={`flex items-center gap-1 px-3 py-1 text-xs transition-colors ${
+                      sortBy === 'price_high'
+                        ? 'font-bold text-blue-600 dark:text-blue-500'
+                        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    {sortBy === 'price_high' && <span>✓</span>}
+                    판매량순
+                  </button>
+                  <span className="text-gray-300 dark:text-gray-600">|</span>
+                  <button
+                    onClick={() => setSortBy('discount')}
+                    className={`flex items-center gap-1 px-3 py-1 text-xs transition-colors ${
+                      sortBy === 'discount'
+                        ? 'font-bold text-blue-600 dark:text-blue-500'
+                        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    {sortBy === 'discount' && <span>✓</span>}
+                    할인순
+                  </button>
+                  <span className="text-gray-300 dark:text-gray-600">|</span>
+                  <button
+                    onClick={() => setSortBy('latest')}
+                    className={`flex items-center gap-1 px-3 py-1 text-xs transition-colors ${
+                      sortBy === 'latest'
+                        ? 'font-bold text-blue-600 dark:text-blue-500'
+                        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    {sortBy === 'latest' && <span>✓</span>}
+                    최신순
+                  </button>
+                </div>
+              )}
+              {/* 🔥 이미지 검색일 때 유사도순 표시 */}
+              {isImageSearch && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-blue-600 dark:text-blue-500">✓ 유사도순</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">(이미지 검색 결과는 유사도 순으로 자동 정렬됩니다)</span>
+                </div>
+              )}
             </div>
 
             {/* 오른쪽: 상품 개수 표시 */}

@@ -5,6 +5,7 @@ from app.models.product import CreateProductRequset
 from app.services.product_management import CreateProduct, DeleteProduct, UploadProductImage, GetVendorProducts, get_product_options
 from app.services.supabase import get_supabase_client, get_supabase_admin_client
 from app.services.auth_middleware import get_current_user
+from app.services.image_embedding import get_image_embedding_service
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -445,10 +446,128 @@ async def upload_product_image(
     results = await asyncio.gather(*upload_tasks)
     image_urls = [result["image_url"] for result in results]
 
+    # 첫 번째 이미지의 임베딩을 DB에 저장
+    if results and results[0].get("image_embedding") and product_id != "temp":
+        try:
+            supabase = get_supabase_admin_client()
+            supabase.table("products").update({
+                "image_embedding": results[0]["image_embedding"]
+            }).eq("id", product_id).execute()
+            print(f"[ProductImage] Saved image embedding for product {product_id}")
+        except Exception as e:
+            print(f"[ProductImage] Warning: Failed to save embedding to DB: {e}")
+
     return {
         "thumbnail_url": image_urls[0] if image_urls else None,
         "image_urls": image_urls
     }
+
+
+# 이미지 기반 유사 상품 검색
+@router.post("/search-by-image", summary="이미지로 유사 상품 검색")
+async def search_products_by_image(
+    file: UploadFile = File(...)
+):
+    """
+    이미지를 업로드하면 시각적으로 유사한 상품을 찾아줍니다.
+
+    - **file**: 검색할 이미지 파일 (jpg, png 등)
+
+    Returns:
+        - **products**: 유사도 높은 순으로 정렬된 상품 목록 (최대 20개)
+        - **count**: 검색된 상품 수
+    """
+    # 파일 유효성 검사
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="이미지 파일만 업로드 가능합니다."
+        )
+
+    try:
+        # 이미지 읽기
+        image_bytes = await file.read()
+
+        # 이미지 임베딩 생성
+        embedding_service = get_image_embedding_service()
+        query_embedding = embedding_service.generate_embedding_from_bytes(image_bytes)
+
+        print(f"[ImageSearch] Query embedding generated: {len(query_embedding)} dimensions")
+
+        # pgvector 유사도 검색
+        supabase = get_supabase_client()
+        result = supabase.rpc("match_products_by_image", {
+            "query_embedding": query_embedding,
+            "match_threshold": 0.3,  # 유사도 30% 이상
+            "match_count": 3  # 상위 3개만 반환
+        }).execute()
+
+        products = result.data or []
+
+        print(f"[ImageSearch] Found {len(products)} similar products")
+
+        # 카테고리 및 벤더 정보 추가
+        if products:
+            category_ids = {p["category_id"] for p in products if p.get("category_id")}
+            vendor_ids = {p["vendor_id"] for p in products if p.get("vendor_id")}
+
+            category_map = {}
+            vendor_map = {}
+
+            if category_ids:
+                categories_response = (
+                    supabase.table("categories")
+                    .select("id, slug, name")
+                    .in_("id", list(category_ids))
+                    .execute()
+                )
+                for category in categories_response.data or []:
+                    category_map[category["id"]] = {
+                        "slug": category.get("slug"),
+                        "name": category.get("name"),
+                    }
+
+            if vendor_ids:
+                from app.services.supabase import get_supabase_admin_client
+                supabase_admin = get_supabase_admin_client()
+                vendors_response = (
+                    supabase_admin.table("vendors")
+                    .select("id, store_name")
+                    .in_("id", list(vendor_ids))
+                    .execute()
+                )
+                for vendor in vendors_response.data or []:
+                    vendor_map[vendor["id"]] = vendor.get("store_name")
+
+            # 상품 데이터 포맷팅
+            product_list = []
+            for product in products:
+                category_info = category_map.get(product.get("category_id"), {})
+                vendor_name = vendor_map.get(product.get("vendor_id"))
+                product_list.append({
+                    "id": product["id"],
+                    "name": product["name"],
+                    "description": product.get("description"),
+                    "price": product["price"],
+                    "thumbnail_url": product.get("thumbnail_url"),
+                    "category_slug": category_info.get("slug"),
+                    "category_name": category_info.get("name"),
+                    "vendor_name": vendor_name,
+                    "rating": product.get("rating", 0),
+                    "review_count": product.get("review_count", 0),
+                    "stock_quantity": product.get("stock_quantity", 0),
+                    "similarity": round(product.get("similarity", 0), 3)  # 유사도 점수
+                })
+
+            return {"products": product_list, "count": len(product_list)}
+
+        return {"products": [], "count": 0}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"이미지 검색 중 오류가 발생했습니다: {str(e)}"
+        )
 
 
 # 상품 삭제
