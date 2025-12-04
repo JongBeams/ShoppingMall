@@ -192,10 +192,58 @@ export default function Home() {
 
   const [dealPage, setDealPage] = useState(0);
   const [bestPage, setBestPage] = useState(0);
+  const [orderPage, setOrderPage] = useState(0);
+  const [sellerProductPage, setSellerProductPage] = useState(0);
+  const [countdown, setCountdown] = useState('00:00:00');
 
   const dealsPerPage = 2;
   const totalDealPages = Math.ceil(discountProducts.length / dealsPerPage) || 1;
   const totalBestPages = Math.ceil(bestProducts.length / dealsPerPage);
+  const ordersPerPage = 2;
+  const totalOrderPages = Math.ceil(myOrders.length / ordersPerPage) || 1;
+  const sellerProductsPerPage = 2;
+  const totalSellerProductPages = Math.ceil(myProducts.length / sellerProductsPerPage) || 1;
+
+  // 특가 타이머 카운트다운
+  useEffect(() => {
+    if (discountProducts.length === 0) return;
+
+    const updateCountdown = () => {
+      // 가장 빨리 끝나는 할인 상품의 종료 시간 찾기
+      const now = new Date();
+      let nearestEndTime: Date | null = null;
+
+      discountProducts.forEach(product => {
+        if (product.discount_end) {
+          const endTime = new Date(product.discount_end);
+          if (endTime > now) {
+            if (!nearestEndTime || endTime < nearestEndTime) {
+              nearestEndTime = endTime;
+            }
+          }
+        }
+      });
+
+      if (!nearestEndTime) {
+        setCountdown('00:00:00');
+        return;
+      }
+
+      const diff = (nearestEndTime as Date).getTime() - now.getTime();
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setCountdown(
+        `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+      );
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(timer);
+  }, [discountProducts]);
 
   // 판매자용 홈 화면
   if (userType === 'seller') {
@@ -372,7 +420,7 @@ export default function Home() {
               ) : myOrders.length === 0 ? (
                 <p className="text-center text-xs text-gray-500">주문이 없습니다.</p>
               ) : (
-                myOrders.slice(0, 2).map((order) => (
+                myOrders.slice(orderPage * ordersPerPage, (orderPage + 1) * ordersPerPage).map((order) => (
                   <Link
                     key={order.id}
                     href="/mypage#delivery"
@@ -402,20 +450,28 @@ export default function Home() {
             {/* Pagination */}
             <div className="mt-4 flex items-center justify-center gap-1">
               <button
+                onClick={() => setOrderPage((p) => Math.max(0, p - 1))}
+                disabled={orderPage === 0}
                 className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
               >
                 ‹
               </button>
-              <button className="h-6 w-6 border border-gray-900 bg-gray-900 text-xs font-bold text-white dark:border-white dark:bg-white dark:text-gray-900">
-                1
-              </button>
-              <button className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800">
-                2
-              </button>
-              <button className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800">
-                3
-              </button>
+              {Array.from({ length: totalOrderPages }).map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setOrderPage(idx)}
+                  className={`h-6 w-6 text-xs ${
+                    orderPage === idx
+                      ? 'border border-gray-900 bg-gray-900 font-bold text-white dark:border-white dark:bg-white dark:text-gray-900'
+                      : 'border border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  {idx + 1}
+                </button>
+              ))}
               <button
+                onClick={() => setOrderPage((p) => Math.min(totalOrderPages - 1, p + 1))}
+                disabled={orderPage === totalOrderPages - 1}
                 className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
               >
                 ›
@@ -437,7 +493,7 @@ export default function Home() {
               ) : myProducts.length === 0 ? (
                 <p className="text-center text-xs text-gray-500">상품이 없습니다.</p>
               ) : (
-                myProducts.slice(0, 2).map((product, idx) => (
+                myProducts.slice(sellerProductPage * sellerProductsPerPage, (sellerProductPage + 1) * sellerProductsPerPage).map((product, idx) => (
                   <Link
                     key={product.id}
                     href="/mypage#products"
@@ -460,7 +516,7 @@ export default function Home() {
                         </div>
                       )}
                       <div className="absolute left-0 top-0 flex h-5 w-5 items-center justify-center bg-gray-900 text-xs font-bold text-white dark:bg-white dark:text-gray-900">
-                        {idx + 1}
+                        {sellerProductPage * sellerProductsPerPage + idx + 1}
                       </div>
                     </div>
                     <div className="flex flex-1 flex-col justify-center">
@@ -479,20 +535,28 @@ export default function Home() {
             {/* Pagination */}
             <div className="mt-4 flex items-center justify-center gap-1">
               <button
+                onClick={() => setSellerProductPage((p) => Math.max(0, p - 1))}
+                disabled={sellerProductPage === 0}
                 className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
               >
                 ‹
               </button>
-              <button className="h-6 w-6 border border-gray-900 bg-gray-900 text-xs font-bold text-white dark:border-white dark:bg-white dark:text-gray-900">
-                1
-              </button>
-              <button className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800">
-                2
-              </button>
-              <button className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800">
-                3
-              </button>
+              {Array.from({ length: totalSellerProductPages }).map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSellerProductPage(idx)}
+                  className={`h-6 w-6 text-xs ${
+                    sellerProductPage === idx
+                      ? 'border border-gray-900 bg-gray-900 font-bold text-white dark:border-white dark:bg-white dark:text-gray-900'
+                      : 'border border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  {idx + 1}
+                </button>
+              ))}
               <button
+                onClick={() => setSellerProductPage((p) => Math.min(totalSellerProductPages - 1, p + 1))}
+                disabled={sellerProductPage === totalSellerProductPages - 1}
                 className="h-6 w-6 border border-gray-300 text-xs text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
               >
                 ›
@@ -768,7 +832,7 @@ export default function Home() {
                 <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                 </svg>
-                <span className="text-xs font-bold">12:34:56</span>
+                <span className="text-xs font-bold">{countdown}</span>
               </div>
             </div>
             <Link href="/products" className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400">
