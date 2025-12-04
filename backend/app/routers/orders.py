@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.services.auth_middleware import get_current_user
+from app.services.auth_middleware import get_current_user, get_current_admin
 from app.services.supabase import get_supabase_admin_client
 from app.services.payments import process_payment_success, cancel_toss_payment
 from app.services.points import cancel_points
@@ -229,6 +229,7 @@ async def create_order(
 
 @router.get("/admin/all", summary="[관리자] 전체 주문 목록 조회")
 async def get_all_orders_admin(
+    current_admin: dict = Depends(get_current_admin),
     limit: int = 100,
     offset: int = 0
 ):
@@ -725,7 +726,8 @@ async def confirm_order(
 @router.patch("/{order_id}/status", summary="[관리자] 주문 상태 변경")
 async def update_order_status_admin(
     order_id: str,
-    request: UpdateOrderStatusRequest
+    request: UpdateOrderStatusRequest,
+    current_admin: dict = Depends(get_current_admin)
 ):
     """
     관리자가 주문 상태를 변경합니다.
