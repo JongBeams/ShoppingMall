@@ -148,6 +148,24 @@ export default function AnalyticsPage() {
   const maxRagQueries = Math.max(...ragTrend.map(t => t.queries || 0), 1);
   const maxGiftSessions = Math.max(...giftTrend.map(t => t.sessions || 0), 1);
 
+  // 증가율 계산 (전체 기간을 반으로 나눠서 전반부 vs 후반부 비교)
+  const calculateGrowthRate = (trend: {count: number}[]) => {
+    if (trend.length < 2) return 0;
+    const midpoint = Math.floor(trend.length / 2);
+    const firstHalf = trend.slice(0, midpoint);
+    const secondHalf = trend.slice(midpoint);
+
+    const firstSum = firstHalf.reduce((sum, item) => sum + item.count, 0);
+    const secondSum = secondHalf.reduce((sum, item) => sum + item.count, 0);
+
+    if (firstSum === 0) return secondSum > 0 ? 100 : 0;
+    return Math.round(((secondSum - firstSum) / firstSum) * 100);
+  };
+
+  const usersGrowthRate = calculateGrowthRate(usersTrend);
+  const productsGrowthRate = calculateGrowthRate(productsTrend);
+  const ordersGrowthRate = calculateGrowthRate(ordersTrend);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 px-4 pb-4">
       {/* Grafana 스타일 헤더 */}
@@ -1144,16 +1162,16 @@ export default function AnalyticsPage() {
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
               <div className="text-[10px] text-gray-500">증가율</div>
-              <div className="mt-1 flex items-center gap-1 text-sm font-bold text-green-400">
+              <div className={`mt-1 flex items-center gap-1 text-sm font-bold ${usersGrowthRate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={usersGrowthRate >= 0 ? "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" : "M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6"} />
                 </svg>
-                12%
+                {usersGrowthRate >= 0 ? '+' : ''}{usersGrowthRate}%
               </div>
             </div>
             <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
               <div className="text-[10px] text-gray-500">이번 달</div>
-              <div className="mt-1 text-sm font-bold text-blue-400">+{Math.round((summary.total_users || 0) * 0.12)}</div>
+              <div className="mt-1 text-sm font-bold text-blue-400">+{Math.round((summary.total_users || 0) * Math.abs(usersGrowthRate) / 100)}</div>
             </div>
           </div>
         </div>
@@ -1327,16 +1345,16 @@ export default function AnalyticsPage() {
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
               <div className="text-[10px] text-gray-500">증가율</div>
-              <div className="mt-1 flex items-center gap-1 text-sm font-bold text-green-400">
+              <div className={`mt-1 flex items-center gap-1 text-sm font-bold ${productsGrowthRate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={productsGrowthRate >= 0 ? "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" : "M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6"} />
                 </svg>
-                8%
+                {productsGrowthRate >= 0 ? '+' : ''}{productsGrowthRate}%
               </div>
             </div>
             <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
               <div className="text-[10px] text-gray-500">이번 달</div>
-              <div className="mt-1 text-sm font-bold text-purple-400">+{Math.round((summary.total_products || 0) * 0.08)}</div>
+              <div className="mt-1 text-sm font-bold text-purple-400">+{Math.round((summary.total_products || 0) * Math.abs(productsGrowthRate) / 100)}</div>
             </div>
           </div>
         </div>
@@ -1510,16 +1528,16 @@ export default function AnalyticsPage() {
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
               <div className="text-[10px] text-gray-500">증가율</div>
-              <div className="mt-1 flex items-center gap-1 text-sm font-bold text-green-400">
+              <div className={`mt-1 flex items-center gap-1 text-sm font-bold ${ordersGrowthRate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={ordersGrowthRate >= 0 ? "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" : "M13 17h8m0 0v-8m0 8l-8-8-4 4-6-6"} />
                 </svg>
-                15%
+                {ordersGrowthRate >= 0 ? '+' : ''}{ordersGrowthRate}%
               </div>
             </div>
             <div className="rounded-lg bg-gray-950/50 p-2.5 ring-1 ring-white/5">
               <div className="text-[10px] text-gray-500">이번 달</div>
-              <div className="mt-1 text-sm font-bold text-emerald-400">+{Math.round((summary.total_orders || 0) * 0.15)}</div>
+              <div className="mt-1 text-sm font-bold text-emerald-400">+{Math.round((summary.total_orders || 0) * Math.abs(ordersGrowthRate) / 100)}</div>
             </div>
           </div>
         </div>
