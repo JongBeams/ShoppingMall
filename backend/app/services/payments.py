@@ -5,6 +5,7 @@ from typing import Dict, Any
 from fastapi import HTTPException, status
 from app.services.supabase import get_supabase_admin_client
 from app.services.points import earn_points
+from app.services.notifications import get_notification_service
 from uuid import UUID
 from dotenv import load_dotenv
 
@@ -242,7 +243,32 @@ async def process_payment_success(
         print(f"⚠️ 주문 완료 포인트 적립 실패 (무시): {str(e)}")
         # 포인트 적립 실패해도 결제는 성공으로 처리
 
-    # 10. 성공 응답 반환
+    # 10. 주문 완료 알림 발송
+    try:
+        notification_service = get_notification_service()
+        # 첫 번째 상품 이름 가져오기
+        order_items_response = (
+            supabase.table("order_items")
+            .select("product_name")
+            .eq("order_id", order["id"])
+            .execute()
+        )
+        first_item = order_items_response.data[0] if order_items_response.data else None
+        product_name = first_item.get("product_name", "상품") if first_item else "상품"
+
+        await notification_service.create_order_notification(
+            user_id=UUID(user_id),
+            order_id=UUID(order["id"]),
+            order_number=order["order_number"],
+            product_name=product_name,
+            total_amount=int(toss_amount),
+            status="placed"
+        )
+        print(f"[INFO] 주문 완료 알림 발송 완료: order_id={order['id']}")
+    except Exception as e:
+        print(f"[WARNING] 주문 완료 알림 발송 실패 (무시): {str(e)}")
+
+    # 11. 성공 응답 반환
     return {
         "message": "결제 승인이 완료되었습니다.",
         "order_id": order["id"],

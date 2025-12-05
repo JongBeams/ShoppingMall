@@ -3,6 +3,7 @@ from app.services.auth_middleware import get_current_user, get_current_admin
 from app.services.supabase import get_supabase_admin_client
 from app.services.payments import process_payment_success, cancel_toss_payment
 from app.services.points import cancel_points
+from app.services.notifications import get_notification_service
 from pydantic import BaseModel
 from typing import List, Optional
 from decimal import Decimal
@@ -600,6 +601,25 @@ async def cancel_order(
         except Exception as e:
             print(f"⚠️ 주문 취소 포인트 환원 실패 (무시): {str(e)}")
 
+        # 주문 취소 알림 발송
+        try:
+            notification_service = get_notification_service()
+            # 첫 번째 상품 이름 가져오기
+            first_item = order_items_response.data[0] if order_items_response.data else None
+            product_name = first_item.get("product_name", "상품") if first_item else "상품"
+
+            await notification_service.create_order_notification(
+                user_id=UUID(user_id),
+                order_id=UUID(order_id),
+                order_number=order.get("order_number", ""),
+                product_name=product_name,
+                total_amount=int(order.get("total", 0)),
+                status="cancelled"
+            )
+            print(f"[INFO] 주문 취소 알림 발송 완료: order_id={order_id}")
+        except Exception as e:
+            print(f"[WARNING] 주문 취소 알림 발송 실패 (무시): {str(e)}")
+
         return {
             "message": "주문이 취소되었습니다.",
             "order_id": order_id,
@@ -702,6 +722,26 @@ async def confirm_order(
                         )
                         print(f"[INFO] 구매확정 포인트 적립: {user_id} - {points_to_earn}P")
 
+                        # 구매확정 알림 발송
+                        try:
+                            notification_service = get_notification_service()
+                            # 첫 번째 상품 이름 가져오기
+                            order_items_response = supabase.table("order_items").select("product_name").eq("order_id", order_id).execute()
+                            first_item = order_items_response.data[0] if order_items_response.data else None
+                            product_name = first_item.get("product_name", "상품") if first_item else "상품"
+
+                            await notification_service.create_order_notification(
+                                user_id=UUID(user_id),
+                                order_id=UUID(order_id),
+                                order_number=order_id[:8],
+                                product_name=product_name,
+                                total_amount=int(order["total"]),
+                                status="confirmed"
+                            )
+                            print(f"[INFO] 구매확정 알림 발송 완료: order_id={order_id}")
+                        except Exception as e:
+                            print(f"[WARNING] 구매확정 알림 발송 실패 (무시): {str(e)}")
+
                         return {
                             "message": "구매가 확정되었습니다.",
                             "points_earned": points_to_earn
@@ -742,10 +782,10 @@ async def update_order_status_admin(
         )
 
     try:
-        # 주문 존재 확인
+        # 주문 존재 확인 및 상세 정보 조회
         order_response = (
             supabase.table("orders")
-            .select("id, status")
+            .select("id, status, buyer_id, order_number, total")
             .eq("id", order_id)
             .single()
             .execute()
@@ -757,7 +797,8 @@ async def update_order_status_admin(
                 detail="주문을 찾을 수 없습니다."
             )
 
-        old_status = order_response.data["status"]
+        order = order_response.data
+        old_status = order["status"]
 
         # 주문 상태 변경
         update_data = {"status": request.status}
@@ -792,6 +833,31 @@ async def update_order_status_admin(
                     ).eq("id", item["product_id"]).execute()
 
         supabase.table("orders").update(update_data).eq("id", order_id).execute()
+
+        # 배송 관련 상태 변경 시 알림 발송
+        if request.status in ["shipping", "delivered"]:
+            try:
+                notification_service = get_notification_service()
+                # 첫 번째 상품 이름 가져오기
+                order_items_response = (
+                    supabase.table("order_items")
+                    .select("product_name")
+                    .eq("order_id", order_id)
+                    .execute()
+                )
+                first_item = order_items_response.data[0] if order_items_response.data else None
+                product_name = first_item.get("product_name", "상품") if first_item else "상품"
+
+                await notification_service.create_shipment_notification(
+                    user_id=UUID(order["buyer_id"]),
+                    order_id=UUID(order_id),
+                    order_number=order["order_number"],
+                    product_name=product_name,
+                    status="shipped" if request.status == "shipping" else "delivered"
+                )
+                print(f"[INFO] 배송 상태 변경 알림 발송 완료: order_id={order_id}, status={request.status}")
+            except Exception as e:
+                print(f"[WARNING] 배송 상태 변경 알림 발송 실패 (무시): {str(e)}")
 
         return {
             "message": "주문 상태가 변경되었습니다.",

@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 load_dotenv()
 
 # Routers
-from app.routers import auth, admin, product, vendor, notice, faq, inquiry, chat, cart, documents, orders, reviews, payment, gift_wizard, subscriptions, points, analytics, wishlist
+from app.routers import auth, admin, product, vendor, notice, faq, inquiry, chat, cart, documents, orders, reviews, payment, gift_wizard, subscriptions, points, analytics, wishlist, notifications
 
 # Scheduler
 from app.services.scheduler import start_scheduler, stop_scheduler
@@ -65,6 +65,7 @@ app.include_router(gift_wizard.router)
 app.include_router(subscriptions.router)
 app.include_router(points.router)
 app.include_router(analytics.router)
+app.include_router(notifications.router)
 
 @app.get("/")
 async def root():

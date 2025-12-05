@@ -577,3 +577,69 @@ export const wishlistAPI = {
     });
   },
 };
+
+// 알림 관련
+export const notificationAPI = {
+  // 알림 목록 조회
+  getNotifications: async (
+    token: string,
+    params?: {
+      type?: 'order' | 'shipment' | 'coupon' | 'event';
+      is_read?: boolean;
+      limit?: number;
+      offset?: number;
+    }
+  ) => {
+    const queryParams = new URLSearchParams();
+    if (params?.type) queryParams.append('type', params.type);
+    if (params?.is_read !== undefined) queryParams.append('is_read', String(params.is_read));
+    if (params?.limit) queryParams.append('limit', String(params.limit));
+    if (params?.offset) queryParams.append('offset', String(params.offset));
+
+    const queryString = queryParams.toString();
+    return fetchAPI(`/api/notifications${queryString ? `?${queryString}` : ''}`, {
+      method: 'GET',
+      token,
+    });
+  },
+
+  // 읽지 않은 알림 개수 조회
+  getUnreadCount: async (token: string) => {
+    return fetchAPI('/api/notifications/unread-count', {
+      method: 'GET',
+      token,
+    });
+  },
+
+  // 알림 상세 조회
+  getNotificationById: async (id: string, token: string) => {
+    return fetchAPI(`/api/notifications/${id}`, {
+      method: 'GET',
+      token,
+    });
+  },
+
+  // 알림 읽음 처리
+  markAsRead: async (id: string, token: string) => {
+    return fetchAPI(`/api/notifications/${id}/read`, {
+      method: 'PATCH',
+      token,
+    });
+  },
+
+  // 전체 알림 읽음 처리
+  markAllAsRead: async (token: string) => {
+    return fetchAPI('/api/notifications/read-all', {
+      method: 'PATCH',
+      token,
+    });
+  },
+
+  // 알림 삭제
+  deleteNotification: async (id: string, token: string) => {
+    return fetchAPI(`/api/notifications/${id}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+};

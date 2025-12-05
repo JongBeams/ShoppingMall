@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { cartAPI } from '@/app/lib/api';
+import { cartAPI, notificationAPI } from '@/app/lib/api';
+import type { Notification } from '@/app/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -22,6 +23,8 @@ export default function Header() {
   const [cartCount, setCartCount] = useState(0);
   const [businessName, setBusinessName] = useState('SHOP');
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // CRM 경로 확인
   const isCRMPage = pathname?.startsWith('/crm');
@@ -36,6 +39,23 @@ export default function Header() {
       setCartCount(response.items?.length || 0);
     } catch (error) {
       console.error('Failed to fetch cart count:', error);
+    }
+  };
+
+  // 알림 조회 (최신 3개)
+  const fetchNotifications = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token || isCRMPage) return;
+
+    try {
+      const response = await notificationAPI.getNotifications(token, {
+        limit: 3,
+        offset: 0,
+      });
+      setNotifications(response.notifications || []);
+      setUnreadCount(response.unread_count || 0);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
     }
   };
 
@@ -84,9 +104,10 @@ export default function Header() {
           setUserName(userData.full_name || '사용자');
           setUserType(userData.user_type || '');
 
-          // 구매자인 경우 장바구니 개수 조회
+          // 구매자인 경우 장바구니 개수 및 알림 조회
           if (userData.user_type === 'buyer') {
             fetchCartCount();
+            fetchNotifications();
           }
         } catch (e) {
           console.error('Failed to parse user data:', e);
@@ -210,70 +231,33 @@ export default function Header() {
     e.target.value = '';
   };
 
-  // 더미 알림 데이터 - CRM vs 일반 사용자
-  const adminNotifications = [
-    {
-      id: 1,
-      type: '판매자 승인',
-      title: '새로운 판매자 승인 요청',
-      message: 'OO농장에서 판매자 승인을 요청했습니다.',
-      time: '5분 전',
-      read: false
-    },
-    {
-      id: 2,
-      type: '문의',
-      title: '신규 고객 문의',
-      message: '결제 관련 문의가 접수되었습니다.',
-      time: '30분 전',
-      read: false
-    },
-    {
-      id: 3,
-      type: '구독',
-      title: '프리미엄 구독 활성화',
-      message: '김철수님이 프리미엄 구독을 시작했습니다.',
-      time: '1시간 전',
-      read: true
-    },
-    {
-      id: 4,
-      type: '시스템',
-      title: '일일 리포트',
-      message: '오늘의 판매 통계가 생성되었습니다.',
-      time: '2시간 전',
-      read: true
-    },
-  ];
+  // 타입별 한글 이름
+  const getTypeLabel = (type: string) => {
+    const typeMap: Record<string, string> = {
+      order: '주문',
+      shipment: '배송',
+      coupon: '쿠폰',
+      event: '이벤트',
+    };
+    return typeMap[type] || type;
+  };
 
-  const userNotifications = [
-    {
-      id: 1,
-      type: '주문',
-      title: '주문이 완료되었습니다',
-      message: 'AirPods Pro 주문이 완료되었습니다.',
-      time: '5분 전',
-      read: false
-    },
-    {
-      id: 2,
-      type: '배송',
-      title: '배송이 시작되었습니다',
-      message: 'Smart Watch Ultra 배송이 시작되었습니다.',
-      time: '1시간 전',
-      read: false
-    },
-    {
-      id: 3,
-      type: '쿠폰',
-      title: '새로운 쿠폰이 도착했습니다',
-      message: '신규 회원 10% 할인 쿠폰',
-      time: '2시간 전',
-      read: true
-    },
-  ];
+  // 시간 포맷팅
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-  const notifications = isCRMPage ? adminNotifications : userNotifications;
+    if (diffMins < 1) return '방금 전';
+    if (diffMins < 60) return `${diffMins}분 전`;
+    if (diffHours < 24) return `${diffHours}시간 전`;
+    if (diffDays < 7) return `${diffDays}일 전`;
+
+    return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+  };
 
   const handleMenuEnter = (menuName: string) => {
     const menu = menuItems.find(item => item.name === menuName);
@@ -586,15 +570,20 @@ export default function Header() {
             {isLoggedIn && (
               <div className="relative">
                 <button
-                  onClick={() => setShowNotifications(!showNotifications)}
+                  onClick={() => {
+                    setShowNotifications(!showNotifications);
+                    if (!showNotifications) {
+                      fetchNotifications(); // 드롭다운 열 때 최신 알림 조회
+                    }
+                  }}
                   className="relative flex items-center text-gray-700 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
                 >
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                   </svg>
-                  {notifications.filter(n => !n.read).length > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white">
-                      {notifications.filter(n => !n.read).length}
+                      {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
@@ -612,31 +601,37 @@ export default function Header() {
                         <h3 className="text-sm font-bold text-gray-900 dark:text-white">알림</h3>
                       </div>
                     <div className="max-h-96 overflow-y-auto">
-                      {notifications.map((notification) => (
-                        <Link
-                          key={notification.id}
-                          href={`/notifications/${notification.id}`}
-                          className={`block border-b border-gray-100 p-4 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800 ${
-                            !notification.read ? 'bg-blue-50 dark:bg-blue-950/20' : ''
-                          }`}
-                          onClick={() => setShowNotifications(false)}
-                        >
-                          <div className="mb-1 flex items-start justify-between">
-                            <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                              {notification.type}
-                            </span>
-                            <span className="text-xs text-gray-400 dark:text-gray-500">
-                              {notification.time}
-                            </span>
-                          </div>
-                          <h4 className="mb-1 text-sm font-medium text-gray-900 dark:text-white">
-                            {notification.title}
-                          </h4>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
-                            {notification.message}
-                          </p>
-                        </Link>
-                      ))}
+                      {notifications.length === 0 ? (
+                        <div className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                          알림이 없습니다
+                        </div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <Link
+                            key={notification.id}
+                            href={`/notifications/${notification.id}`}
+                            className={`block border-b border-gray-100 p-4 transition hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800 ${
+                              !notification.is_read ? 'bg-blue-50 dark:bg-blue-950/20' : ''
+                            }`}
+                            onClick={() => setShowNotifications(false)}
+                          >
+                            <div className="mb-1 flex items-start justify-between">
+                              <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                                {getTypeLabel(notification.type)}
+                              </span>
+                              <span className="text-xs text-gray-400 dark:text-gray-500">
+                                {formatTime(notification.created_at)}
+                              </span>
+                            </div>
+                            <h4 className="mb-1 text-sm font-medium text-gray-900 dark:text-white">
+                              {notification.title}
+                            </h4>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                              {notification.summary}
+                            </p>
+                          </Link>
+                        ))
+                      )}
                     </div>
                       <Link
                         href="/notifications"

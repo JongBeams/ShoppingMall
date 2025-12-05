@@ -143,6 +143,35 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
+// Notification Types
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: 'order' | 'shipment' | 'coupon' | 'event';
+  resource_id?: string;
+  title: string;
+  summary: string;
+  body: string;
+  is_read: boolean;
+  created_at: string;
+  expires_at?: string;
+}
+
+export interface NotificationListResponse {
+  notifications: Notification[];
+  total: number;
+  unread_count: number;
+}
+
+export interface NotificationUnreadCountResponse {
+  unread_count: number;
+}
+
+export interface NotificationMarkReadResponse {
+  success: boolean;
+  message: string;
+}
+
 // Subscription Types
 // 구매자용 Features
 export interface BuyerFeatures {

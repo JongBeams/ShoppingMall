@@ -2,98 +2,114 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { notificationAPI } from '../../lib/api';
+import type { Notification } from '../../types';
 
 export default function NotificationDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
 
-  // 실제로는 API에서 가져와야 할 데이터
-  const notifications: Record<string, any> = {
-    '1': {
-      id: 1,
-      type: '주문',
-      title: '주문이 완료되었습니다',
-      message: 'AirPods Pro 주문이 완료되었습니다.',
-      detailMessage: `주문해 주셔서 감사합니다.
+  const [notification, setNotification] = useState<Notification | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-주문번호: #2025011701
-상품명: AirPods Pro
-수량: 1개
-금액: 359,000원
-결제방법: 신용카드
+  // 알림 상세 조회 및 읽음 처리
+  useEffect(() => {
+    const fetchNotification = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-배송지:
-서울시 강남구 테헤란로 123
-이은지 (010-1234-5678)
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          setError('로그인이 필요합니다.');
+          setLoading(false);
+          return;
+        }
 
-배송은 2-3일 이내에 시작될 예정입니다.
-배송 시작 시 알림을 보내드리겠습니다.`,
-      time: '5분 전',
-      date: '2025.01.17 14:30',
-      read: false,
-      actionLink: '/mypage#orders',
-      actionText: '주문 상세 보기'
-    },
-    '2': {
-      id: 2,
-      type: '배송',
-      title: '배송이 시작되었습니다',
-      message: 'Smart Watch Ultra 배송이 시작되었습니다.',
-      detailMessage: `상품이 배송을 시작했습니다.
+        // 알림 상세 조회
+        const data: Notification = await notificationAPI.getNotificationById(id, token);
+        setNotification(data);
 
-주문번호: #2025011602
-상품명: Smart Watch Ultra
-택배사: CJ대한통운
-운송장번호: 123456789012
+        // 읽지 않은 알림이면 읽음 처리
+        if (!data.is_read) {
+          try {
+            await notificationAPI.markAsRead(id, token);
+          } catch (err) {
+            console.error('읽음 처리 실패:', err);
+            // 읽음 처리 실패해도 알림은 표시
+          }
+        }
+      } catch (err: any) {
+        console.error('알림 조회 실패:', err);
+        setError(err.message || '알림을 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-배송 예정일: 2025.01.19 (금)
+    fetchNotification();
+  }, [id]);
 
-배송조회를 통해 실시간으로 배송 현황을 확인하실 수 있습니다.`,
-      time: '1시간 전',
-      date: '2025.01.17 13:00',
-      read: false,
-      actionLink: '/mypage#orders',
-      actionText: '배송 조회하기'
-    },
-    '3': {
-      id: 3,
-      type: '쿠폰',
-      title: '새로운 쿠폰이 도착했습니다',
-      message: '신규 회원 10% 할인 쿠폰이 발급되었습니다.',
-      detailMessage: `회원가입을 환영합니다!
-
-쿠폰명: 신규 회원 10% 할인
-할인율: 10%
-최소 주문금액: 50,000원
-최대 할인금액: 30,000원
-유효기간: 2025.02.16까지 (30일)
-
-모든 카테고리의 상품에 사용 가능합니다.
-단, 일부 브랜드 제품은 제외될 수 있습니다.`,
-      time: '2시간 전',
-      date: '2025.01.17 12:00',
-      read: true,
-      actionLink: '/mypage#profile',
-      actionText: '쿠폰함 보기'
-    },
+  // 타입별 한글 이름
+  const getTypeLabel = (type: string) => {
+    const typeMap: Record<string, string> = {
+      order: '주문',
+      shipment: '배송',
+      coupon: '쿠폰',
+      event: '이벤트',
+    };
+    return typeMap[type] || type;
   };
 
-  const notification = notifications[id];
+  // 날짜 포맷팅
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
-  if (!notification) {
+  // 로딩 중
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <div className="text-gray-600 dark:text-gray-400">로딩 중...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러
+  if (error || !notification) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
           <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-            알림을 찾을 수 없습니다
+            {error || '알림을 찾을 수 없습니다'}
           </h1>
-          <Link
-            href="/notifications"
-            className="text-blue-600 hover:underline dark:text-blue-400"
-          >
-            알림 목록으로 돌아가기
-          </Link>
+          {error?.includes('로그인') ? (
+            <Link
+              href="/login"
+              className="text-blue-600 hover:underline dark:text-blue-400"
+            >
+              로그인하러 가기
+            </Link>
+          ) : (
+            <Link
+              href="/notifications"
+              className="text-blue-600 hover:underline dark:text-blue-400"
+            >
+              알림 목록으로 돌아가기
+            </Link>
+          )}
         </div>
       </div>
     );
@@ -119,9 +135,9 @@ export default function NotificationDetailPage() {
           <div className="border-b border-gray-200 pb-6 dark:border-gray-700">
             <div className="mb-3 flex items-center gap-2">
               <span className="rounded bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-600 dark:bg-blue-950 dark:text-blue-400">
-                {notification.type}
+                {getTypeLabel(notification.type)}
               </span>
-              {!notification.read && (
+              {!notification.is_read && (
                 <span className="rounded bg-red-100 px-2.5 py-1 text-xs font-medium text-red-600 dark:bg-red-950 dark:text-red-400">
                   NEW
                 </span>
@@ -131,23 +147,33 @@ export default function NotificationDetailPage() {
               {notification.title}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {notification.date}
+              {formatDate(notification.created_at)}
             </p>
           </div>
 
           {/* Content */}
           <div className="py-8">
             <div className="mb-6 whitespace-pre-line text-base leading-relaxed text-gray-700 dark:text-gray-300">
-              {notification.detailMessage}
+              {notification.body}
             </div>
 
-            {/* Action Button */}
-            {notification.actionLink && (
+            {/* Action Button - resource_id가 있으면 주문/쿠폰 상세로 이동 */}
+            {notification.resource_id && (
               <Link
-                href={notification.actionLink}
+                href={
+                  notification.type === 'order' || notification.type === 'shipment'
+                    ? `/mypage#orders`
+                    : notification.type === 'coupon'
+                    ? `/mypage#profile`
+                    : '/mypage'
+                }
                 className="inline-block border border-gray-900 bg-gray-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
               >
-                {notification.actionText}
+                {notification.type === 'order' || notification.type === 'shipment'
+                  ? '주문 상세 보기'
+                  : notification.type === 'coupon'
+                  ? '쿠폰함 보기'
+                  : '자세히 보기'}
               </Link>
             )}
           </div>
