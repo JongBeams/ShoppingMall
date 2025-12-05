@@ -6,7 +6,11 @@ import { nanoid } from "nanoid";
 import { useQuery, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import styles from "../../components/payment/style.module.css";
 
-const clientKey = "test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm";
+if (!process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY) {
+  throw new Error('NEXT_PUBLIC_TOSS_CLIENT_KEY is not defined. Please set it in .env.local');
+}
+
+const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
 const queryClient = new QueryClient();
 
 export default function SubscriptionCheckoutPage() {

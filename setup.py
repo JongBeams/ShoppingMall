@@ -150,6 +150,10 @@ class SetupWizard:
                 "SMTP_PASSWORD": backend_env.get("SMTP_PASSWORD", ""),
                 "SMTP_FROM_EMAIL": backend_env.get("SMTP_FROM_EMAIL", ""),
             },
+            "payment": {
+                "TOSS_SECRET_KEY": backend_env.get("TOSS_SECRET_KEY", ""),
+                "TOSS_CLIENT_KEY": frontend_env.get("NEXT_PUBLIC_TOSS_CLIENT_KEY", ""),
+            },
             "frontend": {
                 "NEXT_PUBLIC_SUPABASE_URL": frontend_env.get("NEXT_PUBLIC_SUPABASE_URL", ""),
                 "NEXT_PUBLIC_SUPABASE_ANON_KEY": frontend_env.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", ""),
@@ -166,7 +170,7 @@ class SetupWizard:
             else:
                 self.env_vars[key] = value
 
-        self.total_steps = 6
+        self.total_steps = 7
 
     def run(self):
         print_banner()
@@ -176,8 +180,9 @@ class SetupWizard:
             self.run_step(1, self.choose_setup_method)
             self.run_step(2, self.collect_supabase_info)
             self.run_step(3, self.collect_smtp_info)
-            self.run_step(4, self.generate_backend_secrets)
-            self.run_step(5, self.configure_env_files)
+            self.run_step(4, self.collect_payment_info)
+            self.run_step(5, self.generate_backend_secrets)
+            self.run_step(6, self.configure_env_files)
             # Always run final_instructions (Docker build/start)
             self.final_instructions()
 
@@ -306,8 +311,39 @@ class SetupWizard:
 
         print_success("SMTP 정보가 저장되었습니다.")
 
+    def collect_payment_info(self):
+        print_step(4, self.total_steps, "토스페이먼츠 설정")
+
+        has_existing = bool(self.env_vars["payment"]["TOSS_SECRET_KEY"])
+        if has_existing:
+            print_info("기존 토스페이먼츠 설정을 찾았습니다. Enter를 눌러 유지하거나 새 값을 입력하세요.")
+        else:
+            print_info("토스페이먼츠를 사용하여 결제/구독 기능을 제공합니다.")
+            print_info("토스페이먼츠 시크릿 키 발급 방법:")
+            print_info("  1. https://developers.tosspayments.com/ 접속")
+            print_info("  2. 로그인 → 내 개발 정보 → API 키 발급")
+            print_info("  3. 테스트: test_gsk_... / 운영: live_gsk_...")
+            print_info("  ※ 테스트 환경에서는 test_gsk_로 시작하는 시크릿 키를 사용하세요.")
+            input("준비되면 Enter를 누르세요...")
+
+        self.env_vars["payment"]["TOSS_CLIENT_KEY"] = self._get_input(
+            "토스페이먼츠 클라이언트 키를 입력하세요 (test_gck_ 또는 live_gck_): ",
+            lambda x, allow_empty=False: (x.startswith("test_gck_") or x.startswith("live_gck_") or x.startswith("test_ck_") or x.startswith("live_ck_")) if x else False,
+            "토스페이먼츠 클라이언트 키는 'test_gck_', 'live_gck_', 'test_ck_', 또는 'live_ck_'로 시작해야 합니다.",
+            default_value=self.env_vars["payment"]["TOSS_CLIENT_KEY"],
+        )
+
+        self.env_vars["payment"]["TOSS_SECRET_KEY"] = self._get_input(
+            "토스페이먼츠 시크릿 키를 입력하세요 (test_gsk_ 또는 live_gsk_): ",
+            lambda x, allow_empty=False: (x.startswith("test_gsk_") or x.startswith("live_gsk_") or x.startswith("test_sk_") or x.startswith("live_sk_")) if x else False,
+            "토스페이먼츠 시크릿 키는 'test_gsk_', 'live_gsk_', 'test_sk_', 또는 'live_sk_'로 시작해야 합니다.",
+            default_value=self.env_vars["payment"]["TOSS_SECRET_KEY"],
+        )
+
+        print_success("토스페이먼츠 정보가 저장되었습니다.")
+
     def generate_backend_secrets(self):
-        print_step(4, self.total_steps, "백엔드 시크릿 생성")
+        print_step(5, self.total_steps, "백엔드 시크릿 생성")
 
         if not self.env_vars["backend"]["SECRET_KEY"]:
             print_info("안전한 SECRET_KEY를 생성하는 중...")
@@ -325,7 +361,7 @@ class SetupWizard:
         print_success("백엔드 설정이 완료되었습니다.")
 
     def configure_env_files(self):
-        print_step(5, self.total_steps, "환경 설정 파일 생성")
+        print_step(6, self.total_steps, "환경 설정 파일 생성")
 
         # Backend .env
         backend_env_content = f"""# Backend Environment Configuration
@@ -351,6 +387,9 @@ SMTP_PORT={self.env_vars['smtp']['SMTP_PORT']}
 SMTP_USER={self.env_vars['smtp']['SMTP_USER']}
 SMTP_PASSWORD={self.env_vars['smtp']['SMTP_PASSWORD']}
 SMTP_FROM_EMAIL={self.env_vars['smtp']['SMTP_FROM_EMAIL']}
+
+# Payment Configuration (Toss Payments)
+TOSS_SECRET_KEY={self.env_vars['payment']['TOSS_SECRET_KEY']}
 
 # CORS Configuration
 NEXT_PUBLIC_URL=http://localhost:{self.env_vars['frontend']['FRONTEND_PORT']}
@@ -388,6 +427,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY={self.env_vars['supabase']['SUPABASE_ANON_KEY']}
 # Backend API Configuration
 NEXT_PUBLIC_BACKEND_URL=http://localhost:{self.env_vars['backend']['BACKEND_PORT']}
 
+# Payment Configuration (Toss Payments)
+NEXT_PUBLIC_TOSS_CLIENT_KEY={self.env_vars['payment']['TOSS_CLIENT_KEY']}
+
 # Frontend Server Configuration
 FRONTEND_PORT={self.env_vars['frontend']['FRONTEND_PORT']}
 """
@@ -407,7 +449,7 @@ FRONTEND_PORT={self.env_vars['frontend']['FRONTEND_PORT']}
         print_success("모든 환경 설정 파일이 생성되었습니다.")
 
     def final_instructions(self):
-        print_step(6, self.total_steps, "설치 완료")
+        print_step(7, self.total_steps, "설치 완료")
 
         print_success("쇼핑몰 프로젝트 설정이 완료되었습니다!")
 
