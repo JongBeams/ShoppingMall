@@ -12,6 +12,10 @@ from app.routers import auth, admin, product, vendor, notice, faq, inquiry, chat
 # Scheduler
 from app.services.scheduler import start_scheduler, stop_scheduler
 
+# Rate Limiting
+from app.middleware.rate_limit import limiter, custom_rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,11 +40,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="ShoppingMall API", version="1.0.0", lifespan=lifespan)
 
-# CORS 설정 - 개발 환경 (WebSocket 포함)
+# Rate Limiting 설정
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_exceeded_handler)
+
+# CORS 설정
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 개발 환경에서 모든 origin 허용
-    allow_credentials=False,  # allow_origins=["*"]일 때는 False여야 함
+    allow_origins=ALLOWED_ORIGINS,  # 환경 변수에서 허용된 도메인만 사용
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],

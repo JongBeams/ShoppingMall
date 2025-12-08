@@ -1,0 +1,133 @@
+name: CI - Code Quality & Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop]
+
+jobs:
+  # ==================== Backend Lint & Format ====================
+  backend-lint:
+    name: Backend - Lint & Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install black isort pylint mypy
+          pip install -r requirements.txt
+
+      - name: Run Black (Code Formatting Check)
+        run: |
+          cd backend
+          black --check app
+
+      - name: Run isort (Import Sorting Check)
+        run: |
+          cd backend
+          isort --check-only app
+
+      - name: Run Pylint (Code Quality)
+        run: |
+          cd backend
+          pylint app --disable=C0114,C0115,C0116 --max-line-length=100 || true
+
+      - name: Run MyPy (Type Checking)
+        run: |
+          cd backend
+          mypy app --ignore-missing-imports || true
+
+  # ==================== Frontend Lint & Format ====================
+  frontend-lint:
+    name: Frontend - Lint & Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Run Type Check
+        run: |
+          cd frontend
+          npm run type-check || npx tsc --noEmit
+
+      - name: Build Check
+        run: |
+          cd frontend
+          npm run build
+        env:
+          NEXT_PUBLIC_BACKEND_URL: http://localhost:8000
+          NEXT_PUBLIC_TOSS_CLIENT_KEY: test_key
+
+  # ==================== Security Check ====================
+  security-check:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # ==================== Dependency Check ====================
+  dependency-check:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check Python dependencies
+        run: |
+          cd backend
+          pip install safety
+          safety check --file requirements.txt --output text || true
+
+      - name: Check npm dependencies
+        run: |
+          cd frontend
+          npm audit --audit-level=high || true

@@ -1,0 +1,136 @@
+name: shoppingmall-prod
+
+services:
+  # Redis - Caching & Session Storage
+  redis:
+    image: redis:7-alpine
+    container_name: shoppingmall-redis-prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - shoppingmall-network
+
+  # Backend - FastAPI
+  backend:
+    image: ${DOCKER_USERNAME}/shoppingmall-backend:latest
+    container_name: shoppingmall-backend-prod
+    ports:
+      - "8000:8000"
+    environment:
+      # Supabase
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+
+      # Redis
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+
+      # JWT
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=120
+
+      # Ollama
+      - OLLAMA_HOST=${OLLAMA_HOST}
+      - OLLAMA_MODEL=qwen2.5:14b
+      - OLLAMA_TIMEOUT=120
+
+      # Embedding
+      - EMBEDDING_MODEL=BAAI/bge-m3
+
+      # Toss Payments
+      - TOSS_SECRET_KEY=${TOSS_SECRET_KEY}
+      - TOSS_CLIENT_KEY=${TOSS_CLIENT_KEY}
+
+      # Email
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
+      - SMTP_FROM_NAME=Shopping Mall
+
+      # CORS
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+
+      # Recommendation
+      - RECOMMENDATION_ANALYSIS_MONTHS=6
+      - RECOMMENDATION_PRICE_TOLERANCE=0.3
+
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - shoppingmall-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Frontend - Next.js
+  frontend:
+    image: ${DOCKER_USERNAME}/shoppingmall-frontend:latest
+    container_name: shoppingmall-frontend-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=${BACKEND_URL}
+      - NEXT_PUBLIC_TOSS_CLIENT_KEY=${TOSS_CLIENT_KEY}
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - shoppingmall-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx - Reverse Proxy (선택사항)
+  nginx:
+    image: nginx:alpine
+    container_name: shoppingmall-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: always
+    networks:
+      - shoppingmall-network
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  shoppingmall-network:
+    driver: bridge
