@@ -8,6 +8,62 @@ interface FetchOptions extends RequestInit {
   token?: string;
 }
 
+// Refresh Token 갱신 (재귀 방지 플래그)
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+function subscribeTokenRefresh(callback: (token: string) => void) {
+  refreshSubscribers.push(callback);
+}
+
+function onTokenRefreshed(token: string) {
+  refreshSubscribers.forEach(callback => callback(token));
+  refreshSubscribers = [];
+}
+
+async function refreshAccessToken(isAdmin: boolean = false): Promise<string | null> {
+  try {
+    const refreshToken = isAdmin
+      ? localStorage.getItem('admin_refresh_token')
+      : localStorage.getItem('refresh_token');
+
+    if (!refreshToken) {
+      console.error('[API] Refresh Token 없음');
+      return null;
+    }
+
+    const endpoint = isAdmin ? '/admin/refresh' : '/auth/refresh';
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!response.ok) {
+      console.error('[API] Refresh Token 갱신 실패');
+      return null;
+    }
+
+    const data = await response.json();
+    const newAccessToken = data.access_token;
+
+    // 새 Access Token 저장
+    if (isAdmin) {
+      localStorage.setItem('admin_token', newAccessToken);
+    } else {
+      localStorage.setItem('access_token', newAccessToken);
+    }
+
+    console.log('[API] Access Token 갱신 성공');
+    return newAccessToken;
+  } catch (error) {
+    console.error('[API] Refresh Token 갱신 오류:', error);
+    return null;
+  }
+}
+
 async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
   const { token, ...fetchOptions } = options;
 
@@ -35,20 +91,44 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
 
-    // 토큰 만료 또는 유효하지 않음 (401) - 자동 로그아웃
-    if (response.status === 401) {
-      // 일반 사용자 로그아웃
+    // 토큰 만료 또는 유효하지 않음 (401) - Refresh Token 시도
+    if (response.status === 401 && token) {
+      const isAdmin = window.location.pathname.startsWith('/crm');
+
+      // Refresh Token 갱신 중이면 대기
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh((newToken: string) => {
+            // 새 토큰으로 재시도
+            fetchAPI(endpoint, { ...options, token: newToken })
+              .then(resolve)
+              .catch(reject);
+          });
+        });
+      }
+
+      isRefreshing = true;
+      const newToken = await refreshAccessToken(isAdmin);
+      isRefreshing = false;
+
+      if (newToken) {
+        // 대기 중인 요청들에게 새 토큰 전달
+        onTokenRefreshed(newToken);
+
+        // 현재 요청 재시도
+        return fetchAPI(endpoint, { ...options, token: newToken });
+      }
+
+      // Refresh Token 실패 → 로그아웃
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
       localStorage.removeItem('vendor');
-
-      // 관리자 로그아웃
       localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_refresh_token');
       localStorage.removeItem('admin_user');
 
-      // CRM 페이지인지 확인
-      if (window.location.pathname.startsWith('/crm')) {
+      if (isAdmin) {
         window.location.href = '/crm/login';
       } else {
         window.location.href = '/login';
@@ -70,8 +150,13 @@ async function fetchAPI(endpoint: string, options: FetchOptions = {}) {
       }
 
       // 승인 대기 중인 판매자 - 에러만 던짐 (로그아웃 안 함)
-      // 에러 메시지만 던지고 각 컴포넌트에서 처리하도록 함
       throw new Error(error.detail || '접근 권한이 없습니다.');
+    }
+
+    // 5xx 서버 에러
+    if (response.status >= 500) {
+      console.error('[API] 서버 오류:', error);
+      throw new Error('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     }
 
     // FastAPI는 detail 필드를 사용

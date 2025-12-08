@@ -46,25 +46,43 @@ async def search_products(q: str = ""):
         else:
             found_ids = set()
 
-        # tags 배열에 검색어가 포함된 상품 검색
+        # tags 배열에 검색어가 포함된 상품 검색 (DB 쿼리 최적화)
         try:
+            # PostgreSQL의 @> 연산자 사용 (배열 포함 검색)
+            # 또는 cs (contains) 연산자 사용
             tag_response = (
                 supabase.table("products")
                 .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, tags, created_at")
                 .eq("is_active", True)
+                .contains("tags", [search_term])  # 태그 배열에 검색어가 포함된 경우
                 .execute()
             )
 
             for product in tag_response.data or []:
-                if product["id"] not in found_ids and product.get("tags"):
-                    # 태그 배열에서 검색어 찾기
-                    for tag in product["tags"]:
-                        if search_term.lower() in tag.lower():
-                            products.append(product)
-                            found_ids.add(product["id"])
-                            break
-        except Exception:
-            pass
+                if product["id"] not in found_ids:
+                    products.append(product)
+                    found_ids.add(product["id"])
+        except Exception as e:
+            # contains 검색 실패 시 기존 방식으로 fallback
+            print(f"[WARNING] 태그 검색 최적화 실패, fallback 사용: {str(e)}")
+            try:
+                tag_response = (
+                    supabase.table("products")
+                    .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, tags, created_at")
+                    .eq("is_active", True)
+                    .execute()
+                )
+
+                for product in tag_response.data or []:
+                    if product["id"] not in found_ids and product.get("tags"):
+                        # 태그 배열에서 검색어 찾기
+                        for tag in product["tags"]:
+                            if search_term.lower() in tag.lower():
+                                products.append(product)
+                                found_ids.add(product["id"])
+                                break
+            except Exception:
+                pass
 
     except Exception as e:
         raise HTTPException(
@@ -435,6 +453,29 @@ async def upload_product_image(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="최대 5개의 이미지만 업로드할 수 있습니다."
         )
+
+    # 파일 크기 및 확장자 검증
+    MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+    ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
+
+    for file in files:
+        # 파일 확장자 검증
+        file_extension = file.filename.split(".")[-1].lower() if file.filename else ""
+        if file_extension not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"허용되지 않는 파일 형식입니다. 허용 형식: {', '.join(ALLOWED_EXTENSIONS)}"
+            )
+
+        # 파일 크기 검증 (파일 내용을 읽어서 확인)
+        file_content = await file.read()
+        if len(file_content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"파일 크기는 최대 5MB까지 허용됩니다. ({file.filename})"
+            )
+        # 파일 포인터를 처음으로 되돌림
+        await file.seek(0)
 
     # 모든 파일을 병렬로 업로드
     upload_tasks = []

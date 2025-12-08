@@ -63,19 +63,25 @@ def search_documents(query: str, limit: int = 3) -> List[Dict]:
     # 2. Supabase에서 pgvector 검색
     # cosine similarity로 가장 유사한 청크 검색
     try:
-        # RPC 함수 호출 (Supabase에 RPC 함수 생성 필요)
+        # RPC 함수 호출 (backend/sql/create_vector_search_function.sql 실행 필요)
         result = supabase.rpc(
-            'search_document_chunks',
+            'search_documents_by_embedding',
             {
                 'query_embedding': query_embedding,
+                'match_threshold': 0.5,
                 'match_count': limit
             }
         ).execute()
 
-        return result.data or []
+        if result.data:
+            print(f"[RAG] pgvector RPC 검색 성공: {len(result.data)}개 문서 반환")
+            return result.data
+        else:
+            print("[RAG] pgvector RPC 결과 없음, fallback 사용")
+            return fallback_search(query_embedding, limit)
 
     except Exception as e:
-        print(f"pgvector search error: {e}")
+        print(f"[RAG] pgvector RPC 검색 오류: {e}, fallback 사용")
         # RPC 함수가 없으면 fallback: 모든 청크 가져와서 Python에서 계산
         return fallback_search(query_embedding, limit)
 
