@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from app.models.user import (
     UserRegisterRequest,
     UserLoginRequest,
@@ -12,6 +12,7 @@ from app.models.user import (
 from app.services.supabase import get_supabase_client, get_supabase_admin_client
 from app.services.email import send_otp_email
 from app.services.otp_store import get_otp_store
+from app.services.jwt_auth import get_current_user
 from datetime import datetime
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
