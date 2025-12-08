@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { GiftWizardAnswers } from '@/app/types/gift-wizard'
 
 interface Message {
   type: 'ai' | 'user'
@@ -9,7 +10,7 @@ interface Message {
 }
 
 interface GiftWizardChatProps {
-  onComplete: (answers: any) => void
+  onComplete: (answers: GiftWizardAnswers) => void
 }
 
 export default function GiftWizardChat({ onComplete }: GiftWizardChatProps) {
@@ -21,7 +22,7 @@ export default function GiftWizardChat({ onComplete }: GiftWizardChatProps) {
     },
   ])
   const [currentStep, setCurrentStep] = useState(0)
-  const [answers, setAnswers] = useState<any>({})
+  const [answers, setAnswers] = useState<Partial<GiftWizardAnswers>>({})
   const [showOptions, setShowOptions] = useState(true)
 
   const questions = [

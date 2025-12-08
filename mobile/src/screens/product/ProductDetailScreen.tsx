@@ -22,9 +22,11 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [isWishlisted, setIsWishlisted] = useState(false);
 
   useEffect(() => {
     fetchProduct();
+    checkWishlist();
   }, [productId]);
 
   const fetchProduct = async () => {
@@ -37,6 +39,19 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
       navigation.goBack();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkWishlist = async () => {
+    try {
+      const response = await api.get('/wishlist');
+      const wishlistItems = response.data.items || [];
+      const isInWishlist = wishlistItems.some(
+        (item: any) => item.product_id === productId
+      );
+      setIsWishlisted(isInWishlist);
+    } catch (error) {
+      console.error('Failed to check wishlist:', error);
     }
   };
 
@@ -55,6 +70,25 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
       ]);
     } catch (error) {
       Alert.alert('오류', '장바구니 추가에 실패했습니다.');
+    }
+  };
+
+  const handleToggleWishlist = async () => {
+    try {
+      if (isWishlisted) {
+        // 찜하기 취소
+        await api.delete(`/wishlist/${productId}`);
+        setIsWishlisted(false);
+        Alert.alert('알림', '찜 목록에서 제거되었습니다.');
+      } else {
+        // 찜하기 추가
+        await api.post('/wishlist', { product_id: productId });
+        setIsWishlisted(true);
+        Alert.alert('성공', '찜 목록에 추가되었습니다.');
+      }
+    } catch (error) {
+      console.error('Wishlist toggle failed:', error);
+      Alert.alert('오류', '찜하기 처리에 실패했습니다.');
     }
   };
 
@@ -140,8 +174,18 @@ export default function ProductDetailScreen({ route, navigation }: Props) {
 
       {/* Bottom Actions */}
       <View style={styles.bottomActions}>
-        <TouchableOpacity style={styles.wishlistButton}>
-          <Ionicons name="heart-outline" size={24} color={COLORS.primary} />
+        <TouchableOpacity
+          style={[
+            styles.wishlistButton,
+            isWishlisted && styles.wishlistButtonActive,
+          ]}
+          onPress={handleToggleWishlist}
+        >
+          <Ionicons
+            name={isWishlisted ? 'heart' : 'heart-outline'}
+            size={24}
+            color={isWishlisted ? COLORS.accent : COLORS.primary}
+          />
         </TouchableOpacity>
         <TouchableOpacity style={styles.cartButton} onPress={handleAddToCart}>
           <Text style={styles.cartButtonText}>장바구니 담기</Text>
@@ -281,6 +325,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.sm,
+  },
+  wishlistButtonActive: {
+    backgroundColor: COLORS.accent + '20', // 20% opacity
+    borderColor: COLORS.accent,
   },
   cartButton: {
     flex: 1,

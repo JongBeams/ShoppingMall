@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { sanitizeChatMessage } from '@/app/lib/sanitize';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000';
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8000';
@@ -663,7 +664,9 @@ export default function LiveChat({ onBack }: LiveChatProps) {
                       : 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
                   }`}
                 >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {sanitizeChatMessage(msg.message)}
+                  </p>
 
                   {/* 원격 지원 요청 승인 버튼 */}
                   {msg.message.includes('원격지원 승인 버튼') && msg.sender_type === 'admin' && !remoteControlActive && (

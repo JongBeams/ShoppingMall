@@ -1,12 +1,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { memo, useMemo } from 'react';
 import { Product } from '@/app/types';
 
 interface ProductCardProps {
   product: Product;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+function ProductCard({ product }: ProductCardProps) {
   const imageSrc =
     product.thumbnail_url ||
     product.imageUrl ||
@@ -21,18 +22,22 @@ export default function ProductCard({ product }: ProductCardProps) {
     product.category_slug ||
     '기타';
 
-  // 할인 중인지 확인
-  const isOnSale = () => {
-    if (!product.discount_price || !product.discount_start || !product.discount_end) return false;
-    const now = new Date();
-    return now >= new Date(product.discount_start) && now <= new Date(product.discount_end);
-  };
+  // 할인 정보 계산 (useMemo로 최적화)
+  const { onSale, displayPrice, discountPercent } = useMemo(() => {
+    const isOnSale = () => {
+      if (!product.discount_price || !product.discount_start || !product.discount_end) return false;
+      const now = new Date();
+      return now >= new Date(product.discount_start) && now <= new Date(product.discount_end);
+    };
 
-  const onSale = isOnSale();
-  const displayPrice = onSale && product.discount_price ? product.discount_price : product.price;
-  const discountPercent = onSale && product.discount_price
-    ? Math.round((1 - product.discount_price / product.price) * 100)
-    : 0;
+    const onSale = isOnSale();
+    const displayPrice = onSale && product.discount_price ? product.discount_price : product.price;
+    const discountPercent = onSale && product.discount_price
+      ? Math.round((1 - product.discount_price / product.price) * 100)
+      : 0;
+
+    return { onSale, displayPrice, discountPercent };
+  }, [product.discount_price, product.discount_start, product.discount_end, product.price]);
 
   return (
     <Link href={`/products/${product.id}`} className="group">
@@ -99,3 +104,12 @@ export default function ProductCard({ product }: ProductCardProps) {
     </Link>
   );
 }
+
+// React.memo로 불필요한 리렌더링 방지
+// product.id가 같으면 리렌더링하지 않음
+export default memo(ProductCard, (prevProps, nextProps) => {
+  return prevProps.product.id === nextProps.product.id &&
+         prevProps.product.price === nextProps.product.price &&
+         prevProps.product.stock === nextProps.product.stock &&
+         prevProps.product.discount_price === nextProps.product.discount_price;
+});

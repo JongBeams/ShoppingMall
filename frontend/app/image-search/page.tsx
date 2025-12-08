@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 
 interface Product {
@@ -26,12 +26,26 @@ export default function ImageSearchPage() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // 이전 URL 해제 (메모리 누수 방지)
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
       setSelectedImage(file);
       setPreviewUrl(URL.createObjectURL(file));
       setProducts([]); // 이전 검색 결과 초기화
       setError(null);
     }
   };
+
+  // 컴포넌트 언마운트 시 URL 해제
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const handleSearch = async () => {
     if (!selectedImage) {
@@ -166,6 +180,10 @@ export default function ImageSearchPage() {
               {selectedImage && (
                 <button
                   onClick={() => {
+                    // URL 해제 후 초기화
+                    if (previewUrl) {
+                      URL.revokeObjectURL(previewUrl);
+                    }
                     setSelectedImage(null);
                     setPreviewUrl(null);
                     setProducts([]);
