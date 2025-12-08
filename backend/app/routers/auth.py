@@ -258,7 +258,7 @@ async def register(user_data: UserRegisterRequest):
             vendor = vendor_response.data[0]
 
         # 4. 자체 JWT 토큰 생성 (관리자와 동일한 방식)
-        from app.services.jwt_auth import create_access_token
+        from app.services.jwt_auth import create_access_token, create_refresh_token
         from datetime import timedelta
 
         token_data = {
@@ -269,14 +269,11 @@ async def register(user_data: UserRegisterRequest):
         }
         access_token = create_access_token(
             data=token_data,
-            expires_delta=timedelta(hours=24)
+            expires_delta=timedelta(hours=2)  # 보안 강화: 24시간 → 2시간
         )
 
-        # refresh_token도 동일하게 생성 (더 긴 만료시간)
-        refresh_token = create_access_token(
-            data=token_data,
-            expires_delta=timedelta(days=7)
-        )
+        # Refresh Token 생성 (Redis에 저장)
+        refresh_token = create_refresh_token(user_id=user_id, user_type="user")
 
         # 5. 응답 생성
         profile_obj = ProfileResponse(
@@ -390,7 +387,7 @@ async def login(credentials: UserLoginRequest):
                 vendor = vendor_response.data[0]
 
         # 4. 자체 JWT 토큰 생성 (관리자와 동일한 방식)
-        from app.services.jwt_auth import create_access_token
+        from app.services.jwt_auth import create_access_token, create_refresh_token
         from datetime import timedelta
 
         token_data = {
@@ -401,14 +398,11 @@ async def login(credentials: UserLoginRequest):
         }
         access_token = create_access_token(
             data=token_data,
-            expires_delta=timedelta(hours=24)
+            expires_delta=timedelta(hours=2)  # 보안 강화: 24시간 → 2시간
         )
 
-        # refresh_token도 동일하게 생성 (더 긴 만료시간)
-        refresh_token = create_access_token(
-            data=token_data,
-            expires_delta=timedelta(days=7)
-        )
+        # Refresh Token 생성 (Redis에 저장)
+        refresh_token = create_refresh_token(user_id=user_id, user_type="user")
 
         # 5. 응답 생성
         profile_obj = ProfileResponse(
@@ -471,15 +465,79 @@ async def login(credentials: UserLoginRequest):
         )
 
 
-@router.post("/logout", response_model=MessageResponse)
-async def logout():
-    """로그아웃"""
-    supabase = get_supabase_client()
+@router.post("/refresh", response_model=dict)
+async def refresh_user_token(refresh_token: str):
+    """
+    Refresh Token으로 Access Token 갱신 (일반 사용자)
+    """
+    from app.services.jwt_auth import verify_refresh_token, create_access_token
+    from datetime import timedelta
 
     try:
+        # Refresh Token 검증
+        payload = verify_refresh_token(refresh_token)
+
+        if not payload or payload.get("type") != "user":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="유효하지 않은 Refresh Token입니다."
+            )
+
+        user_id = payload.get("sub")
+
+        # 새 Access Token 생성
+        supabase_admin = get_supabase_admin_client()
+        profile_response = supabase_admin.table("profiles").select("*").eq("id", user_id).single().execute()
+
+        if not profile_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="사용자 정보를 찾을 수 없습니다."
+            )
+
+        profile = profile_response.data
+
+        token_data = {
+            "sub": user_id,
+            "email": profile["email"],
+            "user_type": profile["user_type"],
+            "type": "user"
+        }
+
+        access_token = create_access_token(
+            data=token_data,
+            expires_delta=timedelta(hours=2)
+        )
+
+        return {"access_token": access_token}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Refresh Token 갱신 오류: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="토큰 갱신에 실패했습니다."
+        )
+
+
+@router.post("/logout", response_model=MessageResponse)
+async def logout(current_user: dict = Depends(get_current_user)):
+    """로그아웃 (Refresh Token 무효화)"""
+    from app.services.jwt_auth import revoke_refresh_token
+
+    try:
+        # Refresh Token 무효화
+        user_id = current_user["id"]
+        revoke_refresh_token(user_id=user_id, user_type="user")
+
+        # Supabase Auth 로그아웃
+        supabase = get_supabase_client()
         supabase.auth.sign_out()
+
         return MessageResponse(message="로그아웃되었습니다.")
     except Exception as e:
+        print(f"[ERROR] 로그아웃 오류: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"로그아웃 중 오류가 발생했습니다: {str(e)}"

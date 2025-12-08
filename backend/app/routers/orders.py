@@ -251,43 +251,77 @@ async def get_all_orders_admin(
 
         orders = orders_response.data or []
 
-        # 각 주문의 아이템 및 사용자 정보 조회
-        for order in orders:
-            # 주문 아이템 조회
+        # N+1 쿼리 개선: 주문 ID 일괄 조회
+        if orders:
+            order_ids = [order["id"] for order in orders]
+            product_ids_set = set()
+            buyer_ids_set = set()
+
+            # 모든 주문 아이템 일괄 조회
             order_items_response = (
                 supabase.table("order_items")
                 .select("*")
-                .eq("order_id", order["id"])
+                .in_("order_id", order_ids)
                 .execute()
             )
-            order_items = order_items_response.data or []
+            all_order_items = order_items_response.data or []
 
-            # 각 아이템에 상품 이미지 추가
-            for item in order_items:
-                product_response = (
+            # 주문별 아이템 그룹화
+            order_items_map = {}
+            for item in all_order_items:
+                order_id = item["order_id"]
+                if order_id not in order_items_map:
+                    order_items_map[order_id] = []
+                order_items_map[order_id].append(item)
+                product_ids_set.add(item["product_id"])
+
+            # 상품 ID 수집
+            for order in orders:
+                if order.get("buyer_id"):
+                    buyer_ids_set.add(order["buyer_id"])
+
+            # 상품 정보 일괄 조회
+            products_map = {}
+            if product_ids_set:
+                products_response = (
                     supabase.table("products")
-                    .select("thumbnail_url")
-                    .eq("id", item["product_id"])
-                    .single()
+                    .select("id, thumbnail_url")
+                    .in_("id", list(product_ids_set))
                     .execute()
                 )
-                if product_response.data:
-                    item["product_thumbnail"] = product_response.data.get("thumbnail_url")
+                for product in products_response.data or []:
+                    products_map[product["id"]] = product
 
-            order["items"] = order_items
-
-            # 사용자 정보 조회
-            if order.get("buyer_id"):
-                user_response = (
+            # 사용자 정보 일괄 조회
+            users_map = {}
+            if buyer_ids_set:
+                users_response = (
                     supabase.table("profiles")
-                    .select("full_name, email")
-                    .eq("id", order["buyer_id"])
-                    .single()
+                    .select("id, full_name, email")
+                    .in_("id", list(buyer_ids_set))
                     .execute()
                 )
-                if user_response.data:
-                    order["user_name"] = user_response.data.get("full_name")
-                    order["user_email"] = user_response.data.get("email")
+                for user in users_response.data or []:
+                    users_map[user["id"]] = user
+
+            # 각 주문에 아이템 및 사용자 정보 매핑
+            for order in orders:
+                order_id = order["id"]
+                order_items = order_items_map.get(order_id, [])
+
+                # 각 아이템에 상품 이미지 추가
+                for item in order_items:
+                    product_id = item["product_id"]
+                    if product_id in products_map:
+                        item["product_thumbnail"] = products_map[product_id].get("thumbnail_url")
+
+                order["items"] = order_items
+
+                # 사용자 정보 추가
+                buyer_id = order.get("buyer_id")
+                if buyer_id and buyer_id in users_map:
+                    order["user_name"] = users_map[buyer_id].get("full_name")
+                    order["user_email"] = users_map[buyer_id].get("email")
 
         return {
             "orders": orders,
@@ -326,29 +360,51 @@ async def get_my_orders(
 
         orders = orders_response.data or []
 
-        # 각 주문의 아이템 조회 및 상품 이미지 추가
-        for order in orders:
+        # N+1 쿼리 개선: 주문 아이템 일괄 조회
+        if orders:
+            order_ids = [order["id"] for order in orders]
+
+            # 모든 주문 아이템 일괄 조회
             order_items_response = (
                 supabase.table("order_items")
                 .select("*")
-                .eq("order_id", order["id"])
+                .in_("order_id", order_ids)
                 .execute()
             )
-            order_items = order_items_response.data or []
+            all_order_items = order_items_response.data or []
 
-            # 각 아이템에 상품 이미지 추가
-            for item in order_items:
-                product_response = (
+            # 상품 ID 수집
+            product_ids = list(set([item["product_id"] for item in all_order_items]))
+
+            # 상품 정보 일괄 조회
+            products_map = {}
+            if product_ids:
+                products_response = (
                     supabase.table("products")
-                    .select("thumbnail_url")
-                    .eq("id", item["product_id"])
-                    .single()
+                    .select("id, thumbnail_url")
+                    .in_("id", product_ids)
                     .execute()
                 )
-                if product_response.data:
-                    item["product_thumbnail"] = product_response.data.get("thumbnail_url")
+                for product in products_response.data or []:
+                    products_map[product["id"]] = product
 
-            order["items"] = order_items
+            # 주문별 아이템 그룹화
+            order_items_map = {}
+            for item in all_order_items:
+                order_id = item["order_id"]
+                if order_id not in order_items_map:
+                    order_items_map[order_id] = []
+
+                # 상품 이미지 추가
+                product_id = item["product_id"]
+                if product_id in products_map:
+                    item["product_thumbnail"] = products_map[product_id].get("thumbnail_url")
+
+                order_items_map[order_id].append(item)
+
+            # 각 주문에 아이템 매핑
+            for order in orders:
+                order["items"] = order_items_map.get(order["id"], [])
 
         return {
             "orders": orders,

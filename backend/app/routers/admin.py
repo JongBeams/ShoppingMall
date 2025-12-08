@@ -47,6 +47,7 @@ class AdminResponse(BaseModel):
 
 class AdminAuthResponse(BaseModel):
     access_token: str
+    refresh_token: str
     user: AdminResponse
 
 
@@ -229,8 +230,12 @@ async def login_admin(credentials: AdminLoginRequest):
         }
         access_token = create_access_token(
             data=token_data,
-            expires_delta=timedelta(hours=8)
+            expires_delta=timedelta(hours=2)  # 보안 강화: 8시간 → 2시간
         )
+
+        # Refresh Token 생성 (Redis에 저장)
+        from app.services.jwt_auth import create_refresh_token
+        refresh_token = create_refresh_token(user_id=admin_user["id"], user_type="admin")
 
         admin_response = AdminResponse(
             id=admin_user["id"],
@@ -244,6 +249,7 @@ async def login_admin(credentials: AdminLoginRequest):
 
         return AdminAuthResponse(
             access_token=access_token,
+            refresh_token=refresh_token,
             user=admin_response
         )
 
@@ -265,6 +271,62 @@ async def login_admin(credentials: AdminLoginRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="로그인 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        )
+
+
+@router.post("/refresh", response_model=dict)
+async def refresh_admin_token(refresh_token: str):
+    """
+    Refresh Token으로 Access Token 갱신 (관리자)
+    """
+    from app.services.jwt_auth import verify_refresh_token, create_access_token
+    from datetime import timedelta
+
+    try:
+        # Refresh Token 검증
+        payload = verify_refresh_token(refresh_token)
+
+        if not payload or payload.get("type") != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="유효하지 않은 Refresh Token입니다."
+            )
+
+        user_id = payload.get("sub")
+
+        # 새 Access Token 생성
+        supabase_admin = get_supabase_admin_client()
+        admin_user_response = supabase_admin.table("admin_users").select("*").eq("id", user_id).single().execute()
+
+        if not admin_user_response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="관리자 정보를 찾을 수 없습니다."
+            )
+
+        admin_user = admin_user_response.data
+
+        token_data = {
+            "sub": admin_user["id"],
+            "email": admin_user["email"],
+            "role": admin_user["role"],
+            "type": "admin"
+        }
+
+        access_token = create_access_token(
+            data=token_data,
+            expires_delta=timedelta(hours=2)
+        )
+
+        return {"access_token": access_token}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ERROR] Refresh Token 갱신 오류: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="토큰 갱신에 실패했습니다."
         )
 
 

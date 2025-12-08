@@ -1,9 +1,15 @@
 from datetime import datetime, timedelta
 from typing import Optional
 import jwt
+import redis
+import os
 from app.config import get_settings
 
 settings = get_settings()
+
+# Redis 연결 (Refresh Token 저장용)
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+redis_client = redis.from_url(redis_url, decode_responses=True)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -28,6 +34,91 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+
+def create_refresh_token(user_id: str, user_type: str = "user") -> str:
+    """
+    JWT Refresh Token 생성 및 Redis 저장
+
+    Args:
+        user_id: 사용자 ID
+        user_type: 사용자 타입 ("user" 또는 "admin")
+
+    Returns:
+        JWT Refresh Token 문자열
+    """
+    # Refresh Token 만료 시간: 7일
+    expire = datetime.utcnow() + timedelta(days=7)
+
+    to_encode = {
+        "sub": user_id,
+        "type": user_type,
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "token_type": "refresh"
+    }
+
+    refresh_token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+    # Redis에 Refresh Token 저장 (7일 TTL)
+    redis_key = f"refresh_token:{user_type}:{user_id}"
+    redis_client.setex(redis_key, timedelta(days=7), refresh_token)
+
+    print(f"[JWT] Refresh Token 생성: {user_id} ({user_type})")
+    return refresh_token
+
+
+def verify_refresh_token(refresh_token: str) -> Optional[dict]:
+    """
+    Refresh Token 검증 및 Redis 확인
+
+    Args:
+        refresh_token: Refresh Token 문자열
+
+    Returns:
+        디코딩된 페이로드 또는 None (검증 실패 시)
+    """
+    try:
+        # JWT 디코딩
+        payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+        # Refresh Token 타입 확인
+        if payload.get("token_type") != "refresh":
+            print("[JWT] Refresh Token이 아닙니다.")
+            return None
+
+        user_id = payload.get("sub")
+        user_type = payload.get("type", "user")
+
+        # Redis에서 토큰 확인 (무효화 여부 체크)
+        redis_key = f"refresh_token:{user_type}:{user_id}"
+        stored_token = redis_client.get(redis_key)
+
+        if not stored_token or stored_token != refresh_token:
+            print("[JWT] Refresh Token이 Redis에 없거나 일치하지 않습니다.")
+            return None
+
+        return payload
+
+    except jwt.ExpiredSignatureError:
+        print("[JWT] Refresh Token이 만료되었습니다.")
+        return None
+    except jwt.InvalidTokenError as e:
+        print(f"[JWT] 유효하지 않은 Refresh Token: {str(e)}")
+        return None
+
+
+def revoke_refresh_token(user_id: str, user_type: str = "user"):
+    """
+    Refresh Token 무효화 (로그아웃 시 사용)
+
+    Args:
+        user_id: 사용자 ID
+        user_type: 사용자 타입 ("user" 또는 "admin")
+    """
+    redis_key = f"refresh_token:{user_type}:{user_id}"
+    redis_client.delete(redis_key)
+    print(f"[JWT] Refresh Token 무효화: {user_id} ({user_type})")
 
 
 def verify_token(token: str) -> Optional[dict]:
