@@ -728,3 +728,134 @@ export const notificationAPI = {
     });
   },
 };
+
+// 쿠폰 관련
+export const couponAPI = {
+  // 쿠폰 생성 (관리자/판매자)
+  createCoupon: async (couponData: any, token: string, autoIssueToAll: boolean = false) => {
+    const queryParams = autoIssueToAll ? '?auto_issue_to_all=true' : '';
+    return fetchAPI(`/api/coupons${queryParams}`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify(couponData),
+    });
+  },
+
+  // 쿠폰 목록 조회
+  getCoupons: async (
+    token: string,
+    params?: {
+      vendor_id?: string;
+      discount_type?: 'percent' | 'fixed';
+      is_active?: boolean;
+      limit?: number;
+      offset?: number;
+    }
+  ) => {
+    const queryParams = new URLSearchParams();
+    if (params?.vendor_id) queryParams.append('vendor_id', params.vendor_id);
+    if (params?.discount_type) queryParams.append('discount_type', params.discount_type);
+    if (params?.is_active !== undefined) queryParams.append('is_active', String(params.is_active));
+    if (params?.limit) queryParams.append('limit', String(params.limit));
+    if (params?.offset) queryParams.append('offset', String(params.offset));
+
+    const queryString = queryParams.toString();
+    return fetchAPI(`/api/coupons${queryString ? `?${queryString}` : ''}`, {
+      method: 'GET',
+      token,
+    });
+  },
+
+  // 쿠폰 상세 조회 (ID)
+  getCouponById: async (couponId: string, token: string) => {
+    return fetchAPI(`/api/coupons/${couponId}`, {
+      method: 'GET',
+      token,
+    });
+  },
+
+  // 쿠폰 상세 조회 (코드)
+  getCouponByCode: async (code: string, token: string) => {
+    return fetchAPI(`/api/coupons/code/${code}`, {
+      method: 'GET',
+      token,
+    });
+  },
+
+  // 쿠폰 사용 통계 조회
+  getCouponStats: async (couponId: string, token: string) => {
+    return fetchAPI(`/api/coupons/${couponId}/stats`, {
+      method: 'GET',
+      token,
+    });
+  },
+
+  // 쿠폰 수정 (관리자)
+  updateCoupon: async (couponId: string, updateData: any, token: string) => {
+    return fetchAPI(`/api/coupons/${couponId}`, {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify(updateData),
+    });
+  },
+
+  // 쿠폰 삭제 (관리자)
+  deleteCoupon: async (couponId: string, token: string) => {
+    return fetchAPI(`/api/coupons/${couponId}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+
+  // 쿠폰 발급
+  issueCoupon: async (issueData: { coupon_id: string; user_id: string }, token: string) => {
+    return fetchAPI('/api/coupons/issue', {
+      method: 'POST',
+      token,
+      body: JSON.stringify(issueData),
+    });
+  },
+
+  // 내 쿠폰 목록 조회
+  getMyCoupons: async (
+    token: string,
+    params?: {
+      is_using?: boolean;
+      include_expired?: boolean;
+      limit?: number;
+      offset?: number;
+    }
+  ) => {
+    const queryParams = new URLSearchParams();
+    if (params?.is_using !== undefined) queryParams.append('is_using', String(params.is_using));
+    if (params?.include_expired !== undefined) queryParams.append('include_expired', String(params.include_expired));
+    if (params?.limit) queryParams.append('limit', String(params.limit));
+    if (params?.offset) queryParams.append('offset', String(params.offset));
+
+    const queryString = queryParams.toString();
+    return fetchAPI(`/api/coupons/user/my-coupons${queryString ? `?${queryString}` : ''}`, {
+      method: 'GET',
+      token,
+    });
+  },
+
+  // 쿠폰 사용
+  useCoupon: async (
+    useData: { user_coupon_id: string; order_id: string; discount_amount: number },
+    token: string
+  ) => {
+    return fetchAPI('/api/coupons/use', {
+      method: 'POST',
+      token,
+      body: JSON.stringify(useData),
+    });
+  },
+
+  // 쿠폰 사용 취소
+  cancelCouponUse: async (userCouponId: string, token: string) => {
+    return fetchAPI(`/api/coupons/cancel/${userCouponId}`, {
+      method: 'POST',
+      token,
+    });
+  },
+};

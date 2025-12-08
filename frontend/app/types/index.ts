@@ -172,6 +172,95 @@ export interface NotificationMarkReadResponse {
   message: string;
 }
 
+// Coupon Types
+export interface Coupon {
+  id: string;
+  name: string;
+  code?: string;
+  discount_type: 'percent' | 'fixed';
+  discount_value: number;
+  max_discount_amount?: number;
+  min_order_amount?: number;
+  validity_days: number;
+  start_at: string;
+  end_at: string;
+  vendor_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CouponCreateRequest {
+  name: string;
+  code?: string;
+  discount_type: 'percent' | 'fixed';
+  discount_value: number;
+  max_discount_amount?: number;
+  min_order_amount?: number;
+  validity_days: number;
+  start_at: string;
+  end_at: string;
+  vendor_id?: string;
+}
+
+export interface CouponUpdateRequest {
+  name?: string;
+  code?: string;
+  discount_type?: 'percent' | 'fixed';
+  discount_value?: number;
+  max_discount_amount?: number;
+  min_order_amount?: number;
+  validity_days?: number;
+  start_at?: string;
+  end_at?: string;
+  vendor_id?: string;
+}
+
+export interface CouponListResponse {
+  coupons: Coupon[];
+  total: number;
+}
+
+export interface UserCoupon {
+  id: string;
+  coupon_id: string;
+  user_id: string;
+  is_using: boolean;
+  order_id?: string;
+  discount_amount?: number;
+  expires_at?: string;
+  created_at: string;
+  updated_at: string;
+  coupon?: Coupon;
+}
+
+export interface UserCouponListResponse {
+  user_coupons: UserCoupon[];
+  total: number;
+}
+
+export interface CouponIssueRequest {
+  coupon_id: string;
+  user_id: string;
+}
+
+export interface CouponIssueResponse {
+  success: boolean;
+  message: string;
+  user_coupon?: UserCoupon;
+}
+
+export interface CouponUseRequest {
+  user_coupon_id: string;
+  order_id: string;
+  discount_amount: number;
+}
+
+export interface CouponUseResponse {
+  success: boolean;
+  message: string;
+  discount_amount?: number;
+}
+
 // Subscription Types
 // 구매자용 Features
 export interface BuyerFeatures {
