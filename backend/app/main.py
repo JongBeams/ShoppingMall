@@ -21,31 +21,41 @@ from app.middleware.rate_limit import limiter, custom_rate_limit_exceeded_handle
 from slowapi.errors import RateLimitExceeded
 
 # ============================================================
-#  프로덕션 기능 추가
+# 4년차급 프로덕션 기능 추가 (선택적)
+# 의존성 없어도 기존 코드 정상 동작
 # ============================================================
 
-# 모니터링 (Prometheus)
-from app.middleware.metrics import metrics_middleware
-from prometheus_client import make_asgi_app
+# 모니터링 (Prometheus) - 선택적
+try:
+    from app.middleware.metrics import metrics_middleware
+    from prometheus_client import make_asgi_app
+    PROMETHEUS_ENABLED = True
+    logger.info("✅ Prometheus 모듈 로드 완료")
+except ImportError:
+    PROMETHEUS_ENABLED = False
+    logger.info("ℹ️  Prometheus 미설치 - 기본 모드로 실행 (pip install prometheus-client)")
 
-# Sentry 에러 추적
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
+# Sentry 에러 추적 - 선택적
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
 
-# Sentry 초기화 (프로덕션 환경에서만)
-if os.getenv("ENVIRONMENT") == "production" and os.getenv("SENTRY_DSN"):
-    sentry_sdk.init(
-        dsn=os.getenv("SENTRY_DSN"),
-        integrations=[
-            FastApiIntegration(),
-            LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
-        ],
-        traces_sample_rate=0.1,  # 10% 트랜잭션 샘플링
-        profiles_sample_rate=0.1,  # 10% 프로파일링
-        environment=os.getenv("ENVIRONMENT", "production"),
-    )
-    logger.info("✅ Sentry 에러 추적 활성화")
+    # Sentry 초기화 (프로덕션 환경에서만)
+    if os.getenv("ENVIRONMENT") == "production" and os.getenv("SENTRY_DSN"):
+        sentry_sdk.init(
+            dsn=os.getenv("SENTRY_DSN"),
+            integrations=[
+                FastApiIntegration(),
+                LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
+            ],
+            traces_sample_rate=0.1,
+            profiles_sample_rate=0.1,
+            environment=os.getenv("ENVIRONMENT", "production"),
+        )
+        logger.info("✅ Sentry 에러 추적 활성화")
+except ImportError:
+    logger.info("ℹ️  Sentry 미설치 - 에러 추적 비활성화 (pip install sentry-sdk)")
 
 
 @asynccontextmanager
@@ -61,11 +71,13 @@ async def lifespan(app: FastAPI):
     start_scheduler()
     logger.info("[STARTUP] Scheduler started")
 
-    # 캐시 워밍 (인기 데이터 미리 로드)
+    # 캐시 워밍 (인기 데이터 미리 로드) - 선택적
     try:
         from app.database.read_write_split import warm_up_cache
         warm_up_cache()
         logger.info("[STARTUP] Cache warming completed")
+    except ImportError:
+        logger.info("[STARTUP] Cache warming 비활성화 (선택적 기능)")
     except Exception as e:
         logger.warning(f"[STARTUP] Cache warming failed: {e}")
 
@@ -95,15 +107,18 @@ app.add_middleware(
 )
 
 # ============================================================
-# Prometheus 모니터링 미들웨어 ()
+# Prometheus 모니터링 미들웨어 (선택적)
 # ============================================================
-app.middleware("http")(metrics_middleware)
+if PROMETHEUS_ENABLED:
+    app.middleware("http")(metrics_middleware)
 
-# Prometheus 메트릭 엔드포인트
-metrics_app = make_asgi_app()
-app.mount("/metrics", metrics_app)
+    # Prometheus 메트릭 엔드포인트
+    metrics_app = make_asgi_app()
+    app.mount("/metrics", metrics_app)
 
-logger.info("✅ Prometheus 모니터링 활성화 (/metrics)")
+    logger.info("✅ Prometheus 모니터링 활성화 (/metrics)")
+else:
+    logger.info("ℹ️  Prometheus 비활성화 - 설치 방법: pip install prometheus-client")
 
 # Routers 등록
 app.include_router(auth.router)
