@@ -1,6 +1,10 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.services.supabase import get_supabase_client
 from app.services.auth_middleware import get_current_user
+import logging
+
+logger = logging.getLogger(__name__)
+
 from app.models.payments import (
     PaymentMethodCreate,
     PaymentMethodResponse,
@@ -29,7 +33,7 @@ async def get_payment_methods(current_user: dict = Depends(get_current_user)):
 
         return {"payment_methods": response.data or []}
     except Exception as e:
-        print(f"[ERROR] 결제수단 조회 실패: {str(e)}")
+        logger.error(f"결제수단 조회 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="결제수단 조회에 실패했습니다.")
 
 
@@ -64,7 +68,7 @@ async def create_payment_method(
 
         return response.data[0]
     except Exception as e:
-        print(f"[ERROR] 결제수단 추가 실패: {str(e)}")
+        logger.info(f"[ERROR] 결제수단 추가 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="결제수단 추가에 실패했습니다.")
 
 
@@ -91,7 +95,7 @@ async def delete_payment_method(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 결제수단 삭제 실패: {str(e)}")
+        logger.info(f"[ERROR] 결제수단 삭제 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="결제수단 삭제에 실패했습니다.")
 
 
@@ -116,7 +120,7 @@ async def set_default_payment_method(
 
         return {"message": "기본 결제수단이 설정되었습니다."}
     except Exception as e:
-        print(f"[ERROR] 기본 결제수단 설정 실패: {str(e)}")
+        logger.info(f"[ERROR] 기본 결제수단 설정 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="기본 결제수단 설정에 실패했습니다.")
 
 
@@ -133,7 +137,7 @@ async def get_refund_accounts(current_user: dict = Depends(get_current_user)):
 
         return {"refund_accounts": response.data or []}
     except Exception as e:
-        print(f"[ERROR] 환불계좌 조회 실패: {str(e)}")
+        logger.info(f"[ERROR] 환불계좌 조회 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="환불계좌 조회에 실패했습니다.")
 
 
@@ -163,7 +167,7 @@ async def create_refund_account(
 
         return response.data[0]
     except Exception as e:
-        print(f"[ERROR] 환불계좌 추가 실패: {str(e)}")
+        logger.info(f"[ERROR] 환불계좌 추가 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="환불계좌 추가에 실패했습니다.")
 
 
@@ -190,7 +194,7 @@ async def delete_refund_account(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 환불계좌 삭제 실패: {str(e)}")
+        logger.info(f"[ERROR] 환불계좌 삭제 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="환불계좌 삭제에 실패했습니다.")
 
 
@@ -215,7 +219,7 @@ async def set_default_refund_account(
 
         return {"message": "기본 환불계좌가 설정되었습니다."}
     except Exception as e:
-        print(f"[ERROR] 기본 환불계좌 설정 실패: {str(e)}")
+        logger.info(f"[ERROR] 기본 환불계좌 설정 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="기본 환불계좌 설정에 실패했습니다.")
 
 
@@ -232,7 +236,7 @@ async def get_addresses(current_user: dict = Depends(get_current_user)):
 
         return {"addresses": response.data or []}
     except Exception as e:
-        print(f"[ERROR] 배송지 조회 실패: {str(e)}")
+        logger.info(f"[ERROR] 배송지 조회 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="배송지 조회에 실패했습니다.")
 
 
@@ -250,7 +254,7 @@ async def get_default_address(current_user: dict = Depends(get_current_user)):
             return response.data[0]
         return None
     except Exception as e:
-        print(f"[ERROR] 기본 배송지 조회 실패: {str(e)}")
+        logger.info(f"[ERROR] 기본 배송지 조회 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="기본 배송지 조회에 실패했습니다.")
 
 
@@ -290,7 +294,7 @@ async def create_address(
 
         return response.data[0]
     except Exception as e:
-        print(f"[ERROR] 배송지 추가 실패: {str(e)}")
+        logger.info(f"[ERROR] 배송지 추가 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="배송지 추가에 실패했습니다.")
 
 
@@ -329,7 +333,7 @@ async def update_address(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 배송지 수정 실패: {str(e)}")
+        logger.info(f"[ERROR] 배송지 수정 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="배송지 수정에 실패했습니다.")
 
 
@@ -369,7 +373,7 @@ async def delete_address(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 배송지 삭제 실패: {str(e)}")
+        logger.info(f"[ERROR] 배송지 삭제 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="배송지 삭제에 실패했습니다.")
 
 
@@ -394,5 +398,5 @@ async def set_default_address(
 
         return {"message": "기본 배송지가 설정되었습니다."}
     except Exception as e:
-        print(f"[ERROR] 기본 배송지 설정 실패: {str(e)}")
+        logger.error(f"기본 배송지 설정 실패: {str(e)}")
         raise HTTPException(status_code=500, detail="기본 배송지 설정에 실패했습니다.")

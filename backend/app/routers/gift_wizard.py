@@ -3,6 +3,10 @@ from fastapi.responses import StreamingResponse
 from typing import Optional
 from datetime import datetime
 import json
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 from app.models.gift_wizard import (
     GiftWizardAnswers,
@@ -77,7 +81,7 @@ async def get_gift_recommendations(
                 'created_at': datetime.utcnow().isoformat()
             }).execute()
         except Exception as e:
-            print(f"로그 저장 실패: {e}")
+            logger.info(f"로그 저장 실패: {e}")
 
         # 5. LLM 스트리밍 응답
         async def stream_response():
@@ -95,7 +99,7 @@ async def get_gift_recommendations(
         )
 
     except Exception as e:
-        print(f"선물 추천 오류: {e}")
+        logger.info(f"선물 추천 오류: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -206,7 +210,7 @@ async def generate_gift_message(request: GiftMessageRequest):
             }
 
     except Exception as e:
-        print(f"메시지 생성 오류: {e}")
+        logger.info(f"메시지 생성 오류: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -241,7 +245,7 @@ async def save_gift_history(
         return {"message": "선물 히스토리가 저장되었습니다.", "id": result.data[0]['id']}
 
     except Exception as e:
-        print(f"히스토리 저장 오류: {e}")
+        logger.info(f"히스토리 저장 오류: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -263,7 +267,7 @@ async def get_gift_history(
         return {"history": result.data}
 
     except Exception as e:
-        print(f"히스토리 조회 오류: {e}")
+        logger.info(f"히스토리 조회 오류: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -293,7 +297,7 @@ async def create_anniversary(
         return {"message": "기념일이 등록되었습니다.", "id": result.data[0]['id']}
 
     except Exception as e:
-        print(f"기념일 등록 오류: {e}")
+        logger.info(f"기념일 등록 오류: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -312,5 +316,5 @@ async def get_anniversaries(
         return {"anniversaries": result.data}
 
     except Exception as e:
-        print(f"기념일 조회 오류: {e}")
+        logger.info(f"기념일 조회 오류: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -10,6 +10,10 @@ from io import BytesIO
 from typing import List
 import os
 import numpy as np
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 class ImageEmbeddingService:
     """CLIP 모델을 사용한 이미지 임베딩 생성"""
@@ -19,7 +23,7 @@ class ImageEmbeddingService:
         # 🔥 기존 모델 유지 (ViT-B/32) - DB에 저장된 임베딩과 호환
         model_name = "openai/clip-vit-base-patch32"
 
-        print(f"[ImageEmbedding] Loading CLIP model: {model_name}")
+        logger.info(f"[ImageEmbedding] Loading CLIP model: {model_name}")
         self.model = CLIPModel.from_pretrained(model_name)
         self.processor = CLIPProcessor.from_pretrained(model_name)
 
@@ -28,7 +32,7 @@ class ImageEmbeddingService:
         self.model.to(self.device)
         self.model.eval()  # 추론 모드
 
-        print(f"[ImageEmbedding] Model loaded on {self.device}")
+        logger.info(f"[ImageEmbedding] Model loaded on {self.device}")
 
     def generate_embedding(self, image_url: str) -> List[float]:
         """
@@ -61,11 +65,11 @@ class ImageEmbeddingService:
             # CPU로 이동 후 리스트로 변환
             embedding = image_features.cpu().numpy().flatten().tolist()
 
-            print(f"[ImageEmbedding] Generated embedding for {image_url[:50]}... (dim={len(embedding)})")
+            logger.info(f"[ImageEmbedding] Generated embedding for {image_url[:50]}... (dim={len(embedding)})")
             return embedding
 
         except Exception as e:
-            print(f"[ImageEmbedding] Error generating embedding: {e}")
+            logger.info(f"[ImageEmbedding] Error generating embedding: {e}")
             raise e
 
     def generate_embedding_from_bytes(self, image_bytes: bytes) -> List[float]:
@@ -92,11 +96,11 @@ class ImageEmbeddingService:
 
             embedding = image_features.cpu().numpy().flatten().tolist()
 
-            print(f"[ImageEmbedding] Generated embedding from bytes (dim={len(embedding)})")
+            logger.info(f"[ImageEmbedding] Generated embedding from bytes (dim={len(embedding)})")
             return embedding
 
         except Exception as e:
-            print(f"[ImageEmbedding] Error generating embedding from bytes: {e}")
+            logger.info(f"[ImageEmbedding] Error generating embedding from bytes: {e}")
             raise e
 
 

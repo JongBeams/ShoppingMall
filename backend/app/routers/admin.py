@@ -7,6 +7,10 @@ from app.services.auth_middleware import get_current_admin
 import bcrypt
 from typing import Optional
 from datetime import datetime
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -76,7 +80,7 @@ async def send_admin_otp(request: AdminSendOTPRequest):
         # 메모리에 OTP 저장 (관리자용 prefix 추가)
         otp_store = get_otp_store()
         otp_store.set(f"admin:{request.email}", otp_code, ttl_seconds=300)
-        print(f"[ADMIN OTP] {request.email} 인증번호 생성 및 저장: {otp_code}")
+        logger.info(f"[ADMIN OTP] {request.email} 인증번호 생성 및 저장: {otp_code}")
 
         # 이메일 발송
         await send_otp_email(request.email, otp_code)
@@ -86,7 +90,7 @@ async def send_admin_otp(request: AdminSendOTPRequest):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 관리자 OTP 전송 오류: {str(e)}")
+        logger.error(f"관리자 OTP 전송 오류: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"인증번호 전송에 실패했습니다: {str(e)}"
@@ -115,14 +119,14 @@ async def verify_admin_otp(request: AdminVerifyOTPRequest):
 
         # 인증 성공 - OTP 삭제
         otp_store.delete(f"admin:{request.email}")
-        print(f"[ADMIN OTP] {request.email} 인증 성공")
+        logger.info(f"[ADMIN OTP] {request.email} 인증 성공")
 
         return MessageResponse(message="이메일 인증이 완료되었습니다.")
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 관리자 OTP 검증 오류: {str(e)}")
+        logger.info(f"[ERROR] 관리자 OTP 검증 오류: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="인증번호 확인에 실패했습니다. 올바른 인증번호를 입력하세요."
@@ -172,8 +176,8 @@ async def register_admin(admin_data: AdminRegisterRequest):
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 관리자 회원가입 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 관리자 회원가입 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"관리자 회원가입 중 오류가 발생했습니다: {str(e)}"
@@ -257,8 +261,8 @@ async def login_admin(credentials: AdminLoginRequest):
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 관리자 로그인 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 관리자 로그인 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
 
         # bcrypt 에러 처리
         error_message = str(e).lower()
@@ -323,7 +327,7 @@ async def refresh_admin_token(refresh_token: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] Refresh Token 갱신 오류: {str(e)}")
+        logger.info(f"[ERROR] Refresh Token 갱신 오류: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="토큰 갱신에 실패했습니다."
@@ -610,9 +614,9 @@ async def approve_vendor(
                     to_email=vendor["email"],
                     vendor_name=vendor["owner_name"]
                 )
-                print(f"[INFO] 판매자 승인 이메일 발송 완료: {vendor['email']}")
+                logger.info(f"판매자 승인 이메일 발송 완료: {vendor['email']}")
         except Exception as e:
-            print(f"[ERROR] 판매자 승인 이메일 발송 실패: {str(e)}")
+            logger.info(f"[ERROR] 판매자 승인 이메일 발송 실패: {str(e)}")
             # 이메일 실패해도 승인은 진행
 
         return MessageResponse(message="판매자가 승인되었습니다.")
@@ -846,7 +850,7 @@ async def get_public_system_settings():
         }
 
     except Exception as e:
-        print(f"[ERROR] 공개 설정 조회 오류: {str(e)}")
+        logger.info(f"[ERROR] 공개 설정 조회 오류: {str(e)}")
         return {
             "business_name": "SHOP",
             "delivery_fee": 3000,
@@ -895,8 +899,8 @@ async def get_system_settings(current_admin: dict = Depends(get_current_admin)):
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 시스템 설정 조회 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 시스템 설정 조회 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"시스템 설정 조회 중 오류가 발생했습니다: {str(e)}"
@@ -944,8 +948,8 @@ async def update_system_settings(
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 시스템 설정 업데이트 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 시스템 설정 업데이트 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"시스템 설정 업데이트 중 오류가 발생했습니다: {str(e)}"

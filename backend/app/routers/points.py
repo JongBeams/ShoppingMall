@@ -2,6 +2,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from supabase import Client
 from uuid import UUID
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 from app.services.supabase import get_supabase_client
 from app.services.auth_middleware import get_current_user
@@ -48,7 +52,7 @@ async def get_balance(
         )
 
     except Exception as e:
-        print(f"포인트 잔액 조회 오류: {str(e)}")
+        logger.info(f"포인트 잔액 조회 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"포인트 잔액 조회 실패: {str(e)}")
 
 
@@ -93,7 +97,7 @@ async def get_transactions(
         )
 
     except Exception as e:
-        print(f"포인트 내역 조회 오류: {str(e)}")
+        logger.info(f"포인트 내역 조회 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"포인트 내역 조회 실패: {str(e)}")
 
 
@@ -140,7 +144,7 @@ async def earn_point(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"포인트 적립 오류: {str(e)}")
+        logger.info(f"포인트 적립 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"포인트 적립 실패: {str(e)}")
 
 
@@ -185,7 +189,7 @@ async def use_point(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"포인트 사용 오류: {str(e)}")
+        logger.info(f"포인트 사용 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"포인트 사용 실패: {str(e)}")
 
 
@@ -226,7 +230,7 @@ async def cancel_point(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"포인트 취소 오류: {str(e)}")
+        logger.info(f"포인트 취소 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"포인트 취소 실패: {str(e)}")
 
 
@@ -268,7 +272,7 @@ async def adjust_point(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"포인트 조정 오류: {str(e)}")
+        logger.info(f"포인트 조정 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"포인트 조정 실패: {str(e)}")
 
 
@@ -294,7 +298,7 @@ async def sync_balance(
         )
 
     except Exception as e:
-        print(f"포인트 잔액 동기화 오류: {str(e)}")
+        logger.info(f"포인트 잔액 동기화 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"포인트 잔액 동기화 실패: {str(e)}")
 
 
@@ -316,7 +320,7 @@ async def expire_points_manual(
     try:
         # TODO: 관리자 권한 체크 로직 추가
         # 현재는 임시로 모든 로그인 사용자 허용 (나중에 관리자만으로 제한 필요)
-        print(f"포인트 만료 작업 수동 실행: user_id={current_user['id']}")
+        logger.info(f"포인트 만료 작업 수동 실행: user_id={current_user['id']}")
 
         # 만료된 포인트 처리
         expired_count = await expire_points(supabase)
@@ -328,5 +332,5 @@ async def expire_points_manual(
         }
 
     except Exception as e:
-        print(f"포인트 만료 처리 오류: {str(e)}")
+        logger.info(f"포인트 만료 처리 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"포인트 만료 처리 실패: {str(e)}")

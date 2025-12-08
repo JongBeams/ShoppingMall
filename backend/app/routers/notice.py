@@ -4,6 +4,10 @@ from typing import Optional, List
 from datetime import datetime
 from app.services.supabase import get_supabase_admin_client
 from app.services.auth_middleware import get_current_admin
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/notices", tags=["Notices"])
 
@@ -71,7 +75,7 @@ async def get_notices(
         return notices
 
     except Exception as e:
-        print(f"[ERROR] 공지사항 목록 조회 실패: {str(e)}")
+        logger.error(f"공지사항 목록 조회 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="공지사항 목록 조회 중 오류가 발생했습니다."
@@ -113,7 +117,7 @@ async def get_notice(notice_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 공지사항 조회 실패: {str(e)}")
+        logger.info(f"[ERROR] 공지사항 조회 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="공지사항 조회 중 오류가 발생했습니다."
@@ -160,7 +164,7 @@ async def create_notice(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 공지사항 생성 실패: {str(e)}")
+        logger.info(f"[ERROR] 공지사항 생성 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="공지사항 생성 중 오류가 발생했습니다."
@@ -225,7 +229,7 @@ async def update_notice(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 공지사항 수정 실패: {str(e)}")
+        logger.info(f"[ERROR] 공지사항 수정 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="공지사항 수정 중 오류가 발생했습니다."
@@ -257,7 +261,7 @@ async def delete_notice(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 공지사항 삭제 실패: {str(e)}")
+        logger.error(f"[ERROR] 공지사항 삭제 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="공지사항 삭제 중 오류가 발생했습니다."

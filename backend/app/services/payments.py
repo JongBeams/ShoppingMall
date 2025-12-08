@@ -8,6 +8,10 @@ from app.services.points import earn_points
 from app.services.notifications import get_notification_service
 from uuid import UUID
 from dotenv import load_dotenv
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 # .env 파일 로드 (환경 변수 읽기 전 필수)
 load_dotenv()
@@ -130,19 +134,19 @@ async def process_payment_success(
 
     # 결제 승인 응답 (Payment 객체) 출력
     print("=" * 80)
-    print("📦 토스페이먼츠 Payment 객체:")
+    logger.info("📦 토스페이먼츠 Payment 객체:")
     print("=" * 80)
     import json
     print(json.dumps(toss_resp, indent=2, ensure_ascii=False))
     print("=" * 80)
-    print(f"✅ 결제수단 (method): {toss_resp.get('method')}")
-    print(f"✅ 결제 상태 (status): {toss_resp.get('status')}")
-    print(f"✅ 승인 시각 (approvedAt): {toss_resp.get('approvedAt')}")
-    print(f"✅ 결제 금액 (totalAmount): {toss_resp.get('totalAmount')}")
+    logger.info(f"✅ 결제수단 (method): {toss_resp.get('method')}")
+    logger.info(f"✅ 결제 상태 (status): {toss_resp.get('status')}")
+    logger.info(f"✅ 승인 시각 (approvedAt): {toss_resp.get('approvedAt')}")
+    logger.info(f"✅ 결제 금액 (totalAmount): {toss_resp.get('totalAmount')}")
     if toss_resp.get('card'):
-        print(f"💳 카드 정보: {toss_resp.get('card')}")
+        logger.info(f"💳 카드 정보: {toss_resp.get('card')}")
     if toss_resp.get('easyPay'):
-        print(f"💰 간편결제 정보: {toss_resp.get('easyPay')}")
+        logger.info(f"💰 간편결제 정보: {toss_resp.get('easyPay')}")
     print("=" * 80)
 
     # 5. 금액 검증 (프론트 금액, 서버 주문 금액, 토스 응답 금액 일치 확인)
@@ -217,7 +221,7 @@ async def process_payment_success(
 
     except Exception as e:
         # 재고 차감 실패 시 로그만 남기고 진행 (결제는 이미 완료됨)
-        print(f"⚠️ 재고 차감 실패 (주문 ID: {order['id']}): {str(e)}")
+        logger.info(f"⚠️ 재고 차감 실패 (주문 ID: {order['id']}): {str(e)}")
         # 실패해도 결제는 완료된 상태이므로 에러를 발생시키지 않음
 
     # 9. 주문 완료 포인트 자동 적립 (결제 금액의 1% 적립)
@@ -238,9 +242,9 @@ async def process_payment_success(
             expires_days=365  # 1년 유효
         )
         points_earned = reward_points
-        print(f"✅ 주문 완료 포인트 적립 성공: user_id={user_id}, amount={reward_points}, order_id={order['id']}")
+        logger.info(f"✅ 주문 완료 포인트 적립 성공: user_id={user_id}, amount={reward_points}, order_id={order['id']}")
     except Exception as e:
-        print(f"⚠️ 주문 완료 포인트 적립 실패 (무시): {str(e)}")
+        logger.info(f"⚠️ 주문 완료 포인트 적립 실패 (무시): {str(e)}")
         # 포인트 적립 실패해도 결제는 성공으로 처리
 
     # 10. 주문 완료 알림 발송
@@ -264,9 +268,9 @@ async def process_payment_success(
             total_amount=int(toss_amount),
             status="placed"
         )
-        print(f"[INFO] 주문 완료 알림 발송 완료: order_id={order['id']}")
+        logger.info(f"주문 완료 알림 발송 완료: order_id={order['id']}")
     except Exception as e:
-        print(f"[WARNING] 주문 완료 알림 발송 실패 (무시): {str(e)}")
+        logger.warning(f"주문 완료 알림 발송 실패 (무시): {str(e)}")
 
     # 11. 성공 응답 반환
     return {

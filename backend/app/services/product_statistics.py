@@ -7,6 +7,10 @@ from typing import List, Dict, Optional
 from app.services.supabase import supabase
 from app.config import get_settings
 from app.config.constants import STOPWORDS
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -31,7 +35,7 @@ def get_bestsellers(limit: int = 10) -> List[Dict]:
 
         return result.data or []
     except Exception as e:
-        print(f"Bestsellers query error: {e}")
+        logger.info(f"Bestsellers query error: {e}")
         return []
 
 
@@ -57,7 +61,7 @@ def get_top_rated(limit: int = 10, min_reviews: int = 3) -> List[Dict]:
 
         return result.data or []
     except Exception as e:
-        print(f"Top rated query error: {e}")
+        logger.info(f"Top rated query error: {e}")
         return []
 
 
@@ -81,7 +85,7 @@ def get_new_arrivals(limit: int = 10) -> List[Dict]:
 
         return result.data or []
     except Exception as e:
-        print(f"New arrivals query error: {e}")
+        logger.info(f"New arrivals query error: {e}")
         return []
 
 
@@ -127,7 +131,7 @@ def search_by_tags(tags_list: List[str], limit: int = 20) -> List[Dict]:
         return matched_products[:limit]
 
     except Exception as e:
-        print(f"Tag search error: {e}")
+        logger.info(f"Tag search error: {e}")
         return []
 
 
@@ -177,7 +181,7 @@ def search_by_keyword(keyword: str, limit: int = 20) -> List[Dict]:
         return products[:limit]
 
     except Exception as e:
-        print(f"Keyword search error: {e}")
+        logger.info(f"Keyword search error: {e}")
         return []
 
 
@@ -227,7 +231,7 @@ def get_user_purchase_history(user_id: str, limit: int = 10) -> List[Dict]:
         return purchased_products
 
     except Exception as e:
-        print(f"Purchase history query error: {e}")
+        logger.info(f"Purchase history query error: {e}")
         return []
 
 
@@ -277,7 +281,7 @@ def format_products_for_llm(products: List[Dict], include_reviews: bool = True) 
                             review_text = content[:80] + "..." if len(content) > 80 else content
                             text += f"     {idx}) {review['rating']}/5 - {review_text}\n"
             except Exception as e:
-                print(f"Error fetching reviews for product {product.get('id')}: {e}")
+                logger.info(f"Error fetching reviews for product {product.get('id')}: {e}")
 
         formatted.append(text)
 

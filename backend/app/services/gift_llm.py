@@ -5,6 +5,10 @@ import requests
 import json
 from typing import List, Dict, AsyncGenerator
 from app.config import get_settings
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -206,7 +210,7 @@ class GiftLLMService:
                         continue
 
         except Exception as e:
-            print(f"Ollama 호출 오류: {e}")
+            logger.info(f"Ollama 호출 오류: {e}")
             yield f"오류가 발생했습니다: {str(e)}"
 
 
@@ -241,7 +245,7 @@ class GiftLLMService:
             return result.get('response', '')
 
         except Exception as e:
-            print(f"Ollama 호출 오류: {e}")
+            logger.info(f"Ollama 호출 오류: {e}")
             return f"오류가 발생했습니다: {str(e)}"
 
 
@@ -274,6 +278,6 @@ class GiftLLMService:
             return data
 
         except json.JSONDecodeError as e:
-            print(f"JSON 파싱 오류: {e}")
-            print(f"응답: {llm_response[:500]}")
+            logger.info(f"JSON 파싱 오류: {e}")
+            logger.info(f"응답: {llm_response[:500]}")
             return None

@@ -5,6 +5,10 @@ from typing import List, Dict
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from app.config import get_settings
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -18,7 +22,7 @@ class EmbeddingService:
     def get_model(cls):
         """임베딩 모델 싱글톤"""
         if cls._model is None:
-            print(f"임베딩 모델 로딩 중: {settings.EMBEDDING_MODEL}")
+            logger.info(f"임베딩 모델 로딩 중: {settings.EMBEDDING_MODEL}")
             cls._model = SentenceTransformer(settings.EMBEDDING_MODEL)
         return cls._model
 

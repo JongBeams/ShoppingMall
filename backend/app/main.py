@@ -3,6 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 from contextlib import asynccontextmanager
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -26,16 +30,16 @@ async def lifespan(app: FastAPI):
     - 종료 시: 스케줄러 중지
     """
     # 시작
-    print("[STARTUP] Application starting...")
+    logger.info("[STARTUP] Application starting...")
     start_scheduler()
-    print("[STARTUP] Scheduler started")
+    logger.info("[STARTUP] Scheduler started")
 
     yield
 
     # 종료
-    print("[SHUTDOWN] Application shutting down...")
+    logger.info("[SHUTDOWN] Application shutting down...")
     stop_scheduler()
-    print("[SHUTDOWN] Scheduler stopped")
+    logger.info("[SHUTDOWN] Scheduler stopped")
 
 
 app = FastAPI(title="ShoppingMall API", version="1.0.0", lifespan=lifespan)
@@ -88,9 +92,9 @@ async def health_check():
 from fastapi import WebSocket
 @app.websocket("/test-ws")
 async def test_websocket(websocket: WebSocket):
-    print("테스트 WebSocket 연결 요청!")
+    logger.info("테스트 WebSocket 연결 요청!")
     await websocket.accept()
-    print("테스트 WebSocket 연결 성공!")
+    logger.info("테스트 WebSocket 연결 성공!")
     await websocket.send_text("Hello from WebSocket!")
     await websocket.close()
 

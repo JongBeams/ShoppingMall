@@ -14,6 +14,10 @@ from app.services.email import send_otp_email
 from app.services.otp_store import get_otp_store
 from app.services.jwt_auth import get_current_user
 from datetime import datetime
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -39,10 +43,10 @@ async def send_otp(request: SendOTPRequest):
             auth_users = supabase_admin.auth.admin.list_users()
             for user in auth_users:
                 if hasattr(user, 'email') and user.email == request.email:
-                    print(f"[DEBUG] Auth에만 존재하는 사용자 삭제: {request.email}")
+                    logger.debug(f"Auth에만 존재하는 사용자 삭제: {request.email}")
                     supabase_admin.auth.admin.delete_user(user.id)
         except Exception as e:
-            print(f"[DEBUG] Auth 사용자 확인 중 오류 (무시): {str(e)}")
+            logger.info(f"[DEBUG] Auth 사용자 확인 중 오류 (무시): {str(e)}")
 
         # OTP 코드 생성
         import random
@@ -51,7 +55,7 @@ async def send_otp(request: SendOTPRequest):
         # 메모리에 OTP 저장 (TTL: 5분)
         otp_store = get_otp_store()
         otp_store.set(request.email, otp_code, ttl_seconds=300)
-        print(f"[OTP] {request.email} 인증번호 생성 및 저장: {otp_code}")
+        logger.info(f"[OTP] {request.email} 인증번호 생성 및 저장: {otp_code}")
 
         # 이메일 발송
         await send_otp_email(request.email, otp_code)
@@ -61,7 +65,7 @@ async def send_otp(request: SendOTPRequest):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] OTP 전송 오류: {str(e)}")
+        logger.error(f"OTP 전송 오류: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"인증번호 전송에 실패했습니다: {str(e)}"
@@ -90,14 +94,14 @@ async def verify_otp(request: VerifyOTPRequest):
 
         # 인증 성공 - OTP 삭제
         otp_store.delete(request.email)
-        print(f"[OTP] {request.email} 인증 성공")
+        logger.info(f"[OTP] {request.email} 인증 성공")
 
         return MessageResponse(message="이메일 인증이 완료되었습니다.")
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] OTP 검증 오류: {str(e)}")
+        logger.info(f"[ERROR] OTP 검증 오류: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="인증번호 확인에 실패했습니다. 올바른 인증번호를 입력하세요."
@@ -115,7 +119,7 @@ async def register(user_data: UserRegisterRequest):
     supabase_admin = get_supabase_admin_client()
 
     try:
-        print(f"[DEBUG] 회원가입 요청: {user_data.email}, {user_data.user_type}")
+        logger.info(f"[DEBUG] 회원가입 요청: {user_data.email}, {user_data.user_type}")
         # 1. Supabase Auth에 사용자 등록
         auth_response = supabase.auth.sign_up({
             "email": user_data.email,
@@ -132,7 +136,7 @@ async def register(user_data: UserRegisterRequest):
 
         # 이메일 확인이 필요한 경우 (세션이 없음)
         if not auth_response.session:
-            print(f"[DEBUG] 이메일 확인 필요 - 세션 없음")
+            logger.info(f"[DEBUG] 이메일 확인 필요 - 세션 없음")
             # profiles 테이블에는 저장하되, 토큰 없이 응답
             profile_data = {
                 "id": user_id,
@@ -219,9 +223,9 @@ async def register(user_data: UserRegisterRequest):
                         amount=signup_point,
                         reason="회원가입 축하 포인트"
                     )
-                    print(f"[INFO] 회원가입 포인트 지급: {user_id} - {signup_point}P")
+                    logger.info(f"회원가입 포인트 지급: {user_id} - {signup_point}P")
         except Exception as e:
-            print(f"[WARNING] 회원가입 포인트 지급 실패 (무시): {str(e)}")
+            logger.warning(f"회원가입 포인트 지급 실패 (무시): {str(e)}")
 
         # 3. seller인 경우 vendors 테이블에 판매자 정보 저장
         vendor = None
@@ -320,8 +324,8 @@ async def register(user_data: UserRegisterRequest):
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 회원가입 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 회원가입 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
 
         # Rate limiting 에러 처리
         error_message = str(e)
@@ -449,15 +453,15 @@ async def login(credentials: UserLoginRequest):
         raise
     except AuthApiError as e:
         # Supabase 인증 에러 처리
-        print(f"[ERROR] Supabase 인증 오류: {str(e)}")
+        logger.info(f"[ERROR] Supabase 인증 오류: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="이메일 또는 비밀번호가 올바르지 않습니다."
         )
     except Exception as e:
         import traceback
-        print(f"[ERROR] 로그인 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 로그인 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
 
         # 일반적인 서버 오류
         raise HTTPException(
@@ -515,7 +519,7 @@ async def refresh_user_token(refresh_token: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] Refresh Token 갱신 오류: {str(e)}")
+        logger.info(f"[ERROR] Refresh Token 갱신 오류: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="토큰 갱신에 실패했습니다."
@@ -538,7 +542,7 @@ async def logout(current_user: dict = Depends(get_current_user)):
 
         return MessageResponse(message="로그아웃되었습니다.")
     except Exception as e:
-        print(f"[ERROR] 로그아웃 오류: {str(e)}")
+        logger.info(f"[ERROR] 로그아웃 오류: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"로그아웃 중 오류가 발생했습니다: {str(e)}"

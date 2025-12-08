@@ -5,7 +5,11 @@ Redis를 사용하여 OTP를 임시 저장하고 서버 재시작 시에도 유�
 from typing import Optional
 import redis
 import os
+import logging
 
+
+
+logger = logging.getLogger(__name__)
 
 class OTPStore:
     """OTP 인증번호를 Redis에 저장하는 클래스"""
@@ -14,13 +18,13 @@ class OTPStore:
         # Redis 연결 (환경 변수에서 URL 가져오기)
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self._redis = redis.from_url(redis_url, decode_responses=True)
-        print(f"[OTP Store] Redis 연결: {redis_url}")
+        logger.info(f"[OTP Store] Redis 연결: {redis_url}")
 
     def set(self, email: str, otp_code: str, ttl_seconds: int = 300):
         """OTP 코드 저장 (기본 TTL: 5분)"""
         key = f"otp:{email}"
         self._redis.setex(key, ttl_seconds, otp_code)
-        print(f"[OTP Store] {email} 저장: {otp_code} (만료: {ttl_seconds}초)")
+        logger.info(f"[OTP Store] {email} 저장: {otp_code} (만료: {ttl_seconds}초)")
 
     def get(self, email: str) -> Optional[str]:
         """OTP 코드 조회 (만료된 경우 None 반환)"""
@@ -28,7 +32,7 @@ class OTPStore:
         otp_code = self._redis.get(key)
 
         if otp_code is None:
-            print(f"[OTP Store] {email} 없음 또는 만료됨")
+            logger.info(f"[OTP Store] {email} 없음 또는 만료됨")
             return None
 
         return otp_code
@@ -38,7 +42,7 @@ class OTPStore:
         key = f"otp:{email}"
         deleted = self._redis.delete(key)
         if deleted:
-            print(f"[OTP Store] {email} 삭제됨")
+            logger.info(f"[OTP Store] {email} 삭제됨")
 
     def cleanup_expired(self):
         """Redis는 자동으로 TTL 만료 처리하므로 수동 정리 불필요"""

@@ -8,6 +8,10 @@ from collections import Counter
 from app.services.supabase import supabase
 from app.config import get_settings
 from app.config.constants import PURCHASE_FREQUENCY_MAP
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -112,7 +116,7 @@ class PurchasePattern:
             return purchase_history
 
         except Exception as e:
-            print(f"Purchase history error: {e}")
+            logger.info(f"Purchase history error: {e}")
             return []
 
     def _empty_pattern(self) -> Dict:
@@ -285,7 +289,7 @@ def get_personalized_recommendations(
         }
 
     except Exception as e:
-        print(f"Personalized recommendation error: {e}")
+        logger.info(f"Personalized recommendation error: {e}")
         return {
             'pattern': {},
             'recommendations': [],
@@ -381,7 +385,7 @@ def _find_pattern_based_products(
         return matched_products[:limit]
 
     except Exception as e:
-        print(f"Pattern-based search error: {e}")
+        logger.info(f"Pattern-based search error: {e}")
         return []
 
 

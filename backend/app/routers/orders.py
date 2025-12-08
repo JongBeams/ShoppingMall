@@ -10,6 +10,10 @@ from decimal import Decimal
 from datetime import datetime
 from uuid import UUID
 import uuid
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -137,7 +141,7 @@ async def create_order(
                 # 설정이 없으면 기본값 사용
                 shipping_fee = 0 if product_total >= 30000 else 3000
         except Exception as e:
-            print(f"[WARNING] 배송비 설정 조회 실패, 기본값 사용: {str(e)}")
+            logger.warning(f"배송비 설정 조회 실패, 기본값 사용: {str(e)}")
             shipping_fee = 0 if product_total >= 30000 else 3000
 
         order_data = {
@@ -504,7 +508,7 @@ async def get_order(
                         filtered_total += float(subtotal)
                 order["total_amount"] = filtered_total
             except Exception as e:
-                print(f"필터링된 총액 계산 오류: {str(e)}")
+                logger.info(f"필터링된 총액 계산 오류: {str(e)}")
                 # 오류 발생 시 원래 총액 유지
 
         # 각 아이템에 상품 이미지 추가
@@ -522,10 +526,10 @@ async def get_order(
         order["items"] = order_items
 
         # 디버깅: 주문 데이터 확인
-        print(f"주문 ID: {order.get('id')}")
-        print(f"payment_id: {order.get('payment_id')}")
-        print(f"payment_status: {order.get('payment_status')}")
-        print(f"toss_order_id: {order.get('toss_order_id')}")
+        logger.info(f"주문 ID: {order.get('id')}")
+        logger.info(f"payment_id: {order.get('payment_id')}")
+        logger.info(f"payment_status: {order.get('payment_status')}")
+        logger.info(f"toss_order_id: {order.get('toss_order_id')}")
 
         return order
 
@@ -568,11 +572,11 @@ async def cancel_order(
         order = order_response.data
 
         # 디버깅: 주문 취소 요청 정보
-        print(f"=== 주문 취소 요청 ===")
-        print(f"주문 ID: {order.get('id')}")
-        print(f"주문 상태 (status): {order.get('status')}")
-        print(f"결제 상태 (payment_status): {order.get('payment_status')}")
-        print(f"payment_id: {order.get('payment_id')}")
+        logger.info(f"=== 주문 취소 요청 ===")
+        logger.info(f"주문 ID: {order.get('id')}")
+        logger.info(f"주문 상태 (status): {order.get('status')}")
+        logger.info(f"결제 상태 (payment_status): {order.get('payment_status')}")
+        logger.info(f"payment_id: {order.get('payment_id')}")
 
         # 본인 주문인지 확인 (buyer_id 사용)
         if order["buyer_id"] != user_id:  # user_id -> buyer_id
@@ -596,7 +600,7 @@ async def cancel_order(
                     payment_key=order["payment_id"],
                     cancel_amount=None  # 전액 취소
                 )
-                print(f"토스페이먼츠 결제 취소 성공: {cancel_result}")
+                logger.info(f"토스페이먼츠 결제 취소 성공: {cancel_result}")
             except HTTPException as e:
                 # 결제 취소 실패 시 에러 반환
                 raise HTTPException(
@@ -650,12 +654,12 @@ async def cancel_order(
             transaction_response = supabase.table("point_transactions").select("change_amount").eq("id", point_transaction_id).execute()
             if transaction_response.data:
                 points_refunded = transaction_response.data[0]["change_amount"]
-            print(f"✅ 주문 취소 포인트 환원 성공: user_id={user_id}, amount={points_refunded}, order_id={order_id}")
+            logger.info(f"✅ 주문 취소 포인트 환원 성공: user_id={user_id}, amount={points_refunded}, order_id={order_id}")
         except ValueError as e:
             # 사용한 포인트가 없는 경우 (정상)
-            print(f"ℹ️ 주문 취소 포인트 환원 대상 없음: {str(e)}")
+            logger.info(f"ℹ️ 주문 취소 포인트 환원 대상 없음: {str(e)}")
         except Exception as e:
-            print(f"⚠️ 주문 취소 포인트 환원 실패 (무시): {str(e)}")
+            logger.info(f"⚠️ 주문 취소 포인트 환원 실패 (무시): {str(e)}")
 
         # 주문 취소 알림 발송
         try:
@@ -672,9 +676,9 @@ async def cancel_order(
                 total_amount=int(order.get("total", 0)),
                 status="cancelled"
             )
-            print(f"[INFO] 주문 취소 알림 발송 완료: order_id={order_id}")
+            logger.info(f"주문 취소 알림 발송 완료: order_id={order_id}")
         except Exception as e:
-            print(f"[WARNING] 주문 취소 알림 발송 실패 (무시): {str(e)}")
+            logger.info(f"[WARNING] 주문 취소 알림 발송 실패 (무시): {str(e)}")
 
         return {
             "message": "주문이 취소되었습니다.",
@@ -776,7 +780,7 @@ async def confirm_order(
                             reason=f"주문 적립 (주문번호: {order_id[:8]})",
                             order_id=UUID(order_id)
                         )
-                        print(f"[INFO] 구매확정 포인트 적립: {user_id} - {points_to_earn}P")
+                        logger.info(f"[INFO] 구매확정 포인트 적립: {user_id} - {points_to_earn}P")
 
                         # 구매확정 알림 발송
                         try:
@@ -794,16 +798,16 @@ async def confirm_order(
                                 total_amount=int(order["total"]),
                                 status="confirmed"
                             )
-                            print(f"[INFO] 구매확정 알림 발송 완료: order_id={order_id}")
+                            logger.info(f"[INFO] 구매확정 알림 발송 완료: order_id={order_id}")
                         except Exception as e:
-                            print(f"[WARNING] 구매확정 알림 발송 실패 (무시): {str(e)}")
+                            logger.info(f"[WARNING] 구매확정 알림 발송 실패 (무시): {str(e)}")
 
                         return {
                             "message": "구매가 확정되었습니다.",
                             "points_earned": points_to_earn
                         }
         except Exception as e:
-            print(f"[WARNING] 구매확정 포인트 적립 실패 (무시): {str(e)}")
+            logger.info(f"[WARNING] 구매확정 포인트 적립 실패 (무시): {str(e)}")
 
         return {
             "message": "구매가 확정되었습니다.",
@@ -911,9 +915,9 @@ async def update_order_status_admin(
                     product_name=product_name,
                     status="shipped" if request.status == "shipping" else "delivered"
                 )
-                print(f"[INFO] 배송 상태 변경 알림 발송 완료: order_id={order_id}, status={request.status}")
+                logger.info(f"[INFO] 배송 상태 변경 알림 발송 완료: order_id={order_id}, status={request.status}")
             except Exception as e:
-                print(f"[WARNING] 배송 상태 변경 알림 발송 실패 (무시): {str(e)}")
+                logger.info(f"[WARNING] 배송 상태 변경 알림 발송 실패 (무시): {str(e)}")
 
         return {
             "message": "주문 상태가 변경되었습니다.",

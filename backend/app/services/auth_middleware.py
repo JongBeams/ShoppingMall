@@ -3,6 +3,10 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 from app.services.jwt_auth import verify_token
 from app.services.supabase import get_supabase_admin_client
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
 
@@ -73,7 +77,7 @@ async def get_current_admin(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 관리자 정보 조회 실패: {str(e)}")
+        logger.error(f"관리자 정보 조회 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="관리자 정보 조회 중 오류가 발생했습니다.",
@@ -139,7 +143,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 사용자 정보 조회 실패: {str(e)}")
+        logger.info(f"[ERROR] 사용자 정보 조회 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="사용자 정보 조회 중 오류가 발생했습니다.",

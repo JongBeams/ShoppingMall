@@ -9,6 +9,10 @@ import os
 import uuid
 from pathlib import Path
 from pydantic import BaseModel
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 from PyPDF2 import PdfReader
 from sentence_transformers import SentenceTransformer
@@ -30,7 +34,7 @@ embedding_model = None
 def get_embedding_model():
     global embedding_model
     if embedding_model is None:
-        print("Loading embedding model: BAAI/bge-m3...")
+        logger.info("Loading embedding model: BAAI/bge-m3...")
         embedding_model = SentenceTransformer('BAAI/bge-m3')
     return embedding_model
 
@@ -170,7 +174,7 @@ async def upload_document(file: UploadFile = File(...)):
                 'status': 'failed'
             }).eq('id', doc_id).execute()
 
-        print(f"Upload error: {e}")
+        logger.info(f"Upload error: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"업로드 중 오류 발생: {str(e)}")
@@ -302,7 +306,7 @@ async def search_documents_api(request: SearchRequest):
         return StreamingResponse(generate(), media_type="text/event-stream")
 
     except Exception as e:
-        print(f"Search error: {e}")
+        logger.info(f"Search error: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"검색 중 오류 발생: {str(e)}")

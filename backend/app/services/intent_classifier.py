@@ -7,6 +7,10 @@ from typing import Dict, List
 from sentence_transformers import SentenceTransformer
 import numpy as np
 from app.config import get_settings
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -115,7 +119,7 @@ def get_intent_classifier() -> IntentClassifier:
     """의도 분류기 싱글톤"""
     global _classifier
     if _classifier is None:
-        print("Loading intent classifier...")
+        logger.info("Loading intent classifier...")
         _classifier = IntentClassifier()
     return _classifier
 
@@ -149,11 +153,11 @@ if __name__ == "__main__":
     classifier = get_intent_classifier()
 
     print("=" * 60)
-    print("의도 분류 테스트")
+    logger.info("의도 분류 테스트")
     print("=" * 60)
 
     for query in test_queries:
         intent, score = classifier.classify(query)
-        print(f"질문: {query}")
-        print(f"→ 의도: {intent} (유사도: {score:.3f})")
+        logger.info(f"질문: {query}")
+        logger.info(f"→ 의도: {intent} (유사도: {score:.3f})")
         print()

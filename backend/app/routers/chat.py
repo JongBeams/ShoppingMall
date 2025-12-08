@@ -4,6 +4,10 @@ from datetime import datetime
 from pydantic import BaseModel
 import json
 import requests
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 from app.services.supabase import supabase
 from app.config import get_settings
@@ -32,14 +36,14 @@ class ConnectionManager:
             self.active_connections[room_id] = []
         self.active_connections[room_id].append(websocket)
         self.user_info[websocket] = user_info
-        print(f"User {user_info.get('user_id')} connected to room {room_id}")
+        logger.info(f"User {user_info.get('user_id')} connected to room {room_id}")
 
     def disconnect(self, websocket: WebSocket, room_id: str):
         if room_id in self.active_connections:
             if websocket in self.active_connections[room_id]:
                 self.active_connections[room_id].remove(websocket)
                 user_info = self.user_info.get(websocket, {})
-                print(f"User {user_info.get('user_id')} disconnected from room {room_id}")
+                logger.info(f"User {user_info.get('user_id')} disconnected from room {room_id}")
             if not self.active_connections[room_id]:
                 del self.active_connections[room_id]
         if websocket in self.user_info:
@@ -52,7 +56,7 @@ class ConnectionManager:
                 try:
                     await connection.send_json(message)
                 except Exception as e:
-                    print(f"Error sending message: {e}")
+                    logger.info(f"Error sending message: {e}")
 
     async def notify_admin(self, message: dict):
         """모든 관리자에게 새 채팅 알림"""
@@ -62,7 +66,7 @@ class ConnectionManager:
                 try:
                     await connection.send_json(message)
                 except Exception as e:
-                    print(f"Error notifying admin: {e}")
+                    logger.info(f"Error notifying admin: {e}")
 
 manager = ConnectionManager()
 
@@ -202,22 +206,22 @@ async def close_chat_room(room_id: str):
 @router.websocket("/ws/{room_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str):
     """사용자/관리자 WebSocket 연결"""
-    print(f"WebSocket 연결 요청: room_id={room_id}")
-    print(f"Origin: {websocket.headers.get('origin')}")
+    logger.info(f"WebSocket 연결 요청: room_id={room_id}")
+    logger.info(f"Origin: {websocket.headers.get('origin')}")
 
     try:
         # 직접 accept (Origin 검증 없이)
         await websocket.accept()
-        print(f"WebSocket accept 성공")
+        logger.info(f"WebSocket accept 성공")
 
         # ConnectionManager에 수동 등록
         if room_id not in manager.active_connections:
             manager.active_connections[room_id] = []
         manager.active_connections[room_id].append(websocket)
         manager.user_info[websocket] = {"room_id": room_id, "user_id": "user"}
-        print(f"ConnectionManager 등록 성공: room_id={room_id}")
+        logger.info(f"ConnectionManager 등록 성공: room_id={room_id}")
     except Exception as e:
-        print(f"WebSocket 연결 실패: {e}")
+        logger.info(f"WebSocket 연결 실패: {e}")
         import traceback
         traceback.print_exc()
         raise
@@ -246,11 +250,11 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
 
             # WebRTC 시그널링 처리
             if message_type in ['webrtc_offer', 'webrtc_answer', 'webrtc_ice_candidate']:
-                print(f"🔴 WebRTC 메시지 수신: type={message_type}, room_id={room_id}")
-                print(f"🔴 현재 방의 연결 수: {len(manager.active_connections.get(room_id, []))}")
+                logger.info(f"🔴 WebRTC 메시지 수신: type={message_type}, room_id={room_id}")
+                logger.info(f"🔴 현재 방의 연결 수: {len(manager.active_connections.get(room_id, []))}")
                 # DB 저장 없이 바로 브로드캐스트 (관리자 ↔ 사용자)
                 await manager.send_message(message_data, room_id)
-                print(f"✅ WebRTC 메시지 브로드캐스트 완료")
+                logger.info(f"✅ WebRTC 메시지 브로드캐스트 완료")
                 continue
 
             # 일반 채팅 메시지
@@ -291,7 +295,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
     except WebSocketDisconnect:
         manager.disconnect(websocket, room_id)
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        logger.info(f"WebSocket error: {e}")
         manager.disconnect(websocket, room_id)
 
 
@@ -346,7 +350,7 @@ async def admin_monitor_websocket(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket, "admin_room")
     except Exception as e:
-        print(f"Admin WebSocket error: {e}")
+        logger.info(f"Admin WebSocket error: {e}")
         manager.disconnect(websocket, "admin_room")
 
 
@@ -390,7 +394,7 @@ async def general_chat(request: GeneralChatRequest):
         return StreamingResponse(generate(), media_type="text/event-stream")
 
     except Exception as e:
-        print(f"General chat error: {e}")
+        logger.info(f"General chat error: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"채팅 중 오류 발생: {str(e)}")
@@ -484,7 +488,7 @@ async def smart_chat(request: SmartChatRequest):
         return StreamingResponse(generate(), media_type="text/event-stream")
 
     except Exception as e:
-        print(f"Smart chat error: {e}")
+        logger.info(f"Smart chat error: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"채팅 중 오류 발생: {str(e)}")

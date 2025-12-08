@@ -23,6 +23,10 @@ from app.services.personalized_recommendation import (
 )
 from app.config import get_settings
 import json
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -34,7 +38,7 @@ def get_embedding_model() -> SentenceTransformer:
     global _embedding_model
     if _embedding_model is None:
         model_name = settings.EMBEDDING_MODEL
-        print(f"Loading embedding model: {model_name}...")
+        logger.info(f"Loading embedding model: {model_name}...")
         _embedding_model = SentenceTransformer(model_name)
     return _embedding_model
 
@@ -74,14 +78,14 @@ def search_documents(query: str, limit: int = 3) -> List[Dict]:
         ).execute()
 
         if result.data:
-            print(f"[RAG] pgvector RPC 검색 성공: {len(result.data)}개 문서 반환")
+            logger.info(f"[RAG] pgvector RPC 검색 성공: {len(result.data)}개 문서 반환")
             return result.data
         else:
-            print("[RAG] pgvector RPC 결과 없음, fallback 사용")
+            logger.info("[RAG] pgvector RPC 결과 없음, fallback 사용")
             return fallback_search(query_embedding, limit)
 
     except Exception as e:
-        print(f"[RAG] pgvector RPC 검색 오류: {e}, fallback 사용")
+        logger.info(f"[RAG] pgvector RPC 검색 오류: {e}, fallback 사용")
         # RPC 함수가 없으면 fallback: 모든 청크 가져와서 Python에서 계산
         return fallback_search(query_embedding, limit)
 
@@ -121,7 +125,7 @@ def fallback_search(query_embedding: List[float], limit: int) -> List[Dict]:
         return chunks_with_similarity[:limit]
 
     except Exception as e:
-        print(f"Fallback search error: {e}")
+        logger.info(f"Fallback search error: {e}")
         return []
 
 
@@ -233,7 +237,7 @@ def generate_answer_with_ollama_streaming(
             yield {"error": f"Ollama 오류: {response.status_code}"}
 
     except Exception as e:
-        print(f"Ollama streaming error: {e}")
+        logger.info(f"Ollama streaming error: {e}")
         yield {"error": f"답변 생성 중 오류 발생: {str(e)}"}
 
 
@@ -319,7 +323,7 @@ def generate_answer_with_ollama(
             return f"Ollama 오류: {response.status_code}"
 
     except Exception as e:
-        print(f"Ollama error: {e}")
+        logger.info(f"Ollama error: {e}")
         return f"답변 생성 중 오류 발생: {str(e)}"
 
 
@@ -389,7 +393,7 @@ def rag_search_with_products(
 
     # 2. 키워드 추출 (태그 필터링용)
     keywords = extract_keywords_from_query(query)
-    print(f"[Keywords] {keywords}")
+    logger.info(f"[Keywords] {keywords}")
 
     # 3. 상품 데이터 가져오기 (필터링 없이 LLM이 판단하도록)
     products = []
@@ -458,17 +462,17 @@ def rag_search_with_products(
                     # LLM 답변에 상품명이 포함되어 있으면 해당 상품 포함
                     if product['name'] in answer:
                         mentioned_products.append(product)
-                        print(f"[Matched Product] {product['name']}")
+                        logger.info(f"[Matched Product] {product['name']}")
 
-                print(f"[Total Mentioned] {len(mentioned_products)} out of {len(products)}")
+                logger.info(f"[Total Mentioned] {len(mentioned_products)} out of {len(products)}")
 
                 # LLM이 언급한 상품이 있으면 해당 상품만, 없으면 상위 5개
                 if mentioned_products:
                     result["products"] = mentioned_products[:10]  # 최대 10개
-                    print(f"[Returning] {len(result['products'])} mentioned products")
+                    logger.info(f"[Returning] {len(result['products'])} mentioned products")
                 else:
                     result["products"] = products[:5]  # fallback: 상위 5개
-                    print(f"[Returning] {len(result['products'])} fallback products (no mentions found)")
+                    logger.info(f"[Returning] {len(result['products'])} fallback products (no mentions found)")
         else:
             result["answer"] = "관련 정보를 찾을 수 없습니다."
     else:

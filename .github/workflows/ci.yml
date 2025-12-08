@@ -49,6 +49,11 @@ jobs:
           cd backend
           mypy app --ignore-missing-imports || true
 
+      - name: Run Pytest (Unit Tests)
+        run: |
+          cd backend
+          pytest tests/ -v --tb=short
+
   # ==================== Frontend Lint & Format ====================
   frontend-lint:
     name: Frontend - Lint & Format Check
@@ -87,6 +92,11 @@ jobs:
         env:
           NEXT_PUBLIC_BACKEND_URL: http://localhost:8000
           NEXT_PUBLIC_TOSS_CLIENT_KEY: test_key
+
+      - name: Run Jest (Unit Tests)
+        run: |
+          cd frontend
+          npm run test -- --passWithNoTests
 
   # ==================== Security Check ====================
   security-check:

@@ -3,11 +3,13 @@ from typing import Optional
 import jwt
 import redis
 import os
+import logging
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.config import get_settings
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 # Redis 연결 (Refresh Token 저장용)
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -23,7 +25,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
     Args:
         data: 토큰에 포함할 데이터 (user_id, email, role 등)
-        expires_delta: 토큰 만료 시간 (기본값: 30분)
+        expires_delta: 토큰 만료 시간 (기본값: settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     Returns:
         JWT 토큰 문자열
@@ -38,6 +40,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire, "iat": datetime.utcnow()})
 
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    logger.info(f"Access Token 생성 완료: user_id={data.get('sub')}")
     return encoded_jwt
 
 
@@ -52,8 +55,8 @@ def create_refresh_token(user_id: str, user_type: str = "user") -> str:
     Returns:
         JWT Refresh Token 문자열
     """
-    # Refresh Token 만료 시간: 7일
-    expire = datetime.utcnow() + timedelta(days=7)
+    # Refresh Token 만료 시간: 설정값 사용
+    expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
     to_encode = {
         "sub": user_id,
@@ -65,11 +68,11 @@ def create_refresh_token(user_id: str, user_type: str = "user") -> str:
 
     refresh_token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
-    # Redis에 Refresh Token 저장 (7일 TTL)
+    # Redis에 Refresh Token 저장 (설정값 TTL)
     redis_key = f"refresh_token:{user_type}:{user_id}"
-    redis_client.setex(redis_key, timedelta(days=7), refresh_token)
+    redis_client.setex(redis_key, timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS), refresh_token)
 
-    print(f"[JWT] Refresh Token 생성: {user_id} ({user_type})")
+    logger.info(f"Refresh Token 생성 완료: user_id={user_id}, type={user_type}")
     return refresh_token
 
 
@@ -89,7 +92,7 @@ def verify_refresh_token(refresh_token: str) -> Optional[dict]:
 
         # Refresh Token 타입 확인
         if payload.get("token_type") != "refresh":
-            print("[JWT] Refresh Token이 아닙니다.")
+            logger.warning("Refresh Token 타입이 아닙니다")
             return None
 
         user_id = payload.get("sub")
@@ -100,16 +103,17 @@ def verify_refresh_token(refresh_token: str) -> Optional[dict]:
         stored_token = redis_client.get(redis_key)
 
         if not stored_token or stored_token != refresh_token:
-            print("[JWT] Refresh Token이 Redis에 없거나 일치하지 않습니다.")
+            logger.warning(f"Refresh Token이 Redis에 없거나 일치하지 않음: user_id={user_id}")
             return None
 
+        logger.info(f"Refresh Token 검증 성공: user_id={user_id}")
         return payload
 
     except jwt.ExpiredSignatureError:
-        print("[JWT] Refresh Token이 만료되었습니다.")
+        logger.info("Refresh Token이 만료되었습니다")
         return None
     except jwt.InvalidTokenError as e:
-        print(f"[JWT] 유효하지 않은 Refresh Token: {str(e)}")
+        logger.error(f"유효하지 않은 Refresh Token: {e}")
         return None
 
 
@@ -123,7 +127,7 @@ def revoke_refresh_token(user_id: str, user_type: str = "user"):
     """
     redis_key = f"refresh_token:{user_type}:{user_id}"
     redis_client.delete(redis_key)
-    print(f"[JWT] Refresh Token 무효화: {user_id} ({user_type})")
+    logger.info(f"Refresh Token 무효화 완료: user_id={user_id}, type={user_type}")
 
 
 def verify_token(token: str) -> Optional[dict]:
@@ -140,10 +144,10 @@ def verify_token(token: str) -> Optional[dict]:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:
-        print("[JWT] 토큰이 만료되었습니다.")
+        logger.info("토큰이 만료되었습니다")
         return None
     except jwt.InvalidTokenError as e:
-        print(f"[JWT] 유효하지 않은 토큰: {str(e)}")
+        logger.error(f"유효하지 않은 토큰: {e}")
         return None
 
 

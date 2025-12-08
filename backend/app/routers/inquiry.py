@@ -4,6 +4,10 @@ from app.services.supabase import get_supabase_admin_client
 from app.services.auth_middleware import get_current_user, get_current_admin
 from typing import Optional, List
 from datetime import datetime
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/inquiries", tags=["Inquiry"])
 
@@ -74,8 +78,8 @@ async def create_inquiry(
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 문의 작성 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.error(f"문의 작성 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"문의 작성 중 오류가 발생했습니다: {str(e)}"
@@ -123,8 +127,8 @@ async def get_my_inquiries(current_user: dict = Depends(get_current_user)):
 
     except Exception as e:
         import traceback
-        print(f"[ERROR] 내 문의 목록 조회 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 내 문의 목록 조회 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"문의 목록 조회 중 오류가 발생했습니다: {str(e)}"
@@ -177,8 +181,8 @@ async def get_all_inquiries(current_admin: dict = Depends(get_current_admin)):
 
     except Exception as e:
         import traceback
-        print(f"[ERROR] 문의 목록 조회 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 문의 목록 조회 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"문의 목록 조회 중 오류가 발생했습니다: {str(e)}"
@@ -216,8 +220,8 @@ async def reply_inquiry(
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 문의 답변 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 문의 답변 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"답변 등록 중 오류가 발생했습니다: {str(e)}"

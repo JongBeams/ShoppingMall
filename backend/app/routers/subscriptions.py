@@ -13,6 +13,10 @@ from datetime import datetime, timedelta
 from uuid import UUID
 import requests
 import base64
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/subscription", tags=["subscriptions"])
 
@@ -49,7 +53,7 @@ async def get_subscription_plans(
         return SubscriptionPlansResponse(plans=plans, count=len(plans))
 
     except Exception as e:
-        print(f"구독 플랜 조회 오류: {str(e)}")
+        logger.info(f"구독 플랜 조회 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"구독 플랜 조회 실패: {str(e)}")
 
 
@@ -75,7 +79,7 @@ async def get_subscription_plan(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"구독 플랜 조회 오류: {str(e)}")
+        logger.info(f"구독 플랜 조회 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"구독 플랜 조회 실패: {str(e)}")
 
 
@@ -101,7 +105,7 @@ async def get_subscription_plan_by_slug(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"구독 플랜 조회 오류: {str(e)}")
+        logger.info(f"구독 플랜 조회 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"구독 플랜 조회 실패: {str(e)}")
 
 
@@ -147,7 +151,7 @@ async def get_current_subscription(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"구독 정보 조회 오류: {str(e)}")
+        logger.info(f"구독 정보 조회 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"구독 정보 조회 실패: {str(e)}")
 
 
@@ -255,9 +259,9 @@ async def confirm_subscription_payment(
                         expires_days=plan.duration_days  # 구독 기간만큼 유효
                     )
                     points_earned = point_amount
-                    print(f"구독 포인트 적립 성공: user_id={profile_id}, amount={point_amount}")
+                    logger.info(f"구독 포인트 적립 성공: user_id={profile_id}, amount={point_amount}")
                 except Exception as e:
-                    print(f"구독 포인트 적립 실패 (무시): {str(e)}")
+                    logger.info(f"구독 포인트 적립 실패 (무시): {str(e)}")
                     # 포인트 적립 실패해도 구독은 성공으로 처리
 
         return {
@@ -272,8 +276,8 @@ async def confirm_subscription_payment(
     except HTTPException:
         raise
     except requests.exceptions.RequestException as e:
-        print(f"Toss Payments API 오류: {str(e)}")
+        logger.info(f"Toss Payments API 오류: {str(e)}")
         raise HTTPException(status_code=500, detail="결제 승인 중 오류가 발생했습니다")
     except Exception as e:
-        print(f"구독 처리 오류: {str(e)}")
+        logger.info(f"구독 처리 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"구독 처리 실패: {str(e)}")

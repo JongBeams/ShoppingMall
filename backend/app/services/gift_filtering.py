@@ -4,7 +4,11 @@
 from typing import List, Dict, Optional
 from app.services.supabase import supabase
 from app.services.embedding_service import EmbeddingService
+import logging
 
+
+
+logger = logging.getLogger(__name__)
 
 # 관계별 추천 카테고리 매핑
 GIFT_CATEGORY_MAP = {
@@ -83,11 +87,11 @@ class GiftFilteringService:
         result = query.limit(500).execute()
 
         if not result.data:
-            print("조건에 맞는 상품 없음")
+            logger.info("조건에 맞는 상품 없음")
             return []
 
         products = result.data
-        print(f"가격 필터링 후 상품 수: {len(products)}개")
+        logger.info(f"가격 필터링 후 상품 수: {len(products)}개")
 
         # 2단계: 쿼리 텍스트 생성
         query_text = EmbeddingService.create_gift_query_text(
@@ -98,7 +102,7 @@ class GiftFilteringService:
             age_range=age_range
         )
 
-        print(f"검색 쿼리: {query_text}")
+        logger.info(f"검색 쿼리: {query_text}")
 
         # 3단계: 쿼리 임베딩
         query_embedding = EmbeddingService.generate_embedding(query_text)
@@ -109,11 +113,11 @@ class GiftFilteringService:
             for product in products
         ]
 
-        print("상품 임베딩 생성 중...")
+        logger.info("상품 임베딩 생성 중...")
         product_embeddings = EmbeddingService.generate_embeddings_batch(product_texts)
 
         # 5단계: 유사도 검색
-        print("유사도 계산 중...")
+        logger.info("유사도 계산 중...")
         similar_products = EmbeddingService.find_most_similar(
             query_embedding=query_embedding,
             product_embeddings=list(product_embeddings),
@@ -121,9 +125,9 @@ class GiftFilteringService:
             top_k=limit
         )
 
-        print(f"최종 추천 상품 수: {len(similar_products)}개")
+        logger.info(f"최종 추천 상품 수: {len(similar_products)}개")
         if similar_products:
-            print(f"최고 유사도: {similar_products[0].get('similarity_score', 0):.3f}")
+            logger.info(f"최고 유사도: {similar_products[0].get('similarity_score', 0):.3f}")
 
         return similar_products
 
@@ -185,5 +189,5 @@ class GiftFilteringService:
 
             return result.data if result.data else []
         except Exception as e:
-            print(f"구매 이력 조회 오류: {e}")
+            logger.info(f"구매 이력 조회 오류: {e}")
             return []

@@ -4,7 +4,11 @@
 
 from typing import Dict, Tuple
 from app.services.supabase import get_supabase_admin_client
+import logging
 
+
+
+logger = logging.getLogger(__name__)
 
 async def decrement_stock(product_id: str, quantity: int) -> Tuple[bool, str, int]:
     """
@@ -36,7 +40,7 @@ async def decrement_stock(product_id: str, quantity: int) -> Tuple[bool, str, in
         return data['success'], data['message'], data['remaining_stock']
 
     except Exception as e:
-        print(f"[ERROR] 재고 차감 오류: {str(e)}")
+        logger.error(f"재고 차감 오류: {str(e)}")
         return False, f"재고 차감 중 오류 발생: {str(e)}", 0
 
 
@@ -69,7 +73,7 @@ async def restore_stock(product_id: str, quantity: int) -> Tuple[bool, str, int]
         return data['success'], data['message'], data['remaining_stock']
 
     except Exception as e:
-        print(f"[ERROR] 재고 복구 오류: {str(e)}")
+        logger.info(f"[ERROR] 재고 복구 오류: {str(e)}")
         return False, f"재고 복구 중 오류 발생: {str(e)}", 0
 
 
@@ -121,7 +125,7 @@ async def check_stock_availability(product_id: str, quantity: int) -> Dict:
         }
 
     except Exception as e:
-        print(f"[ERROR] 재고 확인 오류: {str(e)}")
+        logger.info(f"[ERROR] 재고 확인 오류: {str(e)}")
         return {
             'available': False,
             'current_stock': 0,

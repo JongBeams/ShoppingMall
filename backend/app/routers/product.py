@@ -1,5 +1,9 @@
 from fastapi import APIRouter, status, UploadFile, File, HTTPException, Depends
 import asyncio
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 from app.models.product import CreateProductRequset
 from app.services.product_management import CreateProduct, DeleteProduct, UploadProductImage, GetVendorProducts, get_product_options
@@ -64,7 +68,7 @@ async def search_products(q: str = ""):
                     found_ids.add(product["id"])
         except Exception as e:
             # contains 검색 실패 시 기존 방식으로 fallback
-            print(f"[WARNING] 태그 검색 최적화 실패, fallback 사용: {str(e)}")
+            logger.warning(f"태그 검색 최적화 실패, fallback 사용: {str(e)}")
             try:
                 tag_response = (
                     supabase.table("products")
@@ -124,7 +128,7 @@ async def search_products(q: str = ""):
             for vendor in vendors_response.data or []:
                 vendor_map[vendor["id"]] = vendor.get("store_name")
         except Exception as e:
-            print(f"Error fetching vendors: {str(e)}")
+            logger.info(f"Error fetching vendors: {str(e)}")
             vendor_map = {}
 
     product_list = []
@@ -229,7 +233,7 @@ async def get_all_products():
             for vendor in vendors_response.data or []:
                 vendor_map[vendor["id"]] = vendor.get("store_name")
         except Exception as e:
-            print(f"Error fetching vendors: {str(e)}")
+            logger.info(f"Error fetching vendors: {str(e)}")
             vendor_map = {}
 
     product_list = []
@@ -328,7 +332,7 @@ async def get_product(product_id: str):
     store_logo_url = None
     vendor_email = None
     vendor_id = product.get("vendor_id")
-    print(f"Product vendor_id: {vendor_id}")
+    logger.info(f"Product vendor_id: {vendor_id}")
     if vendor_id:
         try:
             # vendor_id로 user_id를 먼저 찾거나, 직접 조회
@@ -339,14 +343,14 @@ async def get_product(product_id: str):
                 .eq("id", vendor_id)
                 .execute()
             )
-            print(f"Vendor response (by id): {vendor_response.data}")
+            logger.info(f"Vendor response (by id): {vendor_response.data}")
 
             if vendor_response.data and len(vendor_response.data) > 0:
                 vendor_name = vendor_response.data[0].get("store_name")
                 vendor_address = vendor_response.data[0].get("business_address")
                 store_logo_url = vendor_response.data[0].get("store_logo_url")
                 vendor_email = vendor_response.data[0].get("email")
-                print(f"Vendor found by id: {vendor_name}, {vendor_address}, {store_logo_url}")
+                logger.info(f"Vendor found by id: {vendor_name}, {vendor_address}, {store_logo_url}")
             else:
                 # id로 못 찾으면 user_id로 시도
                 vendor_response = (
@@ -355,15 +359,15 @@ async def get_product(product_id: str):
                     .eq("user_id", vendor_id)
                     .execute()
                 )
-                print(f"Vendor response (by user_id): {vendor_response.data}")
+                logger.info(f"Vendor response (by user_id): {vendor_response.data}")
                 if vendor_response.data and len(vendor_response.data) > 0:
                     vendor_name = vendor_response.data[0].get("store_name")
                     vendor_address = vendor_response.data[0].get("business_address")
                     store_logo_url = vendor_response.data[0].get("store_logo_url")
                     vendor_email = vendor_response.data[0].get("email")
-                    print(f"Vendor found by user_id: {vendor_name}, {vendor_address}, {store_logo_url}")
+                    logger.info(f"Vendor found by user_id: {vendor_name}, {vendor_address}, {store_logo_url}")
         except Exception as e:
-            print(f"Error fetching vendor: {str(e)}")
+            logger.info(f"Error fetching vendor: {str(e)}")
             vendor_name = None
             vendor_address = None
             store_logo_url = None
@@ -383,7 +387,7 @@ async def get_product(product_id: str):
         "options": options,
     }
 
-    print(f"Final product_data vendor_name: {product_data.get('vendor_name')}")
+    logger.info(f"Final product_data vendor_name: {product_data.get('vendor_name')}")
 
     return {"message": "특정 상품 조회", "product": product_data}
 
@@ -494,9 +498,9 @@ async def upload_product_image(
             supabase.table("products").update({
                 "image_embedding": results[0]["image_embedding"]
             }).eq("id", product_id).execute()
-            print(f"[ProductImage] Saved image embedding for product {product_id}")
+            logger.info(f"[ProductImage] Saved image embedding for product {product_id}")
         except Exception as e:
-            print(f"[ProductImage] Warning: Failed to save embedding to DB: {e}")
+            logger.info(f"[ProductImage] Warning: Failed to save embedding to DB: {e}")
 
     return {
         "thumbnail_url": image_urls[0] if image_urls else None,
@@ -533,7 +537,7 @@ async def search_products_by_image(
         embedding_service = get_image_embedding_service()
         query_embedding = embedding_service.generate_embedding_from_bytes(image_bytes)
 
-        print(f"[ImageSearch] Query embedding generated: {len(query_embedding)} dimensions")
+        logger.info(f"[ImageSearch] Query embedding generated: {len(query_embedding)} dimensions")
 
         # pgvector 유사도 검색
         supabase = get_supabase_client()
@@ -545,7 +549,7 @@ async def search_products_by_image(
 
         products = result.data or []
 
-        print(f"[ImageSearch] Found {len(products)} similar products")
+        logger.info(f"[ImageSearch] Found {len(products)} similar products")
 
         # 카테고리 및 벤더 정보 추가
         if products:

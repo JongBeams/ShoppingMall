@@ -12,7 +12,11 @@ from app.models.notifications import (
 )
 from app.services.notifications import get_notification_service
 from app.services.auth_middleware import get_current_user
+import logging
 
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
 
@@ -56,7 +60,7 @@ async def get_notifications(
             detail=f"잘못된 요청입니다: {str(e)}"
         )
     except Exception as e:
-        print(f"[ERROR] 알림 목록 조회 실패: {str(e)}")
+        logger.error(f"알림 목록 조회 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="알림 목록 조회 중 오류가 발생했습니다."
@@ -79,7 +83,7 @@ async def get_unread_count(
 
         return await notification_service.get_unread_count(user_id)
     except Exception as e:
-        print(f"[ERROR] 읽지 않은 알림 개수 조회 실패: {str(e)}")
+        logger.info(f"[ERROR] 읽지 않은 알림 개수 조회 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="읽지 않은 알림 개수 조회 중 오류가 발생했습니다."
@@ -119,7 +123,7 @@ async def get_notification(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 알림 상세 조회 실패: {str(e)}")
+        logger.info(f"[ERROR] 알림 상세 조회 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="알림 조회 중 오류가 발생했습니다."
@@ -163,7 +167,7 @@ async def mark_notification_as_read(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 알림 읽음 처리 실패: {str(e)}")
+        logger.info(f"[ERROR] 알림 읽음 처리 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="알림 읽음 처리 중 오류가 발생했습니다."
@@ -192,7 +196,7 @@ async def mark_all_notifications_as_read(
             message=f"{count}개의 알림을 읽음으로 표시했습니다."
         )
     except Exception as e:
-        print(f"[ERROR] 전체 알림 읽음 처리 실패: {str(e)}")
+        logger.info(f"[ERROR] 전체 알림 읽음 처리 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="전체 알림 읽음 처리 중 오류가 발생했습니다."
@@ -236,7 +240,7 @@ async def delete_notification(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ERROR] 알림 삭제 실패: {str(e)}")
+        logger.error(f"[ERROR] 알림 삭제 실패: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="알림 삭제 중 오류가 발생했습니다."

@@ -5,7 +5,11 @@ import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from app.config import get_settings
+import logging
 
+
+
+logger = logging.getLogger(__name__)
 
 async def send_otp_email(to_email: str, otp_code: str):
     """Send OTP code via email"""
@@ -101,10 +105,10 @@ async def send_otp_email(to_email: str, otp_code: str):
             start_tls=True,
             validate_certs=False,  # SSL 인증서 검증 비활성화 -- 개발 환경용
         )
-        print(f"[EMAIL] OTP 이메일 전송 성공: {to_email}")
+        logger.info(f"[EMAIL] OTP 이메일 전송 성공: {to_email}")
         return True
     except Exception as e:
-        print(f"[ERROR] 이메일 전송 실패: {str(e)}")
+        logger.error(f"이메일 전송 실패: {str(e)}")
         raise e
 
 
@@ -204,8 +208,8 @@ async def send_vendor_approval_email(to_email: str, vendor_name: str):
             start_tls=True,
             validate_certs=False,
         )
-        print(f"[EMAIL] 판매자 승인 이메일 전송 성공: {to_email}")
+        logger.info(f"[EMAIL] 판매자 승인 이메일 전송 성공: {to_email}")
         return True
     except Exception as e:
-        print(f"[ERROR] 이메일 전송 실패: {str(e)}")
+        logger.error(f"이메일 전송 실패: {str(e)}")
         raise e

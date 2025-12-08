@@ -1,6 +1,10 @@
 from uuid import uuid4
 from pathlib import Path
 from datetime import datetime, timezone
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 from app.services.supabase import get_supabase_admin_client
 from fastapi import HTTPException, status, UploadFile
@@ -420,9 +424,9 @@ class CreateProduct:
                 self.supabase_admin.table("products").update({
                     "image_embedding": None
                 }).eq("id", product_id).execute()
-                print(f"[ProductUpdate] Deleted old image embedding for product {product_id}")
+                logger.info(f"[ProductUpdate] Deleted old image embedding for product {product_id}")
             except Exception as e:
-                print(f"[ProductUpdate] Warning: Failed to delete old embedding: {e}")
+                logger.info(f"[ProductUpdate] Warning: Failed to delete old embedding: {e}")
 
             # 2. 현재 이미지의 임베딩 재생성
             if product.get("thumbnail_url"):
@@ -436,9 +440,9 @@ class CreateProduct:
                         "image_embedding": embedding
                     }).eq("id", product_id).execute()
 
-                    print(f"[ProductUpdate] Regenerated image embedding for product {product_id}")
+                    logger.info(f"[ProductUpdate] Regenerated image embedding for product {product_id}")
                 except Exception as e:
-                    print(f"[ProductUpdate] Warning: Failed to regenerate image embedding: {e}")
+                    logger.info(f"[ProductUpdate] Warning: Failed to regenerate image embedding: {e}")
 
             return product
 
@@ -577,7 +581,7 @@ class DeleteProduct:
                 .eq("id", self.product_id)
                 .execute()
             )
-            print(f"[DeleteProduct] Deleted product {self.product_id} from DB (including image_embedding)")
+            logger.info(f"[DeleteProduct] Deleted product {self.product_id} from DB (including image_embedding)")
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -617,13 +621,13 @@ class DeleteProduct:
                 for path in storage_paths:
                     try:
                         self.supabase_admin.storage.from_(bucket_name).remove([path])
-                        print(f"[DeleteProduct] Deleted image from storage: {path}")
+                        logger.info(f"[DeleteProduct] Deleted image from storage: {path}")
                     except Exception as e:
-                        print(f"[DeleteProduct] Warning: Failed to delete {path}: {e}")
+                        logger.info(f"[DeleteProduct] Warning: Failed to delete {path}: {e}")
                         # 파일 삭제 실패해도 계속 진행 (이미 삭제됐을 수도 있음)
 
         except Exception as e:
-            print(f"[DeleteProduct] Warning: Error during image deletion: {e}")
+            logger.info(f"[DeleteProduct] Warning: Error during image deletion: {e}")
             # 이미지 삭제 실패해도 상품 DB 레코드는 삭제 진행
 
 
@@ -703,9 +707,9 @@ class UploadProductImage:
             try:
                 embedding_service = get_image_embedding_service()
                 embedding = embedding_service.generate_embedding_from_bytes(file_content)
-                print(f"[UploadProductImage] Image embedding generated: {len(embedding)} dimensions")
+                logger.info(f"[UploadProductImage] Image embedding generated: {len(embedding)} dimensions")
             except Exception as e:
-                print(f"[UploadProductImage] Warning: Failed to generate image embedding: {e}")
+                logger.info(f"[UploadProductImage] Warning: Failed to generate image embedding: {e}")
                 # 임베딩 실패해도 이미지 업로드는 성공시킴
 
             return {

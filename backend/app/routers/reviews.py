@@ -8,6 +8,10 @@ from typing import List, Optional
 from datetime import datetime
 import requests
 import json
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 settings = get_settings()
@@ -432,7 +436,7 @@ async def generate_review_summary(product_id: str):
                         except json.JSONDecodeError:
                             continue
             except Exception as e:
-                print(f"AI 요약 생성 오류: {e}")
+                logger.info(f"AI 요약 생성 오류: {e}")
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
         return StreamingResponse(generate(), media_type="text/event-stream")

@@ -4,6 +4,10 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 from app.services.supabase import get_supabase_client
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/vendors", tags=["Vendors"])
 security = HTTPBearer()
@@ -89,8 +93,8 @@ async def get_my_vendor_info(credentials: HTTPAuthorizationCredentials = Depends
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 판매자 정보 조회 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.error(f"판매자 정보 조회 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"판매자 정보 조회 중 오류가 발생했습니다: {str(e)}"
@@ -167,8 +171,8 @@ async def update_my_vendor_info(
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 판매자 정보 업데이트 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 판매자 정보 업데이트 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"판매자 정보 업데이트 중 오류가 발생했습니다: {str(e)}"
@@ -247,8 +251,8 @@ async def upload_store_logo(
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 로고 업로드 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 로고 업로드 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"로고 업로드 중 오류가 발생했습니다: {str(e)}"
@@ -327,8 +331,8 @@ async def upload_store_banner(
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 배너 업로드 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 배너 업로드 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"배너 업로드 중 오류가 발생했습니다: {str(e)}"
@@ -412,8 +416,8 @@ async def set_product_discount(
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 할인 설정 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 할인 설정 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"할인 설정 중 오류가 발생했습니다: {str(e)}"
@@ -477,8 +481,8 @@ async def remove_product_discount(
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 할인 해제 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 할인 해제 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"할인 해제 중 오류가 발생했습니다: {str(e)}"
@@ -566,8 +570,8 @@ async def get_vendor_orders(credentials: HTTPAuthorizationCredentials = Depends(
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] 판매자 주문 조회 오류: {str(e)}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        logger.info(f"[ERROR] 판매자 주문 조회 오류: {str(e)}")
+        logger.info(f"[ERROR] Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"주문 조회 중 오류가 발생했습니다: {str(e)}"
