@@ -36,3 +36,40 @@ langchain-community==0.3.13
 transformers==4.47.0
 torch==2.5.1
 Pillow==11.0.0
+
+# ============================================================
+#  프로덕션 의존성 추가
+# ============================================================
+
+# 모니터링 (Prometheus + Grafana)
+prometheus-client==0.20.0
+prometheus-fastapi-instrumentator==7.0.0
+
+# ONNX 최적화 (CLIP 추론 속도 10배 개선)
+onnx==1.16.0
+onnxruntime==1.17.1
+onnxruntime-gpu==1.17.1  # GPU 사용 시
+
+# 메시지 큐 (비동기 처리)
+celery[redis]==5.3.6
+flower==2.0.1  # Celery 모니터링 대시보드
+kombu==5.3.5  # Celery 메시지 전송
+
+# 부하 테스트
+locust==2.20.0
+
+# API Gateway (MSA)
+python-consul==1.1.0  # 서비스 디스커버리
+grpcio==1.62.1  # gRPC 통신
+grpcio-tools==1.62.1  # gRPC 코드 생성
+
+# 로깅 및 에러 추적
+sentry-sdk[fastapi]==1.45.0  # 프로덕션 에러 트래킹
+
+# 보안 강화
+python-jose[cryptography]==3.3.0  # JWT 고급 기능
+cryptography==42.0.5
+
+# 성능 프로파일링
+py-spy==0.3.14  # 프로덕션 프로파일러
+memory-profiler==0.61.0

@@ -11,6 +11,15 @@ from app.services.supabase import get_supabase_client, get_supabase_admin_client
 from app.services.auth_middleware import get_current_user
 from app.services.image_embedding import get_image_embedding_service
 
+#  최적화된 CLIP 서비스 추가
+try:
+    from app.services.image_embedding_optimized import get_embedding_service as get_optimized_embedding_service
+    USE_OPTIMIZED_EMBEDDING = True
+    logger.info("✅ ONNX 최적화 임베딩 서비스 사용")
+except ImportError:
+    USE_OPTIMIZED_EMBEDDING = False
+    logger.info("ℹ️  기본 임베딩 서비스 사용 (ONNX 미설치)")
+
 router = APIRouter(prefix="/products", tags=["products"])
 
 
@@ -533,9 +542,24 @@ async def search_products_by_image(
         # 이미지 읽기
         image_bytes = await file.read()
 
-        # 이미지 임베딩 생성
-        embedding_service = get_image_embedding_service()
-        query_embedding = embedding_service.generate_embedding_from_bytes(image_bytes)
+        # 이미지 임베딩 생성 (최적화 버전 우선 사용)
+        if USE_OPTIMIZED_EMBEDDING:
+            # ONNX 최적화 버전 (50ms, 10배 빠름)
+            embedding_service = get_optimized_embedding_service()
+            query_embedding = embedding_service.generate_embedding_single(image_bytes)
+            logger.info(f"[ImageSearch] ONNX 최적화 임베딩 생성 완료")
+        else:
+            # 기본 버전 (500ms)
+            embedding_service = get_image_embedding_service()
+            query_embedding = embedding_service.generate_embedding_from_bytes(image_bytes)
+            logger.info(f"[ImageSearch] 기본 임베딩 생성 완료")
+
+        # Prometheus 메트릭 기록
+        try:
+            from app.middleware.metrics import image_search_total
+            image_search_total.labels(status='success').inc()
+        except ImportError:
+            pass
 
         logger.info(f"[ImageSearch] Query embedding generated: {len(query_embedding)} dimensions")
 

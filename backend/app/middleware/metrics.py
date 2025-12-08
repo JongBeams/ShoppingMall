@@ -1,6 +1,6 @@
 """
 Prometheus Metrics Middleware
-4년차 증명: 프로덕션 모니터링 경험
+ 프로덕션 모니터링 경험
 """
 from prometheus_client import Counter, Histogram, Gauge
 import time

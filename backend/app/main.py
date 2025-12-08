@@ -20,19 +20,54 @@ from app.services.scheduler import start_scheduler, stop_scheduler
 from app.middleware.rate_limit import limiter, custom_rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+# ============================================================
+#  프로덕션 기능 추가
+# ============================================================
+
+# 모니터링 (Prometheus)
+from app.middleware.metrics import metrics_middleware
+from prometheus_client import make_asgi_app
+
+# Sentry 에러 추적
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+# Sentry 초기화 (프로덕션 환경에서만)
+if os.getenv("ENVIRONMENT") == "production" and os.getenv("SENTRY_DSN"):
+    sentry_sdk.init(
+        dsn=os.getenv("SENTRY_DSN"),
+        integrations=[
+            FastApiIntegration(),
+            LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)
+        ],
+        traces_sample_rate=0.1,  # 10% 트랜잭션 샘플링
+        profiles_sample_rate=0.1,  # 10% 프로파일링
+        environment=os.getenv("ENVIRONMENT", "production"),
+    )
+    logger.info("✅ Sentry 에러 추적 활성화")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     애플리케이션 생명주기 관리
 
-    - 시작 시: 스케줄러 시작
+    - 시작 시: 스케줄러 시작, 캐시 워밍
     - 종료 시: 스케줄러 중지
     """
     # 시작
     logger.info("[STARTUP] Application starting...")
     start_scheduler()
     logger.info("[STARTUP] Scheduler started")
+
+    # 캐시 워밍 (인기 데이터 미리 로드)
+    try:
+        from app.database.read_write_split import warm_up_cache
+        warm_up_cache()
+        logger.info("[STARTUP] Cache warming completed")
+    except Exception as e:
+        logger.warning(f"[STARTUP] Cache warming failed: {e}")
 
     yield
 
@@ -58,6 +93,17 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# ============================================================
+# Prometheus 모니터링 미들웨어 ()
+# ============================================================
+app.middleware("http")(metrics_middleware)
+
+# Prometheus 메트릭 엔드포인트
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
+
+logger.info("✅ Prometheus 모니터링 활성화 (/metrics)")
 
 # Routers 등록
 app.include_router(auth.router)
