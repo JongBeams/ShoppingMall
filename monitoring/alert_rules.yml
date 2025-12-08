@@ -1,0 +1,112 @@
+groups:
+  - name: api_alerts
+    interval: 30s
+    rules:
+      # API 응답 시간 경고
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, http_request_duration_seconds_bucket) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API 응답 시간 높음 (P95 > 1s)"
+          description: "{{ $labels.endpoint }}의 P95 latency가 {{ $value }}초입니다."
+
+      # 이미지 검색 성능 저하
+      - alert: SlowImageSearch
+        expr: histogram_quantile(0.95, image_search_latency_seconds_bucket) > 2.0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "이미지 검색 성능 저하"
+          description: "CLIP 검색 P95 latency가 {{ $value }}초입니다."
+
+      # 에러율 증가
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "5xx 에러율 5% 초과"
+          description: "{{ $labels.endpoint }}에서 에러율이 {{ $value | humanizePercentage }}입니다."
+
+      # WebSocket 연결 폭증
+      - alert: TooManyWebSocketConnections
+        expr: active_websocket_connections > 1000
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "WebSocket 연결 수 과다"
+          description: "현재 {{ $value }}개의 WebSocket 연결이 활성화되어 있습니다."
+
+  - name: resource_alerts
+    interval: 30s
+    rules:
+      # CPU 사용률 경고
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU 사용률 높음 (80% 초과)"
+          description: "{{ $labels.instance }}의 CPU 사용률이 {{ $value }}%입니다."
+
+      # 메모리 부족
+      - alert: LowMemory
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 10
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "메모리 부족 (10% 미만)"
+          description: "{{ $labels.instance }}의 가용 메모리가 {{ $value }}%입니다."
+
+      # 디스크 용량 부족
+      - alert: LowDiskSpace
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "디스크 용량 부족 (20% 미만)"
+          description: "{{ $labels.instance }}의 디스크 여유 공간이 {{ $value }}%입니다."
+
+  - name: database_alerts
+    interval: 30s
+    rules:
+      # DB 연결 풀 고갈
+      - alert: DatabaseConnectionPoolExhausted
+        expr: db_connections_active / db_connections_max > 0.9
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "DB 커넥션 풀 거의 고갈 (90% 초과)"
+          description: "DB 연결 풀 사용률이 {{ $value | humanizePercentage }}입니다."
+
+      # 느린 쿼리
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, db_query_duration_seconds_bucket) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "느린 DB 쿼리 감지 (P95 > 1s)"
+          description: "{{ $labels.table }}.{{ $labels.operation }}의 P95 쿼리 시간이 {{ $value }}초입니다."
+
+  - name: cache_alerts
+    interval: 30s
+    rules:
+      # 캐시 히트율 저하
+      - alert: LowCacheHitRate
+        expr: rate(cache_operations_total{operation="hit"}[5m]) / rate(cache_operations_total[5m]) < 0.7
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "캐시 히트율 저하 (70% 미만)"
+          description: "캐시 히트율이 {{ $value | humanizePercentage }}로 떨어졌습니다."

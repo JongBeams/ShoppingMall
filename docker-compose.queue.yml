@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # RabbitMQ - 메시지 큐
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Celery Worker - 비동기 작업 처리
+  celery-worker:
+    build: ./backend
+    container_name: celery-worker
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      CELERY_BROKER_URL: amqp://admin:admin123@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery Beat - 스케줄 작업
+  celery-beat:
+    build: ./backend
+    container_name: celery-beat
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    environment:
+      CELERY_BROKER_URL: amqp://admin:admin123@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - rabbitmq
+      - redis
+    restart: unless-stopped
+
+  # Flower - Celery 모니터링
+  flower:
+    build: ./backend
+    container_name: flower
+    command: celery -A app.tasks.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      CELERY_BROKER_URL: amqp://admin:admin123@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    depends_on:
+      - rabbitmq
+      - redis
+    restart: unless-stopped
+
+volumes:
+  rabbitmq-data:
+
+networks:
+  default:
+    name: queue-network
