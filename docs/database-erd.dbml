@@ -1,0 +1,579 @@
+// AI 쇼핑몰 데이터베이스 ERD
+// https://dbdiagram.io 에서 아래 코드를 붙여넣기하세요
+
+Project ShoppingMall {
+  database_type: 'PostgreSQL'
+  Note: '''
+    # AI 기반 쇼핑몰 데이터베이스 설계
+    - 36개 테이블
+    - pgvector 지원 (CLIP 이미지 검색, RAG)
+    - 멀티 벤더 지원
+  '''
+}
+
+// ============================================================
+// 사용자 관련 테이블
+// ============================================================
+
+Table profiles {
+  id uuid [pk, default: `gen_random_uuid()`]
+  email text [not null, unique]
+  name text [not null]
+  phone text
+  user_type text [note: 'individual, business']
+  avatar_url text
+  address text
+  postal_code text
+  is_active boolean [default: true]
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+
+  Note: '일반 사용자 프로필 (개인/사업자)'
+}
+
+Table admin_users {
+  id uuid [pk, default: `gen_random_uuid()`]
+  email text [not null, unique]
+  password_hash text [not null]
+  full_name text [not null]
+  phone text
+  avatar_url text
+  role text [default: 'admin']
+  permissions jsonb [default: '[]']
+  is_active boolean [default: true]
+  last_login_at timestamptz
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+
+  Note: '관리자 사용자'
+}
+
+Table vendors {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [ref: > profiles.id, not null]
+  business_name text [not null]
+  business_number text [unique]
+  ceo_name text
+  business_address text
+  phone text
+  email text
+  bank_name text
+  account_number text
+  account_holder text
+  status text [default: 'pending', note: 'pending, approved, rejected, suspended']
+  commission_rate numeric [default: 10.0]
+  created_at timestamptz [default: `now()`]
+
+  Note: '판매자 (사업자 회원)'
+}
+
+// ============================================================
+// 상품 관련 테이블
+// ============================================================
+
+Table categories {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name text [not null]
+  slug text [not null, unique]
+  parent_id uuid [ref: > categories.id]
+  description text
+  image_url text
+  sort_order int [default: 0]
+  is_active boolean [default: true]
+  created_at timestamptz [default: `now()`]
+
+  Note: '상품 카테고리 (계층 구조)'
+}
+
+Table products {
+  id uuid [pk, default: `gen_random_uuid()`]
+  vendor_id uuid [ref: > vendors.id, not null]
+  category_id uuid [ref: > categories.id]
+  name text [not null]
+  description text
+  price numeric [not null]
+  discount_price numeric
+  discount_start timestamptz
+  discount_end timestamptz
+  stock int [default: 0]
+  thumbnail_url text
+  images text[]
+  tags text[]
+  rating numeric [default: 0]
+  review_count int [default: 0]
+  sale_count int [default: 0]
+  view_count int [default: 0]
+  is_active boolean [default: true]
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+  image_embedding vector(512) [note: 'CLIP 이미지 임베딩 (pgvector)']
+
+  Note: '상품 정보 (CLIP 벡터 검색 지원)'
+}
+
+Table product_options {
+  id uuid [pk, default: `gen_random_uuid()`]
+  product_id uuid [ref: > products.id, not null]
+  name text [not null, note: '옵션명 (색상, 사이즈 등)']
+  created_at timestamptz [default: `now()`]
+
+  Note: '상품 옵션 그룹'
+}
+
+Table product_option_values {
+  id uuid [pk, default: `gen_random_uuid()`]
+  option_id uuid [ref: > product_options.id, not null]
+  value text [not null, note: '옵션값 (빨강, M 등)']
+  price_adjustment numeric [default: 0]
+  created_at timestamptz [default: `now()`]
+
+  Note: '상품 옵션 값'
+}
+
+Table product_variants {
+  id uuid [pk, default: `gen_random_uuid()`]
+  product_id uuid [ref: > products.id, not null]
+  sku text [unique]
+  option_values jsonb [note: '선택된 옵션 조합']
+  price numeric [not null]
+  stock int [default: 0]
+  is_active boolean [default: true]
+  created_at timestamptz [default: `now()`]
+
+  Note: '상품 변형 (옵션 조합별 SKU)'
+}
+
+// ============================================================
+// 주문 관련 테이블
+// ============================================================
+
+Table orders {
+  id uuid [pk, default: `gen_random_uuid()`]
+  buyer_id uuid [ref: > profiles.id, not null]
+  order_number text [unique, not null]
+  total_amount numeric [not null]
+  discount_amount numeric [default: 0]
+  point_used numeric [default: 0]
+  delivery_fee numeric [default: 0]
+  final_amount numeric [not null]
+  status text [default: 'pending', note: 'pending, paid, confirmed, shipping, delivered, cancelled, refunded']
+  payment_method text
+  payment_key text
+  payment_status text
+  recipient_name text
+  recipient_phone text
+  delivery_address text
+  delivery_postal_code text
+  delivery_memo text
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+
+  Note: '주문 정보'
+}
+
+Table order_items {
+  id uuid [pk, default: `gen_random_uuid()`]
+  order_id uuid [ref: > orders.id, not null]
+  product_id uuid [ref: > products.id, not null]
+  vendor_id uuid [ref: > vendors.id, not null]
+  variant_id uuid [ref: > product_variants.id]
+  product_name text [not null]
+  quantity int [not null]
+  price numeric [not null]
+  discount_price numeric
+  total_price numeric [not null]
+  selected_options jsonb
+  status text [default: 'pending']
+  tracking_number text
+  created_at timestamptz [default: `now()`]
+
+  Note: '주문 상품 (벤더별 분리)'
+}
+
+// ============================================================
+// 결제 관련 테이블
+// ============================================================
+
+Table payment_methods {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [ref: > profiles.id, not null]
+  type text [not null, note: 'card, bank']
+  card_number text
+  card_company text
+  bank_name text
+  account_number text
+  is_default boolean [default: false]
+  created_at timestamptz [default: `now()`]
+
+  Note: '결제 수단'
+}
+
+Table refund_accounts {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [ref: > profiles.id, not null]
+  bank_name text [not null]
+  account_number text [not null]
+  account_holder text [not null]
+  is_default boolean [default: false]
+  created_at timestamptz [default: `now()`]
+
+  Note: '환불 계좌'
+}
+
+// ============================================================
+// 포인트/쿠폰 관련 테이블
+// ============================================================
+
+Table point_transactions {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [ref: > profiles.id, not null]
+  order_id uuid [ref: > orders.id]
+  amount numeric [not null, note: '양수: 적립, 음수: 사용']
+  type text [not null, note: 'earn, use, expire, refund']
+  description text
+  expires_at timestamptz
+  created_at timestamptz [default: `now()`]
+
+  Note: '포인트 거래 내역'
+}
+
+Table coupons {
+  id uuid [pk, default: `gen_random_uuid()`]
+  vendor_id uuid [ref: > vendors.id, note: 'NULL이면 플랫폼 쿠폰']
+  name text [not null]
+  code text [unique]
+  discount_type text [not null, note: 'percentage, fixed']
+  discount_value numeric [not null]
+  max_discount_amount numeric
+  min_order_amount numeric
+  validity_days int [not null]
+  start_at timestamptz [not null]
+  end_at timestamptz [not null]
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+
+  Note: '쿠폰 (플랫폼/판매자)'
+}
+
+Table user_coupons {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [ref: > profiles.id, not null]
+  coupon_id uuid [ref: > coupons.id, not null]
+  order_id uuid [ref: > orders.id]
+  issued_at timestamptz [default: `now()`]
+  expires_at timestamptz [not null]
+  used_at timestamptz
+
+  Note: '사용자 쿠폰 (발급 내역)'
+}
+
+// ============================================================
+// 장바구니/찜 관련 테이블
+// ============================================================
+
+Table cart_items {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [not null]
+  product_id uuid [ref: > products.id, not null]
+  quantity int [default: 1]
+  selected_options jsonb
+  selected_options_hash text
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+
+  Note: '장바구니'
+}
+
+Table wishlist_items {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [ref: > profiles.id, not null]
+  product_id uuid [ref: > products.id, not null]
+  created_at timestamptz [default: `now()`]
+
+  Note: '찜 목록'
+}
+
+Table delivery_addresses {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [ref: > profiles.id, not null]
+  name varchar(50) [not null]
+  recipient varchar(50) [not null]
+  phone varchar(20) [not null]
+  postal_code varchar(10) [not null]
+  address text [not null]
+  detail_address text
+  is_default boolean [default: false]
+  created_at timestamptz [default: `now()`]
+
+  Note: '배송지 관리'
+}
+
+// ============================================================
+// 리뷰 관련 테이블
+// ============================================================
+
+Table reviews {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [ref: > profiles.id, not null]
+  product_id uuid [ref: > products.id, not null]
+  vendor_id uuid [ref: > vendors.id, not null]
+  order_id uuid [ref: > orders.id, not null]
+  order_item_id uuid [ref: > order_items.id, not null]
+  rating int [not null, note: '1-5']
+  content text
+  images text[]
+  is_verified boolean [default: true, note: '구매 확인 리뷰']
+  created_at timestamptz [default: `now()`]
+
+  Note: '상품 리뷰'
+}
+
+// ============================================================
+// 구독 관련 테이블
+// ============================================================
+
+Table subscription_plans {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name text [not null]
+  description text
+  price numeric [not null]
+  duration_days int [not null]
+  benefits jsonb [note: '혜택 JSON']
+  is_active boolean [default: true]
+  created_at timestamptz [default: `now()`]
+
+  Note: '구독 플랜'
+}
+
+Table subscription_users {
+  id uuid [pk, default: `gen_random_uuid()`]
+  profile_id uuid [ref: > profiles.id, not null]
+  subscription_plan_id uuid [ref: > subscription_plans.id, not null]
+  start_date timestamptz [not null]
+  end_date timestamptz [not null]
+  status text [default: 'active', note: 'active, expired, cancelled']
+  auto_renew boolean [default: true]
+  created_at timestamptz [default: `now()`]
+
+  Note: '사용자 구독'
+}
+
+// ============================================================
+// 채팅 관련 테이블
+// ============================================================
+
+Table chat_rooms {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  user_id text [not null]
+  user_name text [not null]
+  status text [default: 'waiting', note: 'waiting, active, closed']
+  admin_id text
+  admin_name text
+  created_at timestamptz [default: `now()`]
+  updated_at timestamptz [default: `now()`]
+
+  Note: '실시간 채팅방 (WebSocket)'
+}
+
+Table chat_messages {
+  id uuid [pk, default: `uuid_generate_v4()`]
+  room_id uuid [ref: > chat_rooms.id, not null]
+  sender_type text [not null, note: 'user, admin']
+  sender_id text [not null]
+  sender_name text [not null]
+  message text [not null]
+  created_at timestamptz [default: `now()`]
+
+  Note: '채팅 메시지'
+}
+
+// ============================================================
+// 고객 문의 관련 테이블
+// ============================================================
+
+Table inquiries {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [ref: > profiles.id, not null]
+  title text [not null]
+  content text [not null]
+  category text
+  status text [default: 'pending', note: 'pending, answered, closed']
+  admin_id uuid [ref: > admin_users.id]
+  answer text
+  answered_at timestamptz
+  created_at timestamptz [default: `now()`]
+
+  Note: '1:1 문의'
+}
+
+Table notices {
+  id uuid [pk, default: `gen_random_uuid()`]
+  author_id uuid [ref: > admin_users.id, not null]
+  title text [not null]
+  content text [not null]
+  is_pinned boolean [default: false]
+  view_count int [default: 0]
+  created_at timestamptz [default: `now()`]
+
+  Note: '공지사항'
+}
+
+Table faqs {
+  id uuid [pk, default: `gen_random_uuid()`]
+  author_id uuid [ref: > admin_users.id, not null]
+  category text
+  question text [not null]
+  answer text [not null]
+  sort_order int [default: 0]
+  view_count int [default: 0]
+  created_at timestamptz [default: `now()`]
+
+  Note: 'FAQ'
+}
+
+// ============================================================
+// AI/ML 관련 테이블
+// ============================================================
+
+Table documents {
+  id uuid [pk, default: `gen_random_uuid()`]
+  title text [not null]
+  content text [not null]
+  file_url text
+  created_at timestamptz [default: `now()`]
+
+  Note: 'RAG용 문서'
+}
+
+Table document_chunks {
+  id bigint [pk, increment]
+  document_id uuid [ref: > documents.id]
+  content text [not null]
+  embedding vector(1024) [note: 'bge-m3 임베딩 (pgvector)']
+  created_at timestamptz [default: `now()`]
+
+  Note: 'RAG용 문서 청크 (벡터 검색)'
+}
+
+Table rag_metrics {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid
+  query text [not null]
+  response_time_ms int
+  llm_tokens_used int
+  created_at timestamptz [default: `now()`]
+
+  Note: 'RAG 챗봇 메트릭'
+}
+
+Table gift_wizard_metrics {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid
+  conversation_data jsonb [note: '대화 내용 JSON']
+  recommendations jsonb [note: '추천 상품 JSON']
+  created_at timestamptz [default: `now()`]
+
+  Note: 'AI 선물 추천 메트릭'
+}
+
+Table remote_control_metrics {
+  id uuid [pk, default: `gen_random_uuid()`]
+  room_id uuid
+  user_id text
+  admin_id text
+  duration_seconds int
+  events_count int
+  created_at timestamptz [default: `now()`]
+
+  Note: 'WebRTC 원격 제어 메트릭'
+}
+
+// ============================================================
+// 정산 관련 테이블
+// ============================================================
+
+Table commission_records {
+  id uuid [pk, default: `gen_random_uuid()`]
+  order_item_id uuid [ref: > order_items.id, not null]
+  vendor_id uuid [ref: > vendors.id, not null]
+  order_amount numeric [not null]
+  commission_rate numeric [not null]
+  commission_amount numeric [not null]
+  vendor_payout numeric [not null]
+  status text [default: 'pending', note: 'pending, paid']
+  paid_at timestamptz
+  created_at timestamptz [default: `now()`]
+
+  Note: '수수료 기록'
+}
+
+Table vendor_payouts {
+  id uuid [pk, default: `gen_random_uuid()`]
+  vendor_id uuid [ref: > vendors.id, not null]
+  period_start timestamptz [not null]
+  period_end timestamptz [not null]
+  total_sales numeric [not null]
+  commission_amount numeric [not null]
+  payout_amount numeric [not null]
+  status text [default: 'pending', note: 'pending, processing, completed']
+  paid_at timestamptz
+  created_at timestamptz [default: `now()`]
+
+  Note: '판매자 정산'
+}
+
+// ============================================================
+// 알림 관련 테이블
+// ============================================================
+
+Table notifications {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [ref: > profiles.id, not null]
+  type text [not null, note: 'order, coupon, review, etc']
+  title text [not null]
+  content text
+  link_url text
+  is_read boolean [default: false]
+  created_at timestamptz [default: `now()`]
+
+  Note: '사용자 알림'
+}
+
+// ============================================================
+// 시스템 설정 테이블
+// ============================================================
+
+Table crm_system_settings {
+  id int [pk, increment]
+  admin_email varchar(255) [not null]
+  admin_phone varchar(50) [not null]
+  business_number varchar(50) [not null]
+  business_name varchar(255) [not null]
+  ceo_name varchar(100) [not null]
+  business_address text [not null]
+  order_cancel_time int [default: 24]
+  order_confirm_time int [default: 7]
+  delivery_completion_time int [default: 3]
+  payment_card boolean [default: true]
+  payment_transfer boolean [default: true]
+  payment_virtual_account boolean [default: true]
+  payment_phone boolean [default: false]
+  delivery_fee int [default: 3000]
+  free_delivery_threshold int [default: 30000]
+  point_enabled boolean [default: true]
+  point_rate numeric [default: 1.0]
+  signup_point int [default: 5000]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp [default: `CURRENT_TIMESTAMP`]
+
+  Note: 'CRM 시스템 설정'
+}
+
+Table platform_settings {
+  key text [pk]
+  value jsonb
+  description text
+  updated_at timestamptz [default: `now()`]
+
+  Note: '플랫폼 전역 설정 (key-value)'
+}
