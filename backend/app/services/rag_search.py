@@ -84,9 +84,21 @@ def search_documents(query: str, limit: int = 3) -> List[Dict]:
             logger.info("[RAG] pgvector RPC 결과 없음, fallback 사용")
             return fallback_search(query_embedding, limit)
 
+    except requests.exceptions.Timeout as e:
+        # Supabase RPC 타임아웃
+        logger.error(f"[RAG] pgvector RPC timeout: {e}")
+        return fallback_search(query_embedding, limit)
+    except requests.exceptions.ConnectionError as e:
+        # 네트워크 연결 오류
+        logger.error(f"[RAG] Network connection error: {e}")
+        return fallback_search(query_embedding, limit)
+    except ValueError as e:
+        # RPC 함수가 없거나 잘못된 파라미터
+        logger.warning(f"[RAG] RPC function not found or invalid params: {e}, using fallback")
+        return fallback_search(query_embedding, limit)
     except Exception as e:
-        logger.info(f"[RAG] pgvector RPC 검색 오류: {e}, fallback 사용")
-        # RPC 함수가 없으면 fallback: 모든 청크 가져와서 Python에서 계산
+        # 예상치 못한 오류
+        logger.critical(f"[RAG] Unexpected error in vector search: {e}", exc_info=True)
         return fallback_search(query_embedding, limit)
 
 
@@ -124,8 +136,14 @@ def fallback_search(query_embedding: List[float], limit: int) -> List[Dict]:
 
         return chunks_with_similarity[:limit]
 
+    except ImportError as e:
+        logger.error(f"[Fallback Search] numpy not installed: {e}")
+        return []
+    except ValueError as e:
+        logger.error(f"[Fallback Search] Invalid embedding format: {e}")
+        return []
     except Exception as e:
-        logger.info(f"Fallback search error: {e}")
+        logger.critical(f"[Fallback Search] Unexpected error: {e}", exc_info=True)
         return []
 
 
@@ -236,9 +254,18 @@ def generate_answer_with_ollama_streaming(
         else:
             yield {"error": f"Ollama 오류: {response.status_code}"}
 
+    except requests.exceptions.Timeout as e:
+        logger.error(f"[Ollama] Request timeout: {e}")
+        yield {"error": "답변 생성 시간 초과 (30초). 잠시 후 다시 시도해주세요."}
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"[Ollama] Connection failed: {e}")
+        yield {"error": "Ollama 서버 연결 실패. 관리자에게 문의하세요."}
+    except json.JSONDecodeError as e:
+        logger.error(f"[Ollama] Invalid JSON response: {e}")
+        yield {"error": "잘못된 응답 형식. 관리자에게 문의하세요."}
     except Exception as e:
-        logger.info(f"Ollama streaming error: {e}")
-        yield {"error": f"답변 생성 중 오류 발생: {str(e)}"}
+        logger.critical(f"[Ollama] Unexpected error: {e}", exc_info=True)
+        yield {"error": f"예상치 못한 오류가 발생했습니다: {str(e)}"}
 
 
 def generate_answer_with_ollama(
@@ -322,9 +349,15 @@ def generate_answer_with_ollama(
         else:
             return f"Ollama 오류: {response.status_code}"
 
+    except requests.exceptions.Timeout as e:
+        logger.error(f"[Ollama] Request timeout: {e}")
+        return "답변 생성 시간 초과 (30초). 잠시 후 다시 시도해주세요."
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"[Ollama] Connection failed: {e}")
+        return "Ollama 서버 연결 실패. 관리자에게 문의하세요."
     except Exception as e:
-        logger.info(f"Ollama error: {e}")
-        return f"답변 생성 중 오류 발생: {str(e)}"
+        logger.critical(f"[Ollama] Unexpected error: {e}", exc_info=True)
+        return f"예상치 못한 오류가 발생했습니다: {str(e)}"
 
 
 def rag_search(

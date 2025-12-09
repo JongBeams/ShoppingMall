@@ -203,14 +203,26 @@ def cache_result(ttl: int = 300, key_prefix: str = ""):
 
 def _generate_cache_key(prefix: str, func_name: str, args: tuple, kwargs: dict) -> str:
     """
-    캐시 키 생성
+    캐시 키 생성 (SHA256으로 보안 강화)
 
     형식: prefix:func_name:hash(args+kwargs)
-    예: product:get_product:a3f2b1c4
+    예: product:get_product:a3f2b1c4e5d6f7g8...
+
+    개선 전: MD5 8자리 (충돌 확률 높음)
+    개선 후: SHA256 전체 (충돌 확률 거의 없음)
     """
-    # args + kwargs를 해시화
-    key_data = f"{args}_{kwargs}"
-    key_hash = hashlib.md5(key_data.encode()).hexdigest()[:8]
+    # args + kwargs를 JSON으로 직렬화 (순서 보장)
+    try:
+        key_data = json.dumps({
+            "args": args,
+            "kwargs": dict(sorted(kwargs.items()))
+        }, sort_keys=True, default=str)
+    except TypeError:
+        # JSON 직렬화 실패 시 문자열로 변환
+        key_data = f"{args}_{kwargs}"
+
+    # ✅ SHA256으로 해시 (보안 강화)
+    key_hash = hashlib.sha256(key_data.encode()).hexdigest()
 
     return f"{prefix}:{func_name}:{key_hash}"
 

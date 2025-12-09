@@ -1,4 +1,4 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Query
 from typing import Dict, List, Optional
 from datetime import datetime
 from pydantic import BaseModel
@@ -10,6 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from app.services.supabase import supabase
+from app.services.jwt_auth import decode_token
 from app.config import get_settings
 from app.config.constants import RECOMMENDATION_KEYWORDS
 
@@ -18,9 +19,32 @@ settings = get_settings()
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-# 일반 채팅 요청 모델
+# ============================================================
+# Pydantic 모델 (입력 검증 강화)
+# ============================================================
+
+from pydantic import Field, validator
+
 class GeneralChatRequest(BaseModel):
-    message: str
+    """일반 채팅 요청"""
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="채팅 메시지 (1~1000자)"
+    )
+
+    @validator('message')
+    def validate_message(cls, v):
+        # ✅ XSS 방어: HTML 태그 제거
+        if '<script' in v.lower() or '<iframe' in v.lower():
+            raise ValueError('Potentially malicious content detected')
+
+        # ✅ 공백만 있는 메시지 방지
+        if not v.strip():
+            raise ValueError('Message cannot be empty or whitespace only')
+
+        return v.strip()
 
 # WebSocket 연결 관리자
 class ConnectionManager:
@@ -71,10 +95,27 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-# 채팅방 생성 모델
 class ChatRoomCreate(BaseModel):
-    user_id: str
-    user_name: str
+    """채팅방 생성 요청"""
+    user_id: str = Field(..., min_length=36, max_length=36, description="UUID 형식 사용자 ID")
+    user_name: str = Field(..., min_length=1, max_length=50, description="사용자 이름 (1~50자)")
+
+    @validator('user_id')
+    def validate_user_id(cls, v):
+        # ✅ UUID 형식 검증
+        import uuid
+        try:
+            uuid.UUID(v)
+        except ValueError:
+            raise ValueError('Invalid UUID format for user_id')
+        return v
+
+    @validator('user_name')
+    def validate_user_name(cls, v):
+        # ✅ XSS 방어
+        if '<' in v or '>' in v:
+            raise ValueError('Invalid characters in user_name')
+        return v.strip()
 
 
 # 채팅방 생성 API
@@ -204,27 +245,99 @@ async def close_chat_room(room_id: str):
 
 # WebSocket 엔드포인트 - 사용자용
 @router.websocket("/ws/{room_id}")
-async def websocket_endpoint(websocket: WebSocket, room_id: str):
-    """사용자/관리자 WebSocket 연결"""
+async def websocket_endpoint(
+    websocket: WebSocket,
+    room_id: str,
+    token: Optional[str] = Query(None)
+):
+    """
+    사용자/관리자 WebSocket 연결 (JWT 인증 필요)
+
+    Args:
+        websocket: WebSocket 연결
+        room_id: 채팅방 ID
+        token: JWT Access Token (쿼리 파라미터로 전달)
+
+    보안:
+        - JWT 토큰 검증
+        - room_id 존재 여부 확인
+        - Origin 검증 (CORS)
+    """
     logger.info(f"WebSocket 연결 요청: room_id={room_id}")
-    logger.info(f"Origin: {websocket.headers.get('origin')}")
+    origin = websocket.headers.get('origin', '')
+    logger.info(f"Origin: {origin}")
 
     try:
-        # 직접 accept (Origin 검증 없이)
-        await websocket.accept()
-        logger.info(f"WebSocket accept 성공")
+        # ✅ 1. JWT 토큰 검증
+        if not token:
+            logger.warning(f"[WebSocket] Missing token for room {room_id}")
+            await websocket.close(code=4001, reason="Missing authentication token")
+            return
 
-        # ConnectionManager에 수동 등록
+        try:
+            payload = decode_token(token)
+            user_id = payload.get('sub')
+            user_type = payload.get('user_type', 'buyer')
+
+            if not user_id:
+                logger.warning(f"[WebSocket] Invalid token payload for room {room_id}")
+                await websocket.close(code=4001, reason="Invalid token")
+                return
+
+            logger.info(f"[WebSocket] Authenticated user: {user_id} (type: {user_type})")
+
+        except Exception as e:
+            logger.error(f"[WebSocket] Token verification failed: {e}")
+            await websocket.close(code=4001, reason="Invalid or expired token")
+            return
+
+        # ✅ 2. room_id 검증 (존재 여부)
+        try:
+            room = supabase.table('chat_rooms').select('*').eq('id', room_id).execute()
+            if not room.data:
+                logger.warning(f"[WebSocket] Invalid room_id: {room_id}")
+                await websocket.close(code=4004, reason="Room not found")
+                return
+
+            # 사용자가 본인의 채팅방만 접근 가능 (관리자는 제외)
+            if user_type != 'admin' and room.data[0].get('user_id') != user_id:
+                logger.warning(f"[WebSocket] Unauthorized access: user {user_id} trying to access room {room_id}")
+                await websocket.close(code=4003, reason="Unauthorized")
+                return
+
+        except Exception as e:
+            logger.error(f"[WebSocket] Room validation error: {e}")
+            await websocket.close(code=4000, reason="Server error")
+            return
+
+        # ✅ 3. Origin 검증 (CORS)
+        allowed_origins = settings.ALLOWED_ORIGINS.split(',') if hasattr(settings, 'ALLOWED_ORIGINS') else ['http://localhost:3000']
+        if origin and origin not in allowed_origins:
+            logger.warning(f"[WebSocket] Blocked origin: {origin}")
+            await websocket.close(code=4003, reason="Origin not allowed")
+            return
+
+        # ✅ 4. WebSocket 연결 수락
+        await websocket.accept()
+        logger.info(f"[WebSocket] Connection accepted for user {user_id} in room {room_id}")
+
+        # ConnectionManager에 등록
         if room_id not in manager.active_connections:
             manager.active_connections[room_id] = []
         manager.active_connections[room_id].append(websocket)
-        manager.user_info[websocket] = {"room_id": room_id, "user_id": "user"}
-        logger.info(f"ConnectionManager 등록 성공: room_id={room_id}")
+        manager.user_info[websocket] = {
+            "room_id": room_id,
+            "user_id": user_id,
+            "user_type": user_type
+        }
+
     except Exception as e:
-        logger.info(f"WebSocket 연결 실패: {e}")
-        import traceback
-        traceback.print_exc()
-        raise
+        logger.critical(f"[WebSocket] Connection setup failed: {e}", exc_info=True)
+        try:
+            await websocket.close(code=4000, reason="Server error")
+        except:
+            pass
+        return
 
     try:
         while True:
@@ -400,10 +513,31 @@ async def general_chat(request: GeneralChatRequest):
         raise HTTPException(status_code=500, detail=f"채팅 중 오류 발생: {str(e)}")
 
 
-# 상품 추천 RAG API
 class SmartChatRequest(BaseModel):
-    message: str
-    user_id: Optional[str] = None
+    """스마트 챗 요청 (RAG + 개인화)"""
+    message: str = Field(..., min_length=1, max_length=500, description="사용자 질문 (1~500자)")
+    user_id: Optional[str] = Field(None, min_length=36, max_length=36, description="사용자 ID (UUID)")
+
+    @validator('message')
+    def validate_message(cls, v):
+        # ✅ XSS 방어
+        if '<script' in v.lower() or '<iframe' in v.lower():
+            raise ValueError('Potentially malicious content detected')
+        if not v.strip():
+            raise ValueError('Message cannot be empty')
+        return v.strip()
+
+    @validator('user_id')
+    def validate_user_id(cls, v):
+        if v is None:
+            return v
+        # ✅ UUID 검증
+        import uuid
+        try:
+            uuid.UUID(v)
+        except ValueError:
+            raise ValueError('Invalid UUID format for user_id')
+        return v
 
 @router.post("/smart")
 async def smart_chat(request: SmartChatRequest):

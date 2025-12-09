@@ -2,7 +2,7 @@
 개인화 추천 시스템 - 구매 패턴 분석 및 맞춤 추천
 """
 
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, TypedDict
 from datetime import datetime, timedelta
 from collections import Counter
 from app.services.supabase import supabase
@@ -12,6 +12,73 @@ import logging
 
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# TypedDict 정의 (타입 안전성 강화)
+# ============================================================
+
+class ProductInfo(TypedDict, total=False):
+    """상품 정보 타입"""
+    id: str
+    name: str
+    price: float
+    category: str
+    brand: Optional[str]
+    tags: List[str]
+    thumbnail_url: Optional[str]
+    rating: Optional[float]
+    review_count: Optional[int]
+    sale_count: Optional[int]
+    is_active: bool
+
+
+class OrderItem(TypedDict):
+    """주문 아이템 타입"""
+    product_id: str
+    product_name: str
+    quantity: int
+    price: float
+    products: ProductInfo
+
+
+class OrderInfo(TypedDict):
+    """주문 정보 타입"""
+    id: str
+    created_at: str
+    total_amount: float
+    status: str
+    order_items: List[OrderItem]
+
+
+class RepurchaseProduct(TypedDict):
+    """재구매 상품 타입"""
+    product_id: str
+    product_name: str
+    purchase_count: int
+    last_purchase_date: str
+    avg_interval_days: float
+
+
+class PurchasePatternResult(TypedDict, total=False):
+    """구매 패턴 분석 결과 타입"""
+    favorite_categories: List[Tuple[str, int]]
+    favorite_brands: List[Tuple[str, int]]
+    favorite_tags: List[Tuple[str, int]]
+    price_range: Tuple[float, float]
+    avg_price: float
+    purchase_frequency: str
+    last_purchase_date: Optional[str]
+    total_orders: int
+    total_spent: float
+    repurchase_products: List[RepurchaseProduct]
+
+
+class RecommendationResult(TypedDict):
+    """추천 결과 타입"""
+    recommendations: List[ProductInfo]
+    reason: str
+    pattern_summary: PurchasePatternResult
 
 settings = get_settings()
 
@@ -24,23 +91,22 @@ class PurchasePattern:
         self.purchase_history = []
         self.pattern_analysis = {}
 
-    def analyze(self) -> Dict:
+    def analyze(self) -> PurchasePatternResult:
         """
         사용자 구매 패턴 종합 분석
 
         Returns:
-            {
-                'favorite_categories': [...],  # 선호 카테고리
-                'favorite_brands': [...],       # 선호 브랜드
-                'favorite_tags': [...],         # 선호 태그
-                'price_range': (min, max),      # 선호 가격대
-                'avg_price': float,             # 평균 구매 가격
-                'purchase_frequency': str,      # 구매 주기 (weekly, monthly, etc)
-                'last_purchase_date': datetime, # 마지막 구매일
-                'total_orders': int,            # 총 주문 수
-                'total_spent': float,           # 총 구매 금액
-                'repurchase_products': [...]    # 재구매한 상품
-            }
+            PurchasePatternResult: 구매 패턴 분석 결과
+                - favorite_categories: 선호 카테고리
+                - favorite_brands: 선호 브랜드
+                - favorite_tags: 선호 태그
+                - price_range: 선호 가격대 (min, max)
+                - avg_price: 평균 구매 가격
+                - purchase_frequency: 구매 주기 (weekly, monthly, etc)
+                - last_purchase_date: 마지막 구매일
+                - total_orders: 총 주문 수
+                - total_spent: 총 구매 금액
+                - repurchase_products: 재구매한 상품 리스트
         """
         # 1. 구매 이력 가져오기
         self.purchase_history = self._get_purchase_history(
@@ -65,14 +131,42 @@ class PurchasePattern:
 
         return self.pattern_analysis
 
-    def _get_purchase_history(self, months: int) -> List[Dict]:
-        """최근 N개월간 구매 이력 조회"""
+    def _get_purchase_history(self, months: int) -> List[OrderInfo]:
+        """
+        최근 N개월간 구매 이력 조회 (JOIN으로 최적화)
+
+        개선 전: O(n*m) - 주문 n개, 상품 m개 시 쿼리 1 + n + (n*m)번
+        개선 후: O(1) - JOIN으로 단일 쿼리
+        """
         try:
             cutoff_date = datetime.utcnow() - timedelta(days=months * 30)
 
-            # 주문 조회
+            # ✅ N+1 쿼리 해결: Supabase JOIN으로 한 번에 조회
+            # orders -> order_items -> products 관계를 JOIN
             orders_result = supabase.table('orders')\
-                .select('id, created_at, total_amount, status')\
+                .select('''
+                    id,
+                    created_at,
+                    total_amount,
+                    status,
+                    order_items (
+                        product_id,
+                        product_name,
+                        quantity,
+                        price,
+                        products (
+                            id,
+                            name,
+                            price,
+                            tags,
+                            category,
+                            brand,
+                            thumbnail_url,
+                            rating,
+                            review_count
+                        )
+                    )
+                ''')\
                 .eq('buyer_id', self.user_id)\
                 .gte('created_at', cutoff_date.isoformat())\
                 .in_('status', ['completed', 'delivered'])\
@@ -81,23 +175,15 @@ class PurchasePattern:
 
             orders = orders_result.data or []
 
-            # 각 주문의 상품 정보 가져오기
+            # JOIN 결과 파싱
             purchase_history = []
             for order in orders:
-                items_result = supabase.table('order_items')\
-                    .select('product_id, product_name, quantity, price')\
-                    .eq('order_id', order['id'])\
-                    .execute()
+                order_items = order.get('order_items', [])
 
-                for item in items_result.data or []:
-                    # 상품 상세 정보
-                    product_result = supabase.table('products')\
-                        .select('id, name, price, tags, category, brand, thumbnail_url, rating, review_count')\
-                        .eq('id', item['product_id'])\
-                        .execute()
+                for item in order_items:
+                    product = item.get('products')
 
-                    if product_result.data:
-                        product = product_result.data[0]
+                    if product:
                         purchase_history.append({
                             'order_id': order['id'],
                             'order_date': order['created_at'],
@@ -113,10 +199,20 @@ class PurchasePattern:
                             'review_count': product.get('review_count')
                         })
 
+            logger.info(f"[Purchase History] User {self.user_id}: {len(purchase_history)} items (1 query)")
             return purchase_history
 
+        except ValueError as e:
+            # 날짜 포맷 오류 등
+            logger.error(f"[Purchase History] Invalid date format: {e}", exc_info=True)
+            return []
+        except KeyError as e:
+            # 필수 필드 누락
+            logger.error(f"[Purchase History] Missing required field: {e}", exc_info=True)
+            return []
         except Exception as e:
-            logger.info(f"Purchase history error: {e}")
+            # 예상치 못한 오류
+            logger.critical(f"[Purchase History] Unexpected error for user {self.user_id}: {e}", exc_info=True)
             return []
 
     def _empty_pattern(self) -> Dict:
@@ -247,7 +343,7 @@ def get_personalized_recommendations(
     user_id: str,
     limit: int = 10,
     exclude_purchased: bool = True
-) -> Dict:
+) -> RecommendationResult:
     """
     사용자 구매 패턴 기반 개인화 추천
 
@@ -257,11 +353,10 @@ def get_personalized_recommendations(
         exclude_purchased: 구매한 상품 제외 여부
 
     Returns:
-        {
-            'pattern': 구매 패턴 분석 결과,
-            'recommendations': 추천 상품 리스트,
-            'reason': 추천 이유
-        }
+        RecommendationResult:
+            - pattern: 구매 패턴 분석 결과
+            - recommendations: 추천 상품 리스트
+            - reason: 추천 이유
     """
     try:
         # 1. 구매 패턴 분석
@@ -288,21 +383,35 @@ def get_personalized_recommendations(
             'reason': reason
         }
 
-    except Exception as e:
-        logger.info(f"Personalized recommendation error: {e}")
+    except ValueError as e:
+        logger.error(f"[Personalized Recommendation] Invalid user_id or parameters: {e}")
         return {
             'pattern': {},
             'recommendations': [],
-            'reason': '추천 생성 중 오류가 발생했습니다.'
+            'reason': '잘못된 사용자 정보입니다.'
+        }
+    except KeyError as e:
+        logger.error(f"[Personalized Recommendation] Missing required data: {e}")
+        return {
+            'pattern': {},
+            'recommendations': _get_bestsellers(limit),
+            'reason': '구매 이력이 없어 인기 상품을 추천드립니다.'
+        }
+    except Exception as e:
+        logger.critical(f"[Personalized Recommendation] Unexpected error for user {user_id}: {e}", exc_info=True)
+        return {
+            'pattern': {},
+            'recommendations': [],
+            'reason': '추천 생성 중 오류가 발생했습니다. 관리자에게 문의하세요.'
         }
 
 
 def _find_pattern_based_products(
-    pattern: Dict,
+    pattern: PurchasePatternResult,
     limit: int,
     exclude_purchased: bool,
     user_id: str
-) -> List[Dict]:
+) -> List[ProductInfo]:
     """패턴 기반 상품 찾기"""
     try:
         # 1. 선호 태그 기반 검색
@@ -384,12 +493,18 @@ def _find_pattern_based_products(
 
         return matched_products[:limit]
 
+    except KeyError as e:
+        logger.error(f"[Pattern-based Search] Missing pattern field: {e}")
+        return _get_bestsellers(limit)
+    except TypeError as e:
+        logger.error(f"[Pattern-based Search] Invalid data type in pattern: {e}")
+        return _get_bestsellers(limit)
     except Exception as e:
-        logger.info(f"Pattern-based search error: {e}")
+        logger.critical(f"[Pattern-based Search] Unexpected error: {e}", exc_info=True)
         return []
 
 
-def _get_bestsellers(limit: int) -> List[Dict]:
+def _get_bestsellers(limit: int) -> List[ProductInfo]:
     """베스트셀러 조회 (fallback)"""
     try:
         result = supabase.table('products')\
@@ -404,7 +519,7 @@ def _get_bestsellers(limit: int) -> List[Dict]:
         return []
 
 
-def _generate_recommendation_reason(pattern: Dict) -> str:
+def _generate_recommendation_reason(pattern: PurchasePatternResult) -> str:
     """추천 이유 생성"""
     reasons = []
 
@@ -435,7 +550,7 @@ def _generate_recommendation_reason(pattern: Dict) -> str:
         return "고객님의 취향을 분석하여 추천드립니다"
 
 
-def format_personalized_recommendations_for_llm(recommendation_data: Dict) -> str:
+def format_personalized_recommendations_for_llm(recommendation_data: RecommendationResult) -> str:
     """
     개인화 추천 결과를 LLM 프롬프트용으로 포맷팅
 
