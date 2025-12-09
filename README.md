@@ -130,7 +130,7 @@
 | **모니터링** | Prometheus + Grafana, Sentry (에러 추적) |
 | **테스트** | pytest, pytest-asyncio, locust (부하 테스트) |
 
-### Frontend
+### Frontend (Web)
 | 카테고리 | 기술 스택 |
 |---------|----------|
 | **프레임워크** | Next.js 15.1.4, React 18 |
@@ -139,6 +139,19 @@
 | **스타일** | Tailwind CSS 4 |
 | **테스트** | Jest, React Testing Library |
 | **실시간** | WebSocket, WebRTC |
+| **용도** | 데스크톱 전용 (고객 + 관리자) |
+
+### Mobile App
+| 카테고리 | 기술 스택 |
+|---------|----------|
+| **프레임워크** | React Native 0.81.5 + Expo SDK 54 |
+| **언어** | TypeScript 5 |
+| **네비게이션** | React Navigation 7 (Stack + Bottom Tabs) |
+| **상태 관리** | TanStack Query 5.90.12 |
+| **이미지** | Expo Image (최적화) |
+| **보안** | Expo Secure Store (토큰 저장) |
+| **알림** | Expo Notifications |
+| **플랫폼** | iOS + Android |
 
 ### Infrastructure
 | 카테고리 | 기술 스택 |
@@ -313,10 +326,11 @@
 ## 설치 및 실행
 
 ### 사전 요구사항
-- **Node.js** 20+ (Frontend)
+- **Node.js** 20+ (Frontend + Mobile)
 - **Python** 3.11+ (Backend)
 - **Docker** & **Docker Compose** (선택: Redis, Ollama)
 - **Supabase** 계정 (PostgreSQL + pgvector)
+- **Expo CLI** (Mobile 개발용)
 
 ### 1. 프로젝트 클론
 ```bash
@@ -367,8 +381,36 @@ npm run dev
 docker run -d -p 6379:6379 redis:7
 ```
 
-### 5. 접속
-- **Frontend**: http://localhost:3000
+### 5. Mobile 앱 실행 (선택)
+```bash
+cd mobile
+
+# 의존성 설치
+npm install
+
+# Expo 개발 서버 실행
+npm start
+
+# Android 에뮬레이터
+npm run android
+
+# iOS 시뮬레이터 (macOS만 가능)
+npm run ios
+```
+
+**실제 기기 테스트**:
+1. 스마트폰에 **Expo Go** 앱 설치
+   - [iOS App Store](https://apps.apple.com/app/expo-go/id982107779)
+   - [Google Play](https://play.google.com/store/apps/details?id=host.exp.exponent)
+2. QR 코드 스캔
+3. `mobile/src/constants/config.ts`에서 API URL을 컴퓨터 IP로 변경
+   ```typescript
+   export const API_BASE_URL = 'http://192.168.0.10:8000';
+   ```
+
+### 6. 접속
+- **Frontend (Web)**: http://localhost:3000
+- **Mobile**: Expo Go 앱에서 QR 스캔
 - **Backend API 문서**: http://localhost:8000/docs
 - **Prometheus 메트릭**: http://localhost:8000/metrics
 
@@ -476,7 +518,7 @@ shopping-mall/
 │   │   └── test_rag_search.py
 │   └── requirements.txt
 │
-├── frontend/                 # Next.js 프론트엔드
+├── frontend/                 # Next.js 웹 (데스크톱 전용)
 │   ├── app/
 │   │   ├── page.tsx          # 메인 페이지
 │   │   ├── products/         # 상품 목록/상세
@@ -494,6 +536,26 @@ shopping-mall/
 │   │   └── lib/
 │   │       └── store.ts      # Zustand 전역 상태
 │   ├── __tests__/            # Jest 테스트
+│   └── package.json
+│
+├── mobile/                   # React Native 모바일 앱 (iOS + Android)
+│   ├── src/
+│   │   ├── navigation/       # 네비게이션 (Stack + Bottom Tabs)
+│   │   │   └── RootNavigator.tsx
+│   │   ├── screens/          # 화면 컴포넌트
+│   │   │   ├── auth/         # 로그인, 회원가입
+│   │   │   ├── home/         # 홈 (특가, 베스트)
+│   │   │   ├── product/      # 상품 목록/상세/검색
+│   │   │   ├── cart/         # 장바구니
+│   │   │   ├── mypage/       # 마이페이지
+│   │   │   └── order/        # 주문 내역
+│   │   ├── services/         # API 서비스
+│   │   │   ├── api.ts        # Axios 인스턴스
+│   │   │   └── auth.ts       # 인증 서비스
+│   │   ├── types/            # TypeScript 타입
+│   │   └── constants/        # 상수 (색상, 설정)
+│   ├── App.tsx               # 앱 엔트리 포인트
+│   ├── app.json              # Expo 설정
 │   └── package.json
 │
 ├── monitoring/               # Prometheus + Grafana
