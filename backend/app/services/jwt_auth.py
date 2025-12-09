@@ -130,6 +130,43 @@ def revoke_refresh_token(user_id: str, user_type: str = "user"):
     logger.info(f"Refresh Token 무효화 완료: user_id={user_id}, type={user_type}")
 
 
+def is_token_blacklisted(token: str) -> bool:
+    """
+    JWT 토큰이 블랙리스트에 있는지 확인
+
+    Args:
+        token: JWT 토큰 문자열
+
+    Returns:
+        블랙리스트에 있으면 True, 아니면 False
+    """
+    try:
+        blacklist_key = f"token_blacklist:{token}"
+        return redis_client.exists(blacklist_key) > 0
+    except redis.RedisError as e:
+        logger.error(f"Redis 블랙리스트 확인 실패: {e}")
+        # Redis 장애 시 통과 (가용성 우선)
+        return False
+
+
+def blacklist_token(token: str, expires_in_seconds: int):
+    """
+    JWT 토큰을 블랙리스트에 추가 (로그아웃 시)
+
+    Args:
+        token: JWT 토큰 문자열
+        expires_in_seconds: 토큰 만료까지 남은 시간 (초)
+    """
+    try:
+        blacklist_key = f"token_blacklist:{token}"
+        # 토큰 만료 시간만큼만 블랙리스트에 보관 (자동 삭제)
+        redis_client.setex(blacklist_key, expires_in_seconds, "revoked")
+        logger.info(f"토큰 블랙리스트 추가 완료 (TTL: {expires_in_seconds}초)")
+    except redis.RedisError as e:
+        logger.error(f"Redis 블랙리스트 추가 실패: {e}")
+        raise
+
+
 def verify_token(token: str) -> Optional[dict]:
     """
     JWT 토큰 검증 및 디코딩
@@ -141,6 +178,12 @@ def verify_token(token: str) -> Optional[dict]:
         디코딩된 페이로드 또는 None (검증 실패 시)
     """
     try:
+        # 1. 블랙리스트 확인 (로그아웃된 토큰)
+        if is_token_blacklisted(token):
+            logger.warning("블랙리스트에 등록된 토큰입니다")
+            return None
+
+        # 2. JWT 디코딩 및 검증
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:

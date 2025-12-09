@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from app.models.user import (
     UserRegisterRequest,
     UserLoginRequest,
@@ -20,6 +20,30 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.get("/csrf-token")
+async def get_csrf_token():
+    """
+    CSRF 토큰 발급
+
+    Returns:
+        { "csrf_token": "xxxxx", "expires_in": 3600 }
+
+    Usage:
+        1. 클라이언트가 이 API를 호출하여 CSRF 토큰 획득
+        2. 이후 POST/PUT/PATCH/DELETE 요청 시 'X-CSRF-Token' 헤더에 포함
+    """
+    from app.middleware.csrf import generate_csrf_token, store_csrf_token, CSRF_TOKEN_TTL
+
+    csrf_token = generate_csrf_token()
+    store_csrf_token(csrf_token, user_id=None)  # 익명 사용자도 토큰 발급 가능
+
+    return {
+        "csrf_token": csrf_token,
+        "expires_in": CSRF_TOKEN_TTL,
+        "header_name": "X-CSRF-Token"
+    }
 
 
 @router.post("/send-otp", response_model=MessageResponse)
@@ -527,8 +551,17 @@ async def refresh_user_token(refresh_token: str):
 
 
 @router.post("/logout", response_model=MessageResponse)
-async def logout(current_user: dict = Depends(get_current_user)):
-    """로그아웃 (Refresh Token 무효화)"""
+async def logout(
+    current_user: dict = Depends(get_current_user),
+    request: Request = None
+):
+    """
+    로그아웃 (Refresh Token 무효화)
+
+    보안:
+    - Refresh Token 무효화
+    - Supabase Auth 로그아웃
+    """
     from app.services.jwt_auth import revoke_refresh_token
 
     try:
@@ -540,9 +573,11 @@ async def logout(current_user: dict = Depends(get_current_user)):
         supabase = get_supabase_client()
         supabase.auth.sign_out()
 
+        logger.info(f"[LOGOUT] 로그아웃 완료: user_id={user_id}")
         return MessageResponse(message="로그아웃되었습니다.")
+
     except Exception as e:
-        logger.info(f"[ERROR] 로그아웃 오류: {str(e)}")
+        logger.error(f"[LOGOUT] 로그아웃 오류: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"로그아웃 중 오류가 발생했습니다: {str(e)}"

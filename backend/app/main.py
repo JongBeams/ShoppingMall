@@ -20,6 +20,12 @@ from app.services.scheduler import start_scheduler, stop_scheduler
 from app.middleware.rate_limit import limiter, custom_rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+# Security Headers
+from app.middleware.security_headers import SecurityHeadersMiddleware
+
+# CSRF Protection
+from app.middleware.csrf import csrf_protect_middleware
+
 # ============================================================
 # 4년차급 프로덕션 기능 추가 (선택적)
 # 의존성 없어도 기존 코드 정상 동작
@@ -95,7 +101,16 @@ app = FastAPI(title="ShoppingMall API", version="1.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, custom_rate_limit_exceeded_handler)
 
-# CORS 설정
+# ============================================================
+# 보안 미들웨어 (우선순위 순서대로 적용)
+# ============================================================
+
+# 1. 보안 헤더 (모든 응답에 추가)
+IS_PRODUCTION = os.getenv("ENVIRONMENT") == "production"
+app.add_middleware(SecurityHeadersMiddleware, enable_hsts=IS_PRODUCTION)
+logger.info(f" 보안 헤더 활성화 (HSTS: {IS_PRODUCTION})")
+
+# 2. CORS 설정 (크로스 도메인 요청 제어)
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
@@ -105,6 +120,15 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# 3. CSRF 보호 (POST/PUT/PATCH/DELETE 요청 검증)
+# 프로덕션에서만 활성화 (개발 시 비활성화 가능)
+CSRF_ENABLED = os.getenv("CSRF_ENABLED", "false").lower() == "true"
+if CSRF_ENABLED:
+    app.middleware("http")(csrf_protect_middleware)
+    logger.info(" CSRF 보호 활성화")
+else:
+    logger.info("ℹ️  CSRF 보호 비활성화 (개발 환경)")
 
 # ============================================================
 # Prometheus 모니터링 미들웨어 (선택적)
