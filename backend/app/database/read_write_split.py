@@ -65,7 +65,7 @@ class DatabaseRouter:
             decode_responses=True
         )
 
-        logger.info("✅ DB 읽기/쓰기 라우터 초기화 완료")
+        logger.info(" DB 읽기/쓰기 라우터 초기화 완료")
 
     def read(self, table: str, use_cache: bool = True):
         """

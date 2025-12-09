@@ -117,7 +117,7 @@ jobs:
           # Frontend Health Check
           curl -f ${{ secrets.FRONTEND_URL }} || exit 1
 
-          echo "✅ Deployment successful!"
+          echo " Deployment successful!"
 
       - name: Notify Slack on Success
         if: success()
@@ -126,13 +126,13 @@ jobs:
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           payload: |
             {
-              "text": "✅ 배포 성공: ${{ github.repository }}",
+              "text": " 배포 성공: ${{ github.repository }}",
               "blocks": [
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*배포 성공* ✅\n*Repository*: ${{ github.repository }}\n*Branch*: ${{ github.ref_name }}\n*Commit*: ${{ github.sha }}\n*Author*: ${{ github.actor }}"
+                    "text": "*배포 성공* \n*Repository*: ${{ github.repository }}\n*Branch*: ${{ github.ref_name }}\n*Commit*: ${{ github.sha }}\n*Author*: ${{ github.actor }}"
                   }
                 }
               ]
@@ -177,4 +177,4 @@ jobs:
             docker compose down
             docker compose up -d --force-recreate
 
-            echo "✅ Rollback completed"
+            echo " Rollback completed"

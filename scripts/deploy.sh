@@ -164,7 +164,7 @@ main() {
     check_status
 
     log_info "========================================="
-    log_info "  배포 완료! ✅"
+    log_info "  배포 완료! "
     log_info "========================================="
     log_info "Backend: http://localhost:8000"
     log_info "Frontend: http://localhost:3000"

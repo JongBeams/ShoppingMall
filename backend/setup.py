@@ -35,7 +35,7 @@ def install_requirements():
             missing_packages.append(requirement)
             print(f"⚠️  누락: {requirement}")
         else:
-            print(f"✅ 설치됨: {package_name}")
+            print(f" 설치됨: {package_name}")
 
     if missing_packages:
         print("\n" + "=" * 60)
@@ -53,18 +53,18 @@ def install_requirements():
                     package,
                     "--user"
                 ])
-                print(f"✅ 설치 완료: {package}")
+                print(f" 설치 완료: {package}")
             except subprocess.CalledProcessError as e:
                 print(f"❌ 설치 실패: {package}")
                 print(f"   에러: {e}")
                 sys.exit(1)
 
         print("\n" + "=" * 60)
-        print("✅ 모든 의존성 설치 완료!")
+        print(" 모든 의존성 설치 완료!")
         print("=" * 60)
     else:
         print("\n" + "=" * 60)
-        print("✅ 모든 의존성이 이미 설치되어 있습니다.")
+        print(" 모든 의존성이 이미 설치되어 있습니다.")
         print("=" * 60)
 
 if __name__ == "__main__":

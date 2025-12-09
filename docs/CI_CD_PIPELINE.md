@@ -49,7 +49,7 @@ Developer Push/PR
                        │
         ┌──────────────┴──────────────┐
         ▼                             ▼
-    ✅ Success                    ❌ Failed
+     Success                    ❌ Failed
     (Merge 허용)                (Merge 차단)
 ```
 
@@ -315,7 +315,7 @@ Developer pushes to main branch
 │  │  curl -f https://api.example.com/health  (Backend)          │  │
 │  │  curl -f https://example.com  (Frontend)                    │  │
 │  │                                                              │  │
-│  │  ✅ Success → Continue                                       │  │
+│  │   Success → Continue                                       │  │
 │  │  ❌ Failed → Rollback & Notify                               │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────────────┘
@@ -325,7 +325,7 @@ Developer pushes to main branch
 │  Notification                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐  │
 │  │  Slack Webhook:                                              │  │
-│  │  ✅ "배포 성공: main@{sha} by {author}"                     │  │
+│  │   "배포 성공: main@{sha} by {author}"                     │  │
 │  │  ❌ "배포 실패: {error_message}"                             │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────────────┘
@@ -494,7 +494,7 @@ deploy:
         # Frontend Health Check
         curl -f ${{ secrets.FRONTEND_URL }} || exit 1
 
-        echo "✅ Deployment successful!"
+        echo " Deployment successful!"
 ```
 
 **배포 타임라인**:
@@ -624,13 +624,13 @@ dependency-check:
     webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
     payload: |
       {
-        "text": "✅ 배포 성공: ${{ github.repository }}",
+        "text": " 배포 성공: ${{ github.repository }}",
         "blocks": [
           {
             "type": "section",
             "text": {
               "type": "mrkdwn",
-              "text": "*배포 성공* ✅\n*Repository*: ${{ github.repository }}\n*Branch*: ${{ github.ref_name }}\n*Commit*: ${{ github.sha }}\n*Author*: ${{ github.actor }}"
+              "text": "*배포 성공* \n*Repository*: ${{ github.repository }}\n*Branch*: ${{ github.ref_name }}\n*Commit*: ${{ github.sha }}\n*Author*: ${{ github.actor }}"
             }
           }
         ]
@@ -660,7 +660,7 @@ dependency-check:
 **Slack 알림 예시**:
 
 ```
-✅ 배포 성공
+ 배포 성공
 Repository: myorg/shoppingmall
 Branch: main
 Commit: a1b2c3d
@@ -681,7 +681,7 @@ Duration: 3m 24s
     # 헬스 체크 시도 (3회)
     for i in {1..3}; do
       if curl -f ${{ secrets.BACKEND_URL }}/health; then
-        echo "✅ Health check passed"
+        echo " Health check passed"
         exit 0
       fi
       echo "⚠️ Health check failed, retrying... ($i/3)"
@@ -699,7 +699,7 @@ Duration: 3m 24s
       docker compose down
       docker compose up -d
 
-      echo "✅ Rollback completed"
+      echo " Rollback completed"
     EOF
 
     exit 1
@@ -735,7 +735,7 @@ rollback:
           docker compose pull
           docker compose up -d
 
-          echo "✅ Rollback to $PREVIOUS_TAG completed"
+          echo " Rollback to $PREVIOUS_TAG completed"
 ```
 
 **롤백 시나리오**:
@@ -789,7 +789,7 @@ Code Change
 │           │──▶ Security Scan (Trivy)
 │           │──▶ Dependency Audit (Safety, npm audit)
 └───────────┘
-    │ ✅ All Passed
+    │  All Passed
     ▼
 Merge to main
     │
@@ -802,7 +802,7 @@ Merge to main
 │           │──▶ Slack Notification
 └───────────┘
     │
-    ├──▶ ✅ Success: Live in production
+    ├──▶  Success: Live in production
     │
     └──▶ ❌ Failed: Auto-rollback + Alert
 ```
@@ -868,12 +868,12 @@ sudo swapon /swapfile
 
 이 CI/CD 파이프라인은:
 
-✅ **자동화**: 수동 배포 불필요 (Git 푸시만으로 배포)
-✅ **안전성**: 테스트, 린팅, 보안 스캔 필수 통과
-✅ **속도**: 3분 이내 프로덕션 배포
-✅ **신뢰성**: Health Check + 자동 롤백
-✅ **가시성**: Slack 알림 + GitHub Security 통합
-✅ **확장성**: Kubernetes로 쉽게 마이그레이션 가능
+ **자동화**: 수동 배포 불필요 (Git 푸시만으로 배포)
+ **안전성**: 테스트, 린팅, 보안 스캔 필수 통과
+ **속도**: 3분 이내 프로덕션 배포
+ **신뢰성**: Health Check + 자동 롤백
+ **가시성**: Slack 알림 + GitHub Security 통합
+ **확장성**: Kubernetes로 쉽게 마이그레이션 가능
 
 **신입 개발자 포트폴리오로서의 강점**:
 - 실제 프로덕션 수준의 CI/CD 경험

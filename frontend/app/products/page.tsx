@@ -48,7 +48,7 @@ export default function ProductsPage() {
           if (imageResults) {
             const parsedResults = JSON.parse(imageResults);
             setProducts(parsedResults);
-            // ✅ sessionStorage 삭제 안 함 (useEffect가 여러 번 실행되어도 데이터 유지)
+            //  sessionStorage 삭제 안 함 (useEffect가 여러 번 실행되어도 데이터 유지)
           } else {
             // sessionStorage가 없으면 빈 배열
             setProducts([]);

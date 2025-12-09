@@ -96,12 +96,12 @@ export default function PaymentSuccessPage() {
 
         console.log('==================== Payment 객체 정보 ====================');
         console.log('📦 결제 승인 완료:', paymentResult);
-        console.log('✅ 주문 ID:', paymentResult.order_id);
-        console.log('✅ 주문 번호:', paymentResult.order_number);
-        console.log('✅ 결제 키:', paymentResult.payment_key);
-        console.log('✅ 결제 상태:', paymentResult.payment_status);
-        console.log('✅ 결제 금액:', paymentResult.total_amount);
-        console.log('✅ 승인 시각:', paymentResult.approved_at);
+        console.log(' 주문 ID:', paymentResult.order_id);
+        console.log(' 주문 번호:', paymentResult.order_number);
+        console.log(' 결제 키:', paymentResult.payment_key);
+        console.log(' 결제 상태:', paymentResult.payment_status);
+        console.log(' 결제 금액:', paymentResult.total_amount);
+        console.log(' 승인 시각:', paymentResult.approved_at);
         console.log('==========================================================');
 
         // 3단계: 장바구니 비우기

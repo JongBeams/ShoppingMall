@@ -121,7 +121,7 @@ NEXT_PUBLIC_URL=http://localhost:3000 # 프론트엔드 URL
 RECOMMENDATION_PRICE_TOLERANCE=1.5  # ❌ 1.0 초과
 
 # 올바른 설정
-RECOMMENDATION_PRICE_TOLERANCE=0.5  # ✅ 0.0~1.0 범위
+RECOMMENDATION_PRICE_TOLERANCE=0.5  #  0.0~1.0 범위
 ```
 
 ## 상수 설정 (app/config/constants.py)

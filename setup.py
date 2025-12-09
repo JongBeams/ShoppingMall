@@ -42,7 +42,7 @@ def print_info(message):
     print(f"{Colors.CYAN}ℹ️  {message}{Colors.ENDC}")
 
 def print_success(message):
-    print(f"{Colors.GREEN}✅  {message}{Colors.ENDC}")
+    print(f"{Colors.GREEN}  {message}{Colors.ENDC}")
 
 def print_warning(message):
     print(f"{Colors.YELLOW}⚠️  {message}{Colors.ENDC}")

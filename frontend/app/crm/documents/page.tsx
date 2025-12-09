@@ -90,7 +90,7 @@ export default function DocumentsPage() {
       }
 
       const data = await response.json();
-      setSuccess(`✅ 업로드 성공! ${data.chunk_count}개의 청크로 임베딩되었습니다.`);
+      setSuccess(` 업로드 성공! ${data.chunk_count}개의 청크로 임베딩되었습니다.`);
       setSelectedFile(null);
 
       // 파일 인풋 초기화

@@ -18,7 +18,7 @@ NC='\033[0m' # No Color
 echo -e "\n${YELLOW}[1/7] 의존성 설치 중...${NC}"
 cd backend
 pip install -r requirements.txt
-echo -e "${GREEN}✅ 의존성 설치 완료${NC}"
+echo -e "${GREEN} 의존성 설치 완료${NC}"
 
 # 2단계: .env 파일 생성
 echo -e "\n${YELLOW}[2/7] 환경변수 설정...${NC}"
@@ -27,9 +27,9 @@ if [ ! -f .env ]; then
     echo "ENVIRONMENT=production" >> .env
     echo "REDIS_HOST=localhost" >> .env
     echo "CELERY_BROKER_URL=amqp://admin:admin123@localhost:5672//" >> .env
-    echo -e "${GREEN}✅ .env 파일 생성 완료${NC}"
+    echo -e "${GREEN} .env 파일 생성 완료${NC}"
 else
-    echo -e "${GREEN}✅ .env 파일 이미 존재${NC}"
+    echo -e "${GREEN} .env 파일 이미 존재${NC}"
 fi
 
 # 3단계: Docker 인프라 실행
@@ -38,12 +38,12 @@ cd ..
 docker-compose up -d redis
 docker-compose -f docker-compose.queue.yml up -d rabbitmq celery-worker celery-beat flower
 docker-compose -f docker-compose.monitoring.yml up -d prometheus grafana
-echo -e "${GREEN}✅ Docker 인프라 실행 완료${NC}"
+echo -e "${GREEN} Docker 인프라 실행 완료${NC}"
 
 # 4단계: 헬스체크 대기
 echo -e "\n${YELLOW}[4/7] 서비스 헬스체크 중...${NC}"
 sleep 10
-echo -e "${GREEN}✅ 헬스체크 완료${NC}"
+echo -e "${GREEN} 헬스체크 완료${NC}"
 
 # 5단계: ONNX 모델 변환
 echo -e "\n${YELLOW}[5/7] ONNX 모델 변환 중...${NC}"
@@ -51,14 +51,14 @@ cd backend
 if [ ! -f models/clip_vision_optimized.onnx ]; then
     mkdir -p models
     python -c "from app.services.image_embedding_optimized import OptimizedCLIPEmbedding; OptimizedCLIPEmbedding.export_to_onnx()" || echo "ONNX 변환 실패 (선택적)"
-    echo -e "${GREEN}✅ ONNX 모델 변환 완료${NC}"
+    echo -e "${GREEN} ONNX 모델 변환 완료${NC}"
 else
-    echo -e "${GREEN}✅ ONNX 모델 이미 존재${NC}"
+    echo -e "${GREEN} ONNX 모델 이미 존재${NC}"
 fi
 
 # 6단계: 캐시 워밍 (옵션)
 echo -e "\n${YELLOW}[6/7] 캐시 워밍 준비...${NC}"
-echo -e "${GREEN}✅ 서버 시작 시 자동 실행됩니다${NC}"
+echo -e "${GREEN} 서버 시작 시 자동 실행됩니다${NC}"
 
 # 7단계: 서비스 URL 출력
 echo -e "\n${YELLOW}[7/7] 서비스 URL 확인${NC}"
@@ -79,7 +79,7 @@ echo "Metrics:        http://localhost:8000/metrics"
 echo "API Docs:       http://localhost:8000/docs"
 echo ""
 echo "=========================================="
-echo "✅ Setup 완료! 백엔드 서버를 시작하세요:"
+echo " Setup 완료! 백엔드 서버를 시작하세요:"
 echo "   cd backend"
 echo "   uvicorn app.main:app --reload"
 echo "=========================================="

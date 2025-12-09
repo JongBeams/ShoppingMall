@@ -136,7 +136,7 @@ recommendation_keywords = ['추천', '뭐', '보여', ...]
 
 ### 변경 후 (설정 파일)
 ```python
-# ✅ 설정 파일 사용
+#  설정 파일 사용
 from app.config import get_settings
 from app.config.constants import RECOMMENDATION_KEYWORDS
 
@@ -274,14 +274,14 @@ python -m uvicorn app.main:app
 
 ## 체크리스트
 
-✅ AI 모델 설정 분리
-✅ 추천 시스템 설정 분리
-✅ 검색 설정 분리
-✅ 비즈니스 로직 상수 분리
-✅ 설정 값 검증 추가
-✅ setup.py 자동 설정
-✅ 문서화 완료
-✅ 타입 안전성 확보
+ AI 모델 설정 분리
+ 추천 시스템 설정 분리
+ 검색 설정 분리
+ 비즈니스 로직 상수 분리
+ 설정 값 검증 추가
+ setup.py 자동 설정
+ 문서화 완료
+ 타입 안전성 확보
 
 ## 마이그레이션 가이드
 

@@ -30,7 +30,7 @@ try:
     from app.middleware.metrics import metrics_middleware
     from prometheus_client import make_asgi_app
     PROMETHEUS_ENABLED = True
-    logger.info("✅ Prometheus 모듈 로드 완료")
+    logger.info(" Prometheus 모듈 로드 완료")
 except ImportError:
     PROMETHEUS_ENABLED = False
     logger.info("ℹ️  Prometheus 미설치 - 기본 모드로 실행 (pip install prometheus-client)")
@@ -53,7 +53,7 @@ try:
             profiles_sample_rate=0.1,
             environment=os.getenv("ENVIRONMENT", "production"),
         )
-        logger.info("✅ Sentry 에러 추적 활성화")
+        logger.info(" Sentry 에러 추적 활성화")
 except ImportError:
     logger.info("ℹ️  Sentry 미설치 - 에러 추적 비활성화 (pip install sentry-sdk)")
 
@@ -116,7 +116,7 @@ if PROMETHEUS_ENABLED:
     metrics_app = make_asgi_app()
     app.mount("/metrics", metrics_app)
 
-    logger.info("✅ Prometheus 모니터링 활성화 (/metrics)")
+    logger.info(" Prometheus 모니터링 활성화 (/metrics)")
 else:
     logger.info("ℹ️  Prometheus 비활성화 - 설치 방법: pip install prometheus-client")
 

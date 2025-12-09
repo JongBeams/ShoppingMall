@@ -15,7 +15,7 @@ from app.services.image_embedding import get_image_embedding_service
 try:
     from app.services.image_embedding_optimized import get_embedding_service as get_optimized_embedding_service
     USE_OPTIMIZED_EMBEDDING = True
-    logger.info("✅ ONNX 최적화 임베딩 서비스 사용")
+    logger.info(" ONNX 최적화 임베딩 서비스 사용")
 except ImportError:
     USE_OPTIMIZED_EMBEDDING = False
     logger.info("ℹ️  기본 임베딩 서비스 사용 (ONNX 미설치)")

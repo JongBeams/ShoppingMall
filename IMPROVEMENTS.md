@@ -8,18 +8,18 @@
 
 | 항목 | 상태 | 파일 위치 |
 |------|------|----------|
-| TypeScript 타입 정의 강화 | ✅ 완료 | `frontend/app/types/api.ts` |
-| API Rate Limiting | ✅ 완료 | `backend/app/middleware/rate_limit.py` |
-| 재고 관리 락 (동시성 제어) | ✅ 완료 | `backend/sql/create_stock_lock_function.sql` |
-| WebSocket 재연결 로직 | ✅ 완료 | `frontend/app/hooks/useWebSocket.ts` |
-| WebRTC 오류 처리 | ✅ 완료 | `frontend/app/hooks/useWebRTC.ts` |
-| 하드코딩 값 상수화 | ✅ 완료 | `backend/app/config/constants.py` |
-| 린터/포매터 설정 | ✅ 완료 | `pyproject.toml`, `.eslintrc.json`, `.prettierrc` |
-| CORS 보안 강화 | ✅ 완료 | `backend/app/main.py` |
+| TypeScript 타입 정의 강화 |  완료 | `frontend/app/types/api.ts` |
+| API Rate Limiting |  완료 | `backend/app/middleware/rate_limit.py` |
+| 재고 관리 락 (동시성 제어) |  완료 | `backend/sql/create_stock_lock_function.sql` |
+| WebSocket 재연결 로직 |  완료 | `frontend/app/hooks/useWebSocket.ts` |
+| WebRTC 오류 처리 |  완료 | `frontend/app/hooks/useWebRTC.ts` |
+| 하드코딩 값 상수화 |  완료 | `backend/app/config/constants.py` |
+| 린터/포매터 설정 |  완료 | `pyproject.toml`, `.eslintrc.json`, `.prettierrc` |
+| CORS 보안 강화 |  완료 | `backend/app/main.py` |
 
 ---
 
-## 1. ✅ TypeScript 타입 정의 강화
+## 1.  TypeScript 타입 정의 강화
 
 ### 문제점
 - API 응답 타입이 `any`로 처리되어 타입 안정성 부족
@@ -49,14 +49,14 @@ export interface AuthResponse {
 ```
 
 ### 효과
-- ✅ 타입 안정성 향상
-- ✅ IDE 자동완성 지원
-- ✅ 런타임 에러 사전 방지
-- ✅ 코드 가독성 향상
+-  타입 안정성 향상
+-  IDE 자동완성 지원
+-  런타임 에러 사전 방지
+-  코드 가독성 향상
 
 ---
 
-## 2. ✅ API Rate Limiting 구현
+## 2.  API Rate Limiting 구현
 
 ### 문제점
 - 무제한 API 요청으로 DDoS 공격 취약
@@ -87,14 +87,14 @@ app.add_exception_handler(RateLimitExceeded, custom_rate_limit_exceeded_handler)
 ```
 
 ### 효과
-- ✅ DDoS 공격 방지
-- ✅ 서버 안정성 향상
-- ✅ Redis 기반 분산 환경 지원
-- ✅ 사용자별/IP별 제한
+-  DDoS 공격 방지
+-  서버 안정성 향상
+-  Redis 기반 분산 환경 지원
+-  사용자별/IP별 제한
 
 ---
 
-## 3. ✅ 재고 관리 락 (동시성 제어)
+## 3.  재고 관리 락 (동시성 제어)
 
 ### 문제점
 - 동시 주문 시 재고 부족 발생 가능
@@ -140,14 +140,14 @@ async def decrement_stock(product_id: str, quantity: int) -> Tuple[bool, str, in
 ```
 
 ### 효과
-- ✅ Race Condition 완전 제거
-- ✅ 재고 부족 방지
-- ✅ 데이터 일관성 보장
-- ✅ 주문 취소 시 재고 복구 지원
+-  Race Condition 완전 제거
+-  재고 부족 방지
+-  데이터 일관성 보장
+-  주문 취소 시 재고 복구 지원
 
 ---
 
-## 4. ✅ WebSocket 재연결 로직
+## 4.  WebSocket 재연결 로직
 
 ### 문제점
 - 연결 끊김 시 자동 재시도 없음
@@ -190,14 +190,14 @@ const { isConnected, sendMessage } = useWebSocket({
 ```
 
 ### 효과
-- ✅ 자동 재연결 (최대 10회 시도)
-- ✅ UX 개선 (새로고침 불필요)
-- ✅ 재연결 상태 UI 표시 가능
-- ✅ 컴포넌트 언마운트 시 자동 정리
+-  자동 재연결 (최대 10회 시도)
+-  UX 개선 (새로고침 불필요)
+-  재연결 상태 UI 표시 가능
+-  컴포넌트 언마운트 시 자동 정리
 
 ---
 
-## 5. ✅ WebRTC ICE Candidate 오류 처리
+## 5.  WebRTC ICE Candidate 오류 처리
 
 ### 문제점
 - ICE Candidate 실패 시 연결 불가
@@ -238,14 +238,14 @@ export function useWebRTC() {
 ```
 
 ### 효과
-- ✅ ICE 연결 실패 시 자동 재시도
-- ✅ 다중 STUN 서버로 안정성 향상
-- ✅ Non-fatal 에러 graceful 처리
-- ✅ 연결 상태 실시간 모니터링
+-  ICE 연결 실패 시 자동 재시도
+-  다중 STUN 서버로 안정성 향상
+-  Non-fatal 에러 graceful 처리
+-  연결 상태 실시간 모니터링
 
 ---
 
-## 6. ✅ 하드코딩된 값 상수화
+## 6.  하드코딩된 값 상수화
 
 ### 문제점
 - Magic Number가 코드 곳곳에 산재
@@ -290,14 +290,14 @@ RATE_LIMIT_PER_HOUR = 2000
 ```
 
 ### 효과
-- ✅ 코드 가독성 향상
-- ✅ 유지보수 용이
-- ✅ 설정 변경 시 한 곳만 수정
-- ✅ 비즈니스 로직 명확화
+-  코드 가독성 향상
+-  유지보수 용이
+-  설정 변경 시 한 곳만 수정
+-  비즈니스 로직 명확화
 
 ---
 
-## 7. ✅ 린터/포매터 설정
+## 7.  린터/포매터 설정
 
 ### 문제점
 - 코드 스타일 불일치
@@ -365,14 +365,14 @@ npm run format
 ```
 
 ### 효과
-- ✅ 일관된 코드 스타일
-- ✅ 잠재적 버그 사전 탐지
-- ✅ 코드 리뷰 효율화
-- ✅ CI/CD 통합 가능
+-  일관된 코드 스타일
+-  잠재적 버그 사전 탐지
+-  코드 리뷰 효율화
+-  CI/CD 통합 가능
 
 ---
 
-## 8. ✅ CORS 보안 강화
+## 8.  CORS 보안 강화
 
 ### 문제점
 ```python
@@ -402,10 +402,10 @@ ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
 ```
 
 ### 효과
-- ✅ CSRF 공격 방지
-- ✅ 특정 도메인만 허용
-- ✅ 프로덕션 환경별 설정 가능
-- ✅ 보안 취약점 제거
+-  CSRF 공격 방지
+-  특정 도메인만 허용
+-  프로덕션 환경별 설정 가능
+-  보안 취약점 제거
 
 ---
 

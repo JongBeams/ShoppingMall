@@ -33,7 +33,7 @@ for product in products.data:
             'rating': avg_rating_rounded
         }).eq('id', product_id).execute()
 
-        print(f"✅ {product_name}: {total_reviews}개 리뷰, 평균 {avg_rating_rounded}/5.0")
+        print(f" {product_name}: {total_reviews}개 리뷰, 평균 {avg_rating_rounded}/5.0")
         updated_count += 1
 
 print(f"\n=== 완료: {updated_count}개 상품 업데이트 ===")

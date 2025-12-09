@@ -206,7 +206,7 @@ export default function Header() {
       // 검색 결과를 sessionStorage에 저장
       sessionStorage.setItem('image_search_results', JSON.stringify(products));
 
-      // ✅ 이미 이미지 검색 페이지에 있으면 강제 새로고침
+      //  이미 이미지 검색 페이지에 있으면 강제 새로고침
       if (window.location.pathname === '/products' && window.location.search.includes('image_search=true')) {
         window.location.href = '/products?image_search=true';
       } else {
@@ -225,9 +225,9 @@ export default function Header() {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedImage(file);
-      handleImageSearch(file); // ✅ 이미지 선택하자마자 바로 검색
+      handleImageSearch(file); //  이미지 선택하자마자 바로 검색
     }
-    // ✅ 같은 파일을 다시 선택할 수 있도록 input value 초기화
+    //  같은 파일을 다시 선택할 수 있도록 input value 초기화
     e.target.value = '';
   };
 

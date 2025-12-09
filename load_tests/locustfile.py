@@ -227,20 +227,20 @@ def on_test_stop(environment, **kwargs):
 
     # 목표 1: 에러율 < 1%
     if stats.total.fail_ratio < 0.01:
-        print("✅ 에러율 목표 달성 (< 1%)")
+        print(" 에러율 목표 달성 (< 1%)")
     else:
         print(f"❌ 에러율 목표 미달성: {stats.total.fail_ratio * 100:.2f}%")
 
     # 목표 2: P95 < 500ms
     p95 = stats.total.get_response_time_percentile(0.95)
     if p95 < 500:
-        print(f"✅ P95 latency 목표 달성 (< 500ms): {p95:.0f}ms")
+        print(f" P95 latency 목표 달성 (< 500ms): {p95:.0f}ms")
     else:
         print(f"❌ P95 latency 목표 미달성: {p95:.0f}ms")
 
     # 목표 3: RPS > 100
     if stats.total.total_rps > 100:
-        print(f"✅ RPS 목표 달성 (> 100): {stats.total.total_rps:.2f}")
+        print(f" RPS 목표 달성 (> 100): {stats.total.total_rps:.2f}")
     else:
         print(f"❌ RPS 목표 미달성: {stats.total.total_rps:.2f}")
 

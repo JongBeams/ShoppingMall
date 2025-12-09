@@ -112,7 +112,7 @@ export default function PaymentSuccess({
 
         {status === 'success' && (
           <>
-            <div className="mb-4 text-6xl">✅</div>
+            <div className="mb-4 text-6xl"></div>
             <h1 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">
               {paymentType === 'subscription' ? '구독 완료!' : '주문 완료!'}
             </h1>

@@ -52,7 +52,7 @@ def start_scheduler():
         )
 
         scheduler.start()
-        logger.info("✅ 포인트 만료 스케줄러 시작됨 (매일 00:00 실행)")
+        logger.info(" 포인트 만료 스케줄러 시작됨 (매일 00:00 실행)")
 
     except Exception as e:
         logger.error(f"❌ 스케줄러 시작 실패: {str(e)}")
@@ -64,7 +64,7 @@ def stop_scheduler():
     """
     try:
         scheduler.shutdown()
-        logger.info("✅ 포인트 만료 스케줄러 중지됨")
+        logger.info(" 포인트 만료 스케줄러 중지됨")
     except Exception as e:
         logger.error(f"❌ 스케줄러 중지 실패: {str(e)}")
 

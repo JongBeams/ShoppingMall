@@ -26,7 +26,7 @@ export default function RemoteControlPage() {
     const websocket = new WebSocket(`${WS_BASE_URL}/chat/ws/${roomId}`);
 
     websocket.onopen = () => {
-      console.log('✅ 원격 제어 WebSocket 연결됨');
+      console.log(' 원격 제어 WebSocket 연결됨');
       setIsConnected(true);
       sessionStartTime.current = Date.now();
     };

@@ -44,10 +44,10 @@ class OptimizedCLIPEmbedding:
 
         if self.use_onnx and self.onnx_model_path.exists():
             self._load_onnx_model()
-            logger.info("✅ ONNX 모델 로드 완료 (최적화 모드)")
+            logger.info(" ONNX 모델 로드 완료 (최적화 모드)")
         else:
             self._load_pytorch_model()
-            logger.info("✅ PyTorch 모델 로드 완료 (기본 모드)")
+            logger.info(" PyTorch 모델 로드 완료 (기본 모드)")
 
         # 배치 처리 큐
         self.batch_queue = []
@@ -125,7 +125,7 @@ class OptimizedCLIPEmbedding:
             opset_version=14,
         )
 
-        logger.info("✅ ONNX 모델 변환 완료")
+        logger.info(" ONNX 모델 변환 완료")
 
     def _preprocess_image(self, image_bytes: bytes) -> np.ndarray:
         """이미지 전처리 (ONNX 입력 형식)"""

@@ -112,7 +112,7 @@ export default function LiveChatPage() {
         console.log('🖥️ 원격 제어 시작 이벤트 수신:', data);
         if (!selectedRoom || data.room_id === selectedRoom.id) {
           setRemoteControlActive(true);
-          console.log('✅ 원격 제어 활성화됨');
+          console.log(' 원격 제어 활성화됨');
         }
       } else if (data.type === 'remote_control_stop') {
         if (!selectedRoom || data.room_id === selectedRoom.id) {
@@ -131,7 +131,7 @@ export default function LiveChatPage() {
         // ICE Candidate 수신
         if (peerConnection.current && data.candidate) {
           peerConnection.current.addIceCandidate(new RTCIceCandidate(data.candidate));
-          console.log('✅ ICE Candidate 추가 완료');
+          console.log(' ICE Candidate 추가 완료');
         }
       }
     };
@@ -181,11 +181,11 @@ export default function LiveChatPage() {
         setTimeout(() => {
           if (remoteVideoRef.current && stream) {
             remoteVideoRef.current.srcObject = stream;
-            console.log('✅ 비디오 요소에 스트림 설정 완료');
+            console.log(' 비디오 요소에 스트림 설정 완료');
 
             // 비디오 재생 확인
             remoteVideoRef.current.onloadedmetadata = () => {
-              console.log('✅ 비디오 메타데이터 로드 완료');
+              console.log(' 비디오 메타데이터 로드 완료');
               console.log('📺 비디오 크기:', remoteVideoRef.current?.videoWidth, 'x', remoteVideoRef.current?.videoHeight);
             };
 
@@ -252,7 +252,7 @@ export default function LiveChatPage() {
     const newRoomWs = new WebSocket(`${WS_BASE_URL}/chat/ws/${room.id}`);
 
     newRoomWs.onopen = () => {
-      console.log(`✅ 채팅방 ${room.id} WebSocket 연결됨`);
+      console.log(` 채팅방 ${room.id} WebSocket 연결됨`);
     };
 
     newRoomWs.onmessage = async (event) => {
@@ -273,7 +273,7 @@ export default function LiveChatPage() {
             // remote description이 설정된 후에만 ICE Candidate 추가
             if (peerConnection.current.remoteDescription) {
               await peerConnection.current.addIceCandidate(new RTCIceCandidate(data.candidate));
-              console.log('✅ ICE Candidate 추가 완료');
+              console.log(' ICE Candidate 추가 완료');
             } else {
               console.log('⏳ Remote description 대기 중, ICE Candidate 보류');
             }

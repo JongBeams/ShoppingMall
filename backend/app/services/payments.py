@@ -139,10 +139,10 @@ async def process_payment_success(
     import json
     print(json.dumps(toss_resp, indent=2, ensure_ascii=False))
     print("=" * 80)
-    logger.info(f"✅ 결제수단 (method): {toss_resp.get('method')}")
-    logger.info(f"✅ 결제 상태 (status): {toss_resp.get('status')}")
-    logger.info(f"✅ 승인 시각 (approvedAt): {toss_resp.get('approvedAt')}")
-    logger.info(f"✅ 결제 금액 (totalAmount): {toss_resp.get('totalAmount')}")
+    logger.info(f" 결제수단 (method): {toss_resp.get('method')}")
+    logger.info(f" 결제 상태 (status): {toss_resp.get('status')}")
+    logger.info(f" 승인 시각 (approvedAt): {toss_resp.get('approvedAt')}")
+    logger.info(f" 결제 금액 (totalAmount): {toss_resp.get('totalAmount')}")
     if toss_resp.get('card'):
         logger.info(f"💳 카드 정보: {toss_resp.get('card')}")
     if toss_resp.get('easyPay'):
@@ -242,7 +242,7 @@ async def process_payment_success(
             expires_days=365  # 1년 유효
         )
         points_earned = reward_points
-        logger.info(f"✅ 주문 완료 포인트 적립 성공: user_id={user_id}, amount={reward_points}, order_id={order['id']}")
+        logger.info(f" 주문 완료 포인트 적립 성공: user_id={user_id}, amount={reward_points}, order_id={order['id']}")
     except Exception as e:
         logger.info(f"⚠️ 주문 완료 포인트 적립 실패 (무시): {str(e)}")
         # 포인트 적립 실패해도 결제는 성공으로 처리

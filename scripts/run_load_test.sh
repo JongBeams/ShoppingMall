@@ -14,7 +14,7 @@ if ! curl -s http://localhost:8000/health > /dev/null; then
     exit 1
 fi
 
-echo "✅ 백엔드 서버 연결 확인"
+echo " 백엔드 서버 연결 확인"
 
 # 테스트 옵션
 USERS=${1:-100}        # 동시 사용자 수 (기본 100명)
@@ -43,6 +43,6 @@ locust -f locustfile.py \
 
 echo ""
 echo "=========================================="
-echo "✅ 부하 테스트 완료!"
+echo " 부하 테스트 완료!"
 echo "   리포트: load_tests/reports/"
 echo "=========================================="

@@ -254,7 +254,7 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
                 logger.info(f"🔴 현재 방의 연결 수: {len(manager.active_connections.get(room_id, []))}")
                 # DB 저장 없이 바로 브로드캐스트 (관리자 ↔ 사용자)
                 await manager.send_message(message_data, room_id)
-                logger.info(f"✅ WebRTC 메시지 브로드캐스트 완료")
+                logger.info(f" WebRTC 메시지 브로드캐스트 완료")
                 continue
 
             # 일반 채팅 메시지

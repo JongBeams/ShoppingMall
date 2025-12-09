@@ -342,8 +342,8 @@ curl http://<EC2_IP>:3000
 ### 1. 환경 변수 보안
 
 - ❌ `.env.production` 파일을 **절대** Git에 커밋하지 마세요
-- ✅ `.gitignore`에 이미 추가되어 있음
-- ✅ GitHub Secrets 사용
+-  `.gitignore`에 이미 추가되어 있음
+-  GitHub Secrets 사용
 
 ### 2. Docker Hub 이미지 크기
 
@@ -422,7 +422,7 @@ docker volume prune -f
 
 ## 🎯 다음 단계
 
-1. ✅ CI/CD 파이프라인 구축 완료
+1.  CI/CD 파이프라인 구축 완료
 2. ⬜ Nginx 리버스 프록시 설정 (80, 443 포트)
 3. ⬜ SSL/TLS 인증서 적용 (Let's Encrypt)
 4. ⬜ 도메인 연결

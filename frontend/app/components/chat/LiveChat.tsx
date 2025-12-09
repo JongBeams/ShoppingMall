@@ -56,7 +56,7 @@ export default function LiveChat({ onBack }: LiveChatProps) {
 
       localStream.current = stream;
       const videoTrack = stream.getVideoTracks()[0];
-      console.log('✅ 화면 스트림 획득 완료');
+      console.log(' 화면 스트림 획득 완료');
       console.log('📹 비디오 트랙 설정:', videoTrack.getSettings());
       console.log('📹 비디오 트랙 상태:', videoTrack.readyState);
       console.log('📹 비디오 트랙 활성화:', videoTrack.enabled);
@@ -114,7 +114,7 @@ export default function LiveChat({ onBack }: LiveChatProps) {
         };
 
         ws.current.send(JSON.stringify(offerMessage));
-        console.log('✅ WebRTC Offer 전송 완료');
+        console.log(' WebRTC Offer 전송 완료');
       } else {
         console.error('❌ WebSocket이 연결되지 않음!');
       }
@@ -258,7 +258,7 @@ export default function LiveChat({ onBack }: LiveChatProps) {
         websocket = new WebSocket(`${WS_BASE_URL}/chat/ws/${chatRoomId}`);
 
         websocket.onopen = () => {
-          console.log('✅ WebSocket 연결됨');
+          console.log(' WebSocket 연결됨');
           setIsLoading(false);
         };
 
@@ -271,7 +271,7 @@ export default function LiveChat({ onBack }: LiveChatProps) {
             if (peerConnection.current) {
               try {
                 await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.answer));
-                console.log('✅ WebRTC Answer 수신 완료');
+                console.log(' WebRTC Answer 수신 완료');
               } catch (error) {
                 console.error('❌ WebRTC Answer 설정 실패:', error);
               }
@@ -285,7 +285,7 @@ export default function LiveChat({ onBack }: LiveChatProps) {
                 // remote description이 설정된 후에만 ICE Candidate 추가
                 if (peerConnection.current.remoteDescription) {
                   await peerConnection.current.addIceCandidate(new RTCIceCandidate(data.candidate));
-                  console.log('✅ ICE Candidate 추가 완료');
+                  console.log(' ICE Candidate 추가 완료');
                 } else {
                   console.log('⏳ Remote description 대기 중, ICE Candidate 보류');
                 }
@@ -329,7 +329,7 @@ export default function LiveChat({ onBack }: LiveChatProps) {
             let element = document.elementFromPoint(viewportX, viewportY) as HTMLElement;
 
             if (element) {
-              console.log('✅ 클릭할 요소 발견:', element.tagName, element.className);
+              console.log(' 클릭할 요소 발견:', element.tagName, element.className);
 
               // 시각적 피드백 (클릭 위치에 빨간 점 표시)
               const marker = document.createElement('div');
@@ -394,7 +394,7 @@ export default function LiveChat({ onBack }: LiveChatProps) {
                 element.click();
               }
 
-              console.log('✅ 클릭 이벤트 전송 완료');
+              console.log(' 클릭 이벤트 전송 완료');
             } else {
               console.error('❌ 해당 위치에 요소가 없음');
             }
@@ -482,7 +482,7 @@ export default function LiveChat({ onBack }: LiveChatProps) {
               const changeEvent = new Event('change', { bubbles: true });
               inputElement.dispatchEvent(changeEvent);
 
-              console.log('✅ 텍스트 입력 완료:', inputElement.value);
+              console.log(' 텍스트 입력 완료:', inputElement.value);
             }
             return;
           }

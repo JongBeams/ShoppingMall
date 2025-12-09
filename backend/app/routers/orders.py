@@ -654,7 +654,7 @@ async def cancel_order(
             transaction_response = supabase.table("point_transactions").select("change_amount").eq("id", point_transaction_id).execute()
             if transaction_response.data:
                 points_refunded = transaction_response.data[0]["change_amount"]
-            logger.info(f"✅ 주문 취소 포인트 환원 성공: user_id={user_id}, amount={points_refunded}, order_id={order_id}")
+            logger.info(f" 주문 취소 포인트 환원 성공: user_id={user_id}, amount={points_refunded}, order_id={order_id}")
         except ValueError as e:
             # 사용한 포인트가 없는 경우 (정상)
             logger.info(f"ℹ️ 주문 취소 포인트 환원 대상 없음: {str(e)}")

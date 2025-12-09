@@ -92,7 +92,7 @@ export default function GiftWizardPage() {
       const data = await response.json()
 
       // 분석 완료 로그 추가
-      setLoadingLogs((prev) => [...prev, '✅ 분석이 완료되었어요!', '🎁 추천 결과를 확인해보세요!'])
+      setLoadingLogs((prev) => [...prev, ' 분석이 완료되었어요!', '🎁 추천 결과를 확인해보세요!'])
       setCurrentProgress(100)
 
       // 잠깐 보여주고 결과로 이동
@@ -346,7 +346,7 @@ export default function GiftWizardPage() {
               </div>
               <div className="space-y-3 max-h-80 overflow-y-auto">
                 {loadingLogs.filter(log => log).map((log, idx) => {
-                  const isCompleted = log.includes('✓') || log.includes('완료') || log.includes('완성') || log.includes('✅')
+                  const isCompleted = log.includes('✓') || log.includes('완료') || log.includes('완성') || log.includes('')
                   const isProcessing = log.includes('중...')
                   const isError = log.includes('❌')
 
