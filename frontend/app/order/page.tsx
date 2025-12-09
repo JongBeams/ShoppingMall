@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cartAPI, pointApi } from '../lib/api';
-import { CartItem } from '../types';
+import { CartItem, UserCoupon } from '../types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -48,6 +48,8 @@ export default function OrderPage() {
   const [availablePoints, setAvailablePoints] = useState(0);
   const [pointsToUse, setPointsToUse] = useState(0);
   const [deliverySettings, setDeliverySettings] = useState({ fee: 3000, freeThreshold: 30000 });
+  const [availableCoupons, setAvailableCoupons] = useState<UserCoupon[]>([]);
+  const [selectedCoupons, setSelectedCoupons] = useState<Record<string, string>>({});
 
   // 배송비 설정 조회
   const fetchDeliverySettings = async () => {
@@ -88,6 +90,8 @@ export default function OrderPage() {
       fetchSavedAccounts(token);
       // 포인트 잔액 불러오기
       fetchPointBalance(token);
+      // 사용 가능한 쿠폰 불러오기
+      fetchAvailableCoupons(token);
       // 배송비 설정 불러오기
       fetchDeliverySettings();
     } catch (e) {
@@ -120,6 +124,7 @@ export default function OrderPage() {
               quantity: item.quantity,
               total_price: item.price * item.quantity,
               selected_options: item.selected_options || [],
+              vendor_id: item.vendor_id,
               vendor_name: item.vendor_name,
             }));
             setCartItems(cartItemsFromDirect);
@@ -185,6 +190,23 @@ export default function OrderPage() {
     } catch (error) {
       console.error('포인트 잔액 조회 실패:', error);
       setAvailablePoints(0);
+    }
+  };
+
+  // 사용 가능한 쿠폰 불러오기
+  const fetchAvailableCoupons = async (token: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/coupons/user/available`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableCoupons(data.user_coupons || []);
+      } else {
+        console.error('쿠폰 조회 실패:', response.status, await response.text());
+      }
+    } catch (error) {
+      console.error('사용 가능한 쿠폰 조회 실패:', error);
     }
   };
 
@@ -410,6 +432,18 @@ export default function OrderPage() {
       return;
     }
 
+    // 선택된 쿠폰 정보 (상품별)
+    const selectedCouponData = Object.entries(selectedCoupons)
+      .filter(([_, couponId]) => couponId)
+      .map(([itemId, couponId]) => {
+        const item = cartItems.find(ci => ci.id === itemId);
+        return {
+          itemId,
+          productId: item?.product_id,
+          userCouponId: couponId,
+        };
+      });
+
     // sessionStorage에 주문 데이터 저장
     const checkoutData = {
       amount: finalPrice,
@@ -420,6 +454,8 @@ export default function OrderPage() {
       email: user?.email || '',
       items: cartItems,
       pointsUsed: pointsToUse,
+      selectedCoupons: selectedCouponData,
+      couponDiscount: Math.floor(couponDiscount),
     };
     sessionStorage.setItem('checkoutData', JSON.stringify(checkoutData));
 
@@ -435,8 +471,44 @@ export default function OrderPage() {
 
   // 금액 계산
   const totalPrice = cartItems.reduce((sum, item) => sum + item.total_price, 0);
+
+  // 쿠폰 할인 금액 계산
+  const couponDiscount = cartItems.reduce((sum, item) => {
+    const selectedCouponId = selectedCoupons[item.id];
+    if (!selectedCouponId) return sum;
+
+    const userCoupon = availableCoupons.find(uc => uc.id === selectedCouponId);
+    if (!userCoupon || !userCoupon.coupon) return sum;
+
+    const coupon = userCoupon.coupon;
+    const itemTotal = item.total_price;
+
+    // 최소 주문 금액 체크
+    if (coupon.min_order_amount && itemTotal < coupon.min_order_amount) {
+      return sum;
+    }
+
+    let discount = 0;
+    if (coupon.discount_type === 'percent') {
+      discount = (itemTotal * coupon.discount_value) / 100;
+      // 최대 할인 금액 적용
+      if (coupon.max_discount_amount && discount > coupon.max_discount_amount) {
+        discount = coupon.max_discount_amount;
+      }
+    } else {
+      discount = coupon.discount_value;
+    }
+
+    // 상품 가격을 초과할 수 없음
+    if (discount > itemTotal) {
+      discount = itemTotal;
+    }
+
+    return sum + discount;
+  }, 0);
+
   const deliveryFee = totalPrice >= deliverySettings.freeThreshold ? 0 : deliverySettings.fee;
-  const finalPrice = totalPrice + deliveryFee - pointsToUse;
+  const finalPrice = totalPrice + deliveryFee - couponDiscount - pointsToUse;
 
   if (loading) {
     return (
@@ -475,71 +547,171 @@ export default function OrderPage() {
               </div>
               <div className="p-5">
                 <div className="space-y-3">
-                  {cartItems.map((item) => (
-                    <div key={item.id} className="flex gap-4 border-b border-gray-100 pb-3 last:border-b-0 dark:border-gray-800">
-                      <Link
-                        href={`/products/${item.product_id}`}
-                        className="relative h-20 w-20 flex-shrink-0 overflow-hidden border border-gray-200 dark:border-gray-700"
-                      >
-                        {item.product_thumbnail ? (
-                          <Image
-                            src={item.product_thumbnail}
-                            alt={item.product_name}
-                            fill
-                            className="object-cover"
-                            sizes="80px"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center bg-gray-100 text-gray-400 dark:bg-gray-800">
-                            <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
-                            </svg>
-                          </div>
-                        )}
-                      </Link>
-                      <div className="flex flex-1 flex-col justify-between">
-                        <div>
+                  {cartItems.map((item) => {
+                    // 이 상품에 사용 가능한 쿠폰 필터링 (판매자가 일치하는 쿠폰만)
+                    const itemCoupons = availableCoupons.filter(uc => {
+                      if (!uc.coupon) return false;
+                      // 쿠폰이 이미 사용중이면 제외
+                      if (uc.is_using) return false;
+
+                      // 쿠폰의 vendor_id가 없으면 전체 쿠폰 (관리자 발급)
+                      if (!uc.coupon.vendor_id) return true;
+
+                      // 쿠폰의 vendor_id와 상품의 vendor_id가 일치하는 경우만
+                      return item.vendor_id && uc.coupon.vendor_id === item.vendor_id;
+                    });
+
+                    return (
+                      <div key={item.id} className="border-b border-gray-100 pb-4 last:border-b-0 dark:border-gray-800">
+                        <div className="flex gap-4">
                           <Link
                             href={`/products/${item.product_id}`}
-                            className="text-sm font-medium text-gray-900 hover:underline dark:text-white"
+                            className="relative h-20 w-20 flex-shrink-0 overflow-hidden border border-gray-200 dark:border-gray-700"
                           >
-                            {item.product_name}
-                          </Link>
-                          {item.selected_options && item.selected_options.length > 0 && (
-                            <div className="mt-1 space-y-0.5">
-                              {item.selected_options.map((option, idx) => (
-                                <p key={idx} className="text-xs text-gray-500 dark:text-gray-400">
-                                  • {option.option_name}: {option.value_name}
-                                  {option.price > 0 && ` (+${option.price.toLocaleString()}원)`}
-                                </p>
-                              ))}
-                            </div>
-                          )}
-                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            {(item as any).is_on_sale ? (
-                              <>
-                                <span className="text-blue-600 dark:text-blue-400">{Math.floor(item.product_price).toLocaleString()}원</span>
-                                <span className="ml-1 text-gray-400 line-through">{Math.floor((item as any).product_original_price).toLocaleString()}원</span>
-                              </>
+                            {item.product_thumbnail ? (
+                              <Image
+                                src={item.product_thumbnail}
+                                alt={item.product_name}
+                                fill
+                                className="object-cover"
+                                sizes="80px"
+                              />
                             ) : (
-                              <>{Math.floor(item.product_price).toLocaleString()}원</>
+                              <div className="flex h-full items-center justify-center bg-gray-100 text-gray-400 dark:bg-gray-800">
+                                <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                                </svg>
+                              </div>
                             )}
-                            {' '}× {item.quantity}개
-                          </p>
+                          </Link>
+                          <div className="flex flex-1 flex-col justify-between">
+                            <div>
+                              <Link
+                                href={`/products/${item.product_id}`}
+                                className="text-sm font-medium text-gray-900 hover:underline dark:text-white"
+                              >
+                                {item.product_name}
+                              </Link>
+                              {item.selected_options && item.selected_options.length > 0 && (
+                                <div className="mt-1 space-y-0.5">
+                                  {item.selected_options.map((option, idx) => (
+                                    <p key={idx} className="text-xs text-gray-500 dark:text-gray-400">
+                                      • {option.option_name}: {option.value_name}
+                                      {option.price > 0 && ` (+${option.price.toLocaleString()}원)`}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                {(item as any).is_on_sale ? (
+                                  <>
+                                    <span className="text-blue-600 dark:text-blue-400">{Math.floor(item.product_price).toLocaleString()}원</span>
+                                    <span className="ml-1 text-gray-400 line-through">{Math.floor((item as any).product_original_price).toLocaleString()}원</span>
+                                  </>
+                                ) : (
+                                  <>{Math.floor(item.product_price).toLocaleString()}원</>
+                                )}
+                                {' '}× {item.quantity}개
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                                {Math.floor(item.total_price).toLocaleString()}원
+                              </p>
+                              {(item as any).is_on_sale && (
+                                <p className="text-xs text-gray-400 line-through">
+                                  {Math.floor((item as any).product_original_price * item.quantity).toLocaleString()}원
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                            {Math.floor(item.total_price).toLocaleString()}원
-                          </p>
-                          {(item as any).is_on_sale && (
-                            <p className="text-xs text-gray-400 line-through">
-                              {Math.floor((item as any).product_original_price * item.quantity).toLocaleString()}원
-                            </p>
-                          )}
+
+                        {/* 쿠폰 선택 UI - 항상 표시 */}
+                        <div className="mt-3 pl-24">
+                          <label className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                            쿠폰 선택
+                          </label>
+                          <select
+                            value={selectedCoupons[item.id] || ''}
+                            onChange={(e) => {
+                              const couponId = e.target.value;
+                              if (couponId) {
+                                const userCoupon = availableCoupons.find(uc => uc.id === couponId);
+                                if (userCoupon?.coupon?.min_order_amount) {
+                                  if (item.total_price < userCoupon.coupon.min_order_amount) {
+                                    alert(`이 쿠폰은 ${userCoupon.coupon.min_order_amount.toLocaleString()}원 이상 구매시 사용 가능합니다.`);
+                                    return;
+                                  }
+                                }
+                              }
+                              setSelectedCoupons(prev => ({
+                                ...prev,
+                                [item.id]: couponId
+                              }));
+                            }}
+                            className="w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-white"
+                          >
+                            <option value="">
+                              {itemCoupons.length === 0 ? '사용 가능한 쿠폰이 없습니다' : '쿠폰을 선택하세요'}
+                            </option>
+                            {itemCoupons.map((userCoupon) => {
+                              const coupon = userCoupon.coupon!;
+                              const discountText = coupon.discount_type === 'percent'
+                                ? `${coupon.discount_value}% 할인`
+                                : `${coupon.discount_value.toLocaleString()}원 할인`;
+
+                              const conditions = [];
+                              if (coupon.min_order_amount) {
+                                conditions.push(`${coupon.min_order_amount.toLocaleString()}원 이상`);
+                              }
+                              if (coupon.max_discount_amount && coupon.discount_type === 'percent') {
+                                conditions.push(`최대 ${coupon.max_discount_amount.toLocaleString()}원`);
+                              }
+
+                              const canUse = !coupon.min_order_amount || item.total_price >= coupon.min_order_amount;
+
+                              return (
+                                <option
+                                  key={userCoupon.id}
+                                  value={userCoupon.id}
+                                  disabled={!canUse}
+                                >
+                                  {coupon.name} - {discountText}
+                                  {conditions.length > 0 && ` (${conditions.join(', ')})`}
+                                  {!canUse && ' - 사용 불가'}
+                                </option>
+                              );
+                            })}
+                          </select>
+                          {selectedCoupons[item.id] && (() => {
+                            const userCoupon = availableCoupons.find(uc => uc.id === selectedCoupons[item.id]);
+                            if (!userCoupon?.coupon) return null;
+
+                            const coupon = userCoupon.coupon;
+                            let discount = 0;
+                            if (coupon.discount_type === 'percent') {
+                              discount = (item.total_price * coupon.discount_value) / 100;
+                              if (coupon.max_discount_amount && discount > coupon.max_discount_amount) {
+                                discount = coupon.max_discount_amount;
+                              }
+                            } else {
+                              discount = coupon.discount_value;
+                            }
+                            if (discount > item.total_price) {
+                              discount = item.total_price;
+                            }
+
+                            return (
+                              <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+                                할인 금액: -{Math.floor(discount).toLocaleString()}원
+                              </p>
+                            );
+                          })()}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -871,6 +1043,12 @@ export default function OrderPage() {
                     <span>배송비</span>
                     <span>{deliveryFee === 0 ? '무료' : `${deliveryFee.toLocaleString()}원`}</span>
                   </div>
+                  {couponDiscount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                      <span>쿠폰 할인</span>
+                      <span>-{Math.floor(couponDiscount).toLocaleString()}원</span>
+                    </div>
+                  )}
                   {pointsToUse > 0 && (
                     <div className="flex justify-between text-sm text-red-600 dark:text-red-400">
                       <span>포인트 사용</span>
@@ -879,7 +1057,7 @@ export default function OrderPage() {
                   )}
                   {deliveryFee > 0 && (
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      * 50,000원 이상 구매시 무료배송
+                      * {deliverySettings.freeThreshold.toLocaleString()}원 이상 구매시 무료배송
                     </p>
                   )}
                 </div>

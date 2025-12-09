@@ -277,6 +277,12 @@ export default function OrderDetailPage() {
                     <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                       {item.price.toLocaleString()}원 × {item.quantity}개
                     </p>
+                    {item.coupon_discount > 0 && (
+                      <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+                        쿠폰 할인: -{item.coupon_discount.toLocaleString()}원
+                        {item.coupon_name && ` (${item.coupon_name})`}
+                      </p>
+                    )}
                     {order.status === 'delivered' && user?.user_type === 'buyer' && (
                       writtenReviewProductIds.has(item.product_id) ? (
                         <span className="mt-2 inline-block border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
@@ -330,6 +336,12 @@ export default function OrderDetailPage() {
                 {order.shipping_fee === 0 ? '무료' : `${order.shipping_fee.toLocaleString()}원`}
               </span>
             </div>
+            {order.total_coupon_discount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">쿠폰 할인</span>
+                <span className="text-green-600 dark:text-green-400">-{order.total_coupon_discount.toLocaleString()}원</span>
+              </div>
+            )}
             {order.points_used > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600 dark:text-gray-400">포인트 사용</span>
@@ -403,6 +415,12 @@ export default function OrderDetailPage() {
                 {order.shipping_fee === 0 ? '0 원' : `${order.shipping_fee.toLocaleString()} 원`}
               </span>
             </div>
+            {order.total_coupon_discount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600 dark:text-gray-400">쿠폰 할인</span>
+                <span className="text-green-600 dark:text-green-400">-{order.total_coupon_discount.toLocaleString()} 원</span>
+              </div>
+            )}
             {order.points_used > 0 && (
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">포인트 할인</span>

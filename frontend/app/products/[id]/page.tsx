@@ -641,6 +641,7 @@ export default function ProductDetailPage() {
                         option_id: optionId,
                         value_id: valueId
                       })),
+                    vendor_id: (displayProduct as any)?.vendor_id,
                     vendor_name: displayProduct?.vendor_name
                   };
 

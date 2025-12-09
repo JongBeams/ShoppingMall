@@ -87,6 +87,7 @@ export interface CartItem {
   product_thumbnail: string | null;
   quantity: number;
   total_price: number;
+  vendor_id?: string;  // 판매자 ID
   selected_options?: Array<{
     option_id: string;
     option_name: string;

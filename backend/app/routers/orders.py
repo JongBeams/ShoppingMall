@@ -39,6 +39,13 @@ class OrderItemRequest(BaseModel):
     selected_options: Optional[List[dict]] = []
 
 
+class SelectedCoupon(BaseModel):
+    """선택된 쿠폰"""
+    itemId: str  # cart_item ID (임시)
+    productId: str  # product ID
+    userCouponId: str  # user_coupon ID
+
+
 class CreateOrderRequest(BaseModel):
     """주문 생성 요청"""
     items: List[OrderItemRequest]
@@ -52,6 +59,7 @@ class CreateOrderRequest(BaseModel):
     payment_method: str  # card, bank, kakao, toss
     toss_order_id: Optional[str] = None  # 토스페이먼츠에서 전달한 orderId (nanoid)
     points_used: Optional[int] = 0  # 사용한 포인트
+    selected_coupons: Optional[List[SelectedCoupon]] = []  # 선택된 쿠폰 정보
 
 
 class OrderResponse(BaseModel):
@@ -182,6 +190,12 @@ async def create_order(
         order = order_response.data[0]
         order_id = order["id"]
 
+        # 선택된 쿠폰 매핑 생성 (product_id -> user_coupon_id)
+        coupon_map_by_product = {}
+        if request.selected_coupons:
+            for sc in request.selected_coupons:
+                coupon_map_by_product[sc.productId] = sc.userCouponId
+
         # 주문 아이템 생성
         order_items = []
         for item in request.items:
@@ -212,7 +226,18 @@ async def create_order(
             })
 
         # 주문 아이템 일괄 삽입
-        supabase.table("order_items").insert(order_items).execute()
+        order_items_response = supabase.table("order_items").insert(order_items).execute()
+
+        # 생성된 주문 아이템에 쿠폰 연결 (user_coupons.order_id 업데이트)
+        if order_items_response.data and coupon_map_by_product:
+            for created_item in order_items_response.data:
+                product_id = created_item["product_id"]
+                if product_id in coupon_map_by_product:
+                    user_coupon_id = coupon_map_by_product[product_id]
+                    # user_coupons 테이블의 order_id를 order_item.id로 업데이트 (아직 is_using은 false)
+                    supabase.table("user_coupons").update({
+                        "order_id": created_item["id"]
+                    }).eq("id", user_coupon_id).execute()
 
         # 재고 차감은 결제 승인 성공 시 수행 (process_payment_success에서 처리)
 
@@ -511,7 +536,8 @@ async def get_order(
                 logger.info(f"필터링된 총액 계산 오류: {str(e)}")
                 # 오류 발생 시 원래 총액 유지
 
-        # 각 아이템에 상품 이미지 추가
+        # 각 아이템에 상품 이미지 및 쿠폰 할인 정보 추가
+        total_coupon_discount = 0
         for item in order_items:
             product_response = (
                 supabase.table("products")
@@ -523,7 +549,23 @@ async def get_order(
             if product_response.data:
                 item["product_thumbnail"] = product_response.data.get("thumbnail_url")
 
+            # order_item에 사용된 쿠폰 정보 조회
+            coupon_response = (
+                supabase.table("user_coupons")
+                .select("id, discount_amount, coupon_id, coupons(name)")
+                .eq("order_id", item["id"])
+                .execute()
+            )
+            if coupon_response.data and len(coupon_response.data) > 0:
+                coupon_data = coupon_response.data[0]
+                item["coupon_discount"] = float(coupon_data.get("discount_amount", 0))
+                item["coupon_name"] = coupon_data.get("coupons", {}).get("name", "") if coupon_data.get("coupons") else ""
+                total_coupon_discount += item["coupon_discount"]
+            else:
+                item["coupon_discount"] = 0
+
         order["items"] = order_items
+        order["total_coupon_discount"] = total_coupon_discount
 
         # 디버깅: 주문 데이터 확인
         logger.info(f"주문 ID: {order.get('id')}")

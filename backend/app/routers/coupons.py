@@ -364,6 +364,49 @@ async def issue_coupon(
         )
 
 
+@router.get("/user/available", response_model=UserCouponListResponse)
+async def get_available_coupons(
+    limit: int = 100,
+    offset: int = 0,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    사용 가능한 쿠폰 목록 조회 (사용하지 않았고 만료되지 않은 쿠폰)
+
+    **Query Parameters:**
+    - limit: 페이지당 개수 (기본: 100, 최대: 100)
+    - offset: 오프셋 (기본: 0)
+
+    **Returns:**
+    - user_coupons: 사용 가능한 쿠폰 목록 (쿠폰 정보 포함)
+    - total: 전체 개수
+    """
+    try:
+        user_id = UUID(current_user["id"])
+        coupon_service = get_coupon_service()
+
+        # is_using=False (사용하지 않은), include_expired=False (만료되지 않은)
+        return await coupon_service.get_user_coupons(
+            user_id=user_id,
+            is_using=False,
+            include_expired=False,
+            limit=min(limit, 100),
+            offset=offset
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"잘못된 요청입니다: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"사용 가능한 쿠폰 조회 실패: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="쿠폰 조회 중 오류가 발생했습니다."
+        )
+
+
 @router.get("/user/my-coupons", response_model=UserCouponListResponse)
 async def get_my_coupons(
     is_using: Optional[bool] = None,

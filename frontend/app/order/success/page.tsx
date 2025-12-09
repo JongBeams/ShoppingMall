@@ -64,6 +64,7 @@ export default function PaymentSuccessPage() {
           payment_method: checkoutData.payment_method,
           toss_order_id: orderId,  // 토스가 전달한 nanoid 저장
           points_used: checkoutData.pointsUsed || 0,  // 사용한 포인트
+          selected_coupons: checkoutData.selectedCoupons || [],  // 선택된 쿠폰 정보
         };
 
         const orderResponse = await fetch(`${API_BASE_URL}/orders`, {

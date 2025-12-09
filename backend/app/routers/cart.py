@@ -48,6 +48,7 @@ class CartItemResponse(BaseModel):
     product_name: str
     product_price: Decimal
     product_thumbnail: Optional[str]
+    vendor_id: Optional[str]
     quantity: int
     total_price: Decimal
     selected_options: Optional[List[SelectedOptionResponse]] = None
@@ -85,7 +86,7 @@ async def get_cart(current_user: dict = Depends(get_current_user)):
         product_ids = [item["product_id"] for item in cart_items]
         products_response = (
             supabase.table("products")
-            .select("id, name, price, thumbnail_url, discount_price, discount_start, discount_end")
+            .select("id, name, price, thumbnail_url, discount_price, discount_start, discount_end, vendor_id")
             .in_("id", product_ids)
             .execute()
         )
@@ -169,6 +170,7 @@ async def get_cart(current_user: dict = Depends(get_current_user)):
                 "product_original_price": original_price,
                 "is_on_sale": is_on_sale,
                 "product_thumbnail": product.get("thumbnail_url"),
+                "vendor_id": product.get("vendor_id"),
                 "quantity": cart_item["quantity"],
                 "total_price": item_total,
                 "selected_options": selected_options_data if selected_options_data else None,

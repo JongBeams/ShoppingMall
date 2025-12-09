@@ -194,7 +194,7 @@ async def process_payment_success(
         # 주문 아이템 조회
         order_items_response = (
             supabase.table("order_items")
-            .select("product_id, quantity")
+            .select("id, product_id, quantity, price, subtotal")
             .eq("order_id", order["id"])
             .execute()
         )
@@ -222,6 +222,59 @@ async def process_payment_success(
     except Exception as e:
         # 재고 차감 실패 시 로그만 남기고 진행 (결제는 이미 완료됨)
         logger.info(f"⚠️ 재고 차감 실패 (주문 ID: {order['id']}): {str(e)}")
+        # 실패해도 결제는 완료된 상태이므로 에러를 발생시키지 않음
+
+    # 8-1. 쿠폰 할인 금액 계산 및 저장 (결제 승인 완료 후)
+    try:
+        # 이 주문에 연결된 user_coupons 조회 (order_id가 order_items.id를 참조)
+        order_items_with_coupons = (
+            supabase.table("user_coupons")
+            .select("id, coupon_id, order_id, coupons(discount_type, discount_value, max_discount_amount, min_order_amount)")
+            .in_("order_id", [item["id"] for item in order_items_response.data or []])
+            .execute()
+        )
+
+        if order_items_with_coupons.data:
+            # order_item_id로 매핑
+            order_items_map = {item["id"]: item for item in order_items_response.data or []}
+
+            for user_coupon in order_items_with_coupons.data:
+                order_item_id = user_coupon["order_id"]
+                order_item = order_items_map.get(order_item_id)
+
+                if not order_item or not user_coupon.get("coupons"):
+                    continue
+
+                coupon = user_coupon["coupons"]
+                item_total = float(order_item["subtotal"])
+
+                # 할인 금액 계산
+                discount_amount = 0
+                if coupon["discount_type"] == "percent":
+                    discount_amount = item_total * (float(coupon["discount_value"]) / 100)
+                    # 최대 할인 금액 적용
+                    if coupon.get("max_discount_amount"):
+                        max_discount = float(coupon["max_discount_amount"])
+                        if discount_amount > max_discount:
+                            discount_amount = max_discount
+                else:  # fixed
+                    discount_amount = float(coupon["discount_value"])
+
+                # 할인 금액이 상품 가격을 초과하지 않도록
+                if discount_amount > item_total:
+                    discount_amount = item_total
+
+                # user_coupons 테이블 업데이트: discount_amount 저장, is_using=true
+                supabase.table("user_coupons").update({
+                    "is_using": True,
+                    "discount_amount": discount_amount
+                }).eq("id", user_coupon["id"]).execute()
+
+                logger.info(f"✅ 쿠폰 할인 적용: user_coupon_id={user_coupon['id']}, discount={discount_amount}, order_item_id={order_item_id}")
+
+    except Exception as e:
+        # 쿠폰 처리 실패 시 로그만 남기고 진행 (결제는 이미 완료됨)
+        logger.warning(f"⚠️ 쿠폰 할인 처리 실패 (주문 ID: {order['id']}): {str(e)}")
         # 실패해도 결제는 완료된 상태이므로 에러를 발생시키지 않음
 
     # 9. 주문 완료 포인트 자동 적립 (결제 금액의 1% 적립)
