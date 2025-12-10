@@ -14,9 +14,18 @@ export default function Orders({ user }: OrdersProps) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [writtenReviewProductIds, setWrittenReviewProductIds] = useState<Set<string>>(new Set());
+  const [reportedProductIds, setReportedProductIds] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const itemsPerPage = 10;
+
+  // 신고 관련 상태
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportProductId, setReportProductId] = useState<string>('');
+  const [reportProductName, setReportProductName] = useState<string>('');
+  const [reportReason, setReportReason] = useState<string>('');
+  const [reportDescription, setReportDescription] = useState<string>('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -24,6 +33,7 @@ export default function Orders({ user }: OrdersProps) {
 
   useEffect(() => {
     fetchWrittenReviews();
+    fetchReportedProducts();
   }, []);
 
   const fetchOrders = async () => {
@@ -74,6 +84,33 @@ export default function Orders({ user }: OrdersProps) {
       }
     } catch (error) {
       console.error('리뷰 목록 조회 실패:', error);
+    }
+  };
+
+  const fetchReportedProducts = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/products/my-reports`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('신고 목록 조회:', data); // 디버깅용
+        const productIds = new Set<string>(
+          (data.reports || []).map((r: any) => r.product_id)
+        );
+        console.log('신고한 상품 IDs:', productIds); // 디버깅용
+        setReportedProductIds(productIds);
+      } else {
+        console.error('신고 목록 조회 실패 응답:', response.status);
+      }
+    } catch (error) {
+      console.error('신고 목록 조회 실패:', error);
     }
   };
 
@@ -146,6 +183,63 @@ export default function Orders({ user }: OrdersProps) {
     } catch (error) {
       console.error('구매확정 실패:', error);
       alert('구매확정 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleReportProduct = (productId: string, productName: string) => {
+    setReportProductId(productId);
+    setReportProductName(productName);
+    setReportReason('');
+    setReportDescription('');
+    setShowReportModal(true);
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportReason) {
+      alert('신고 사유를 선택해주세요.');
+      return;
+    }
+    if (!reportDescription.trim()) {
+      alert('신고 내용을 입력해주세요.');
+      return;
+    }
+
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    setIsSubmittingReport(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/products/${reportProductId}/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          reason: reportReason,
+          description: reportDescription,
+        }),
+      });
+
+      if (response.ok) {
+        alert('상품 신고가 접수되었습니다. 검토 후 조치하겠습니다.');
+        setShowReportModal(false);
+        setReportReason('');
+        setReportDescription('');
+        // 신고 목록 갱신
+        setReportedProductIds(prev => new Set([...prev, reportProductId]));
+      } else {
+        const error = await response.json();
+        alert(error.detail || '신고 접수에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('신고 접수 실패:', error);
+      alert('신고 접수 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmittingReport(false);
     }
   };
 
@@ -270,18 +364,32 @@ export default function Orders({ user }: OrdersProps) {
                         {Math.floor(item.subtotal || (item.price * item.quantity) || 0).toLocaleString()}원
                       </p>
                       {(order.status === 'delivered' || order.status === 'confirmed') && user?.user_type !== 'seller' && (
-                        writtenReviewProductIds.has(item.product_id) ? (
-                          <span className="mt-2 inline-block border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
-                            리뷰작성완료
-                          </span>
-                        ) : (
-                          <Link
-                            href={`/reviews/write?orderId=${order.id}&productId=${item.product_id}`}
-                            className="mt-2 inline-block border border-blue-500 px-3 py-1 text-xs font-medium text-blue-500 transition hover:bg-blue-50 dark:hover:bg-blue-950"
-                          >
-                            리뷰작성
-                          </Link>
-                        )
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {writtenReviewProductIds.has(item.product_id) ? (
+                            <span className="inline-block border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                              리뷰작성완료
+                            </span>
+                          ) : (
+                            <Link
+                              href={`/reviews/write?orderId=${order.id}&productId=${item.product_id}`}
+                              className="inline-block border border-blue-500 px-3 py-1 text-xs font-medium text-blue-500 transition hover:bg-blue-50 dark:hover:bg-blue-950"
+                            >
+                              리뷰작성
+                            </Link>
+                          )}
+                          {reportedProductIds.has(item.product_id) ? (
+                            <span className="inline-block border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                              신고완료
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleReportProduct(item.product_id, item.product_name)}
+                              className="inline-block border border-red-500 px-3 py-1 text-xs font-medium text-red-500 transition hover:bg-red-50 dark:hover:bg-red-950"
+                            >
+                              상품신고
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -367,6 +475,70 @@ export default function Orders({ user }: OrdersProps) {
           >
             다음
           </button>
+        </div>
+      )}
+
+      {/* 신고 모달 */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-900">
+            <h3 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">상품 신고</h3>
+
+            <div className="mb-4">
+              <p className="mb-2 text-sm text-gray-700 dark:text-gray-300">
+                신고 상품: <span className="font-medium">{reportProductName}</span>
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                신고 사유 <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                className="w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              >
+                <option value="">선택해주세요</option>
+                <option value="fake">위조/모조품</option>
+                <option value="illegal">불법 상품</option>
+                <option value="inappropriate">부적절한 콘텐츠</option>
+                <option value="fraud">사기/허위 정보</option>
+                <option value="defective">불량/하자 상품</option>
+                <option value="other">기타</option>
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                신고 내용 <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={reportDescription}
+                onChange={(e) => setReportDescription(e.target.value)}
+                placeholder="신고 사유를 구체적으로 작성해주세요."
+                rows={5}
+                className="w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowReportModal(false)}
+                disabled={isSubmittingReport}
+                className="flex-1 border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSubmitReport}
+                disabled={isSubmittingReport}
+                className="flex-1 border border-red-500 bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
+              >
+                {isSubmittingReport ? '신고 접수 중...' : '신고하기'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

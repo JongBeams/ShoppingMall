@@ -954,3 +954,133 @@ async def update_system_settings(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"시스템 설정 업데이트 중 오류가 발생했습니다: {str(e)}"
         )
+
+
+# ========== 상품 신고 관리 ==========
+
+class ProductReportResponse(BaseModel):
+    id: str
+    product_id: str
+    product_name: str
+    product_thumbnail: Optional[str]
+    reporter_id: str
+    reporter_name: str
+    reason: str
+    description: str
+    status: str
+    created_at: str
+    report_count: int  # 해당 상품에 대한 총 신고 횟수
+
+
+@router.get("/product-reports")
+async def get_product_reports(
+    status_filter: Optional[str] = None,
+    current_admin: dict = Depends(get_current_admin)
+):
+    """관리자용 - 신고된 상품 목록 조회"""
+    supabase_admin = get_supabase_admin_client()
+
+    try:
+        # 신고 목록 조회
+        query = supabase_admin.table("product_reports").select(
+            "id, product_id, reporter_id, reason, description, status, created_at"
+        )
+
+        if status_filter:
+            query = query.eq("status", status_filter)
+
+        query = query.order("created_at", desc=True)
+        reports_response = query.execute()
+
+        if not reports_response.data:
+            return {"reports": [], "total": 0}
+
+        # 상품 ID 및 신고자 ID 수집
+        product_ids = list(set([r["product_id"] for r in reports_response.data]))
+        reporter_ids = list(set([r["reporter_id"] for r in reports_response.data]))
+
+        # 상품 정보 조회
+        products_response = supabase_admin.table("products").select(
+            "id, name, thumbnail_url"
+        ).in_("id", product_ids).execute()
+
+        product_map = {p["id"]: p for p in (products_response.data or [])}
+
+        # 신고자 정보 조회
+        reporters_response = supabase_admin.table("profiles").select(
+            "id, full_name"
+        ).in_("id", reporter_ids).execute()
+
+        reporter_map = {r["id"]: r for r in (reporters_response.data or [])}
+
+        # 각 상품별 신고 횟수 계산
+        from collections import Counter
+        report_counts = Counter([r["product_id"] for r in reports_response.data])
+
+        # 결과 구성
+        reports_list = []
+        for report in reports_response.data:
+            product = product_map.get(report["product_id"], {})
+            reporter = reporter_map.get(report["reporter_id"], {})
+
+            reports_list.append({
+                "id": report["id"],
+                "product_id": report["product_id"],
+                "product_name": product.get("name", "알 수 없는 상품"),
+                "product_thumbnail": product.get("thumbnail_url"),
+                "reporter_id": report["reporter_id"],
+                "reporter_name": reporter.get("full_name", "알 수 없음"),
+                "reason": report["reason"],
+                "description": report["description"],
+                "status": report["status"],
+                "created_at": report["created_at"],
+                "report_count": report_counts[report["product_id"]]
+            })
+
+        return {"reports": reports_list, "total": len(reports_list)}
+
+    except Exception as e:
+        logger.error(f"상품 신고 목록 조회 실패: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"상품 신고 목록 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.patch("/product-reports/{report_id}/status")
+async def update_report_status(
+    report_id: str,
+    new_status: str,  # pending, reviewing, resolved, rejected
+    current_admin: dict = Depends(get_current_admin)
+):
+    """신고 상태 변경"""
+    supabase_admin = get_supabase_admin_client()
+
+    try:
+        allowed_statuses = ["pending", "reviewing", "resolved", "rejected"]
+        if new_status not in allowed_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"유효하지 않은 상태입니다. 허용된 상태: {', '.join(allowed_statuses)}"
+            )
+
+        response = supabase_admin.table("product_reports").update({
+            "status": new_status
+        }).eq("id", report_id).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="신고 내역을 찾을 수 없습니다."
+            )
+
+        return MessageResponse(message="신고 상태가 변경되었습니다.")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"신고 상태 변경 실패: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"신고 상태 변경 중 오류가 발생했습니다: {str(e)}"
+        )

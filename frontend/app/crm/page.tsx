@@ -30,6 +30,17 @@ interface PendingVendor {
   store_name?: string;
 }
 
+interface ReportedProduct {
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_thumbnail: string;
+  reason: string;
+  status: string;
+  created_at: string;
+  report_count: number;
+}
+
 export default function CRMPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +48,7 @@ export default function CRMPage() {
   const [newUsers, setNewUsers] = useState<NewUser[]>([]);
   const [pendingInquiries, setPendingInquiries] = useState<PendingInquiry[]>([]);
   const [pendingVendors, setPendingVendors] = useState<PendingVendor[]>([]);
+  const [reportedProducts, setReportedProducts] = useState<ReportedProduct[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalPendingVendors, setTotalPendingVendors] = useState(0);
@@ -145,6 +157,32 @@ export default function CRMPage() {
     };
 
     fetchTotalProducts();
+  }, []);
+
+  // 신고된 상품 조회
+  useEffect(() => {
+    const fetchReportedProducts = async () => {
+      const adminToken = localStorage.getItem('admin_token');
+      if (!adminToken) return;
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/admin/product-reports`, {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // 최근 2개만 표시
+          setReportedProducts(data.reports?.slice(0, 2) || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch reported products:', error);
+      }
+    };
+
+    fetchReportedProducts();
   }, []);
 
   // 최근 활동 통합
@@ -547,46 +585,68 @@ export default function CRMPage() {
         <div className="border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-base font-bold text-gray-900 dark:text-white">신고된 상품</h2>
-            <Link href="/crm/reports?type=product" className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400">
+            <Link href="/crm/product-reports" className="text-xs text-gray-500 hover:text-gray-900 dark:text-gray-400">
               +
             </Link>
           </div>
           <div className="space-y-3">
-            {[
-              { id: 1, product: '가짜 명품 가방', reason: '위조품 의심', time: '10분 전', image: 'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=200&q=80', reportCount: 5 },
-              { id: 2, product: '불법 복제 상품', reason: '저작권 침해', time: '1시간 전', image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&q=80', reportCount: 3 },
-            ].map((report) => (
-              <Link
-                key={report.id}
-                href={`/crm/reports/products/${report.id}`}
-                className="group flex gap-3"
-              >
-                <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden border border-gray-200 dark:border-gray-700">
-                  <Image
-                    src={report.image}
-                    alt={report.product}
-                    fill
-                    className="object-cover transition group-hover:scale-105"
-                    sizes="80px"
-                  />
-                  <div className="absolute left-0 top-0 bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
-                    {report.reportCount}건
-                  </div>
-                </div>
-                <div className="flex flex-1 flex-col justify-center">
-                  <h3 className="mb-1 text-sm font-medium text-gray-900 dark:text-white">
-                    {report.product}
-                  </h3>
-                  <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{report.reason}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-red-600 dark:text-red-400">
-                      신고 {report.reportCount}건
-                    </span>
-                    <span className="text-xs text-gray-400">· {report.time}</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
+            {reportedProducts.length > 0 ? (
+              reportedProducts.map((report) => {
+                const reasonMap: Record<string, string> = {
+                  fake: '위조/모조품',
+                  illegal: '불법 상품',
+                  inappropriate: '부적절한 콘텐츠',
+                  fraud: '사기/허위 정보',
+                  defective: '불량/하자 상품',
+                  other: '기타'
+                };
+
+                return (
+                  <Link
+                    key={report.id}
+                    href={`/crm/product-reports?reportId=${report.id}`}
+                    className="group flex gap-3"
+                  >
+                    <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden border border-gray-200 dark:border-gray-700">
+                      {report.product_thumbnail ? (
+                        <Image
+                          src={report.product_thumbnail}
+                          alt={report.product_name}
+                          fill
+                          className="object-cover transition group-hover:scale-105"
+                          sizes="80px"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center bg-gray-100 text-gray-400 dark:bg-gray-800">
+                          <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className="absolute left-0 top-0 bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
+                        {report.report_count}건
+                      </div>
+                    </div>
+                    <div className="flex flex-1 flex-col justify-center">
+                      <h3 className="mb-1 text-sm font-medium text-gray-900 dark:text-white">
+                        {report.product_name}
+                      </h3>
+                      <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{reasonMap[report.reason] || report.reason}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-red-600 dark:text-red-400">
+                          신고 {report.report_count}건
+                        </span>
+                        <span className="text-xs text-gray-400">· {getTimeAgo(report.created_at)}</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })
+            ) : (
+              <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                신고된 상품이 없습니다
+              </div>
+            )}
           </div>
         </div>
       </section>

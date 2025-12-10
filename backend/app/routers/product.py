@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status, UploadFile, File, HTTPException, Depends
 import asyncio
 import logging
+from pydantic import BaseModel
 
 
 logger = logging.getLogger(__name__)
@@ -184,6 +185,125 @@ async def get_categories():
     categories = categories_response.data or []
 
     return {"categories": categories}
+
+
+@router.get("/best", summary="베스트 상품 조회 (주문량 기준)")
+async def get_best_products():
+    """
+    주문량 기준 베스트 상품 Top 10을 조회합니다 (공개 API)
+    """
+    supabase = get_supabase_client()
+
+    try:
+        # 주문 아이템에서 상품별 판매량 집계
+        order_items_response = (
+            supabase.table("order_items")
+            .select("product_id, quantity")
+            .execute()
+        )
+
+        # 상품별 총 판매량 계산
+        from collections import defaultdict
+        product_sales = defaultdict(int)
+
+        for item in (order_items_response.data or []):
+            product_sales[item["product_id"]] += item.get("quantity", 1)
+
+        # 판매량 기준 상위 10개 상품 ID 추출
+        top_product_ids = sorted(product_sales.items(), key=lambda x: x[1], reverse=True)[:10]
+        top_product_ids = [pid for pid, _ in top_product_ids]
+
+        if not top_product_ids:
+            # 판매 데이터가 없으면 최신 상품 10개 반환
+            products_response = (
+                supabase.table("products")
+                .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, is_active, created_at, discount_price, discount_start, discount_end")
+                .eq("is_active", True)
+                .order("created_at", desc=True)
+                .limit(10)
+                .execute()
+            )
+            products = products_response.data or []
+        else:
+            # 베스트 상품 조회
+            products_response = (
+                supabase.table("products")
+                .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, is_active, created_at, discount_price, discount_start, discount_end")
+                .in_("id", top_product_ids)
+                .eq("is_active", True)
+                .execute()
+            )
+            products = products_response.data or []
+
+            # 판매량 순서대로 정렬
+            products_dict = {p["id"]: p for p in products}
+            products = [products_dict[pid] for pid in top_product_ids if pid in products_dict]
+
+    except Exception as e:
+        logger.error(f"베스트 상품 조회 실패: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"베스트 상품을 조회하는 중 오류가 발생했습니다: {str(e)}"
+        )
+
+    category_ids = {product["category_id"] for product in products if product.get("category_id")}
+    vendor_ids = {product["vendor_id"] for product in products if product.get("vendor_id")}
+    category_map = {}
+    vendor_map = {}
+
+    if category_ids:
+        try:
+            categories_response = (
+                supabase.table("categories")
+                .select("id, slug, name")
+                .in_("id", list(category_ids))
+                .execute()
+            )
+            for category in categories_response.data or []:
+                category_map[category["id"]] = {
+                    "slug": category.get("slug"),
+                    "name": category.get("name"),
+                }
+        except Exception:
+            category_map = {}
+
+    if vendor_ids:
+        try:
+            from app.services.supabase import get_supabase_admin_client
+            supabase_admin = get_supabase_admin_client()
+            vendors_response = (
+                supabase_admin.table("vendors")
+                .select("id, store_name")
+                .in_("id", list(vendor_ids))
+                .execute()
+            )
+            for vendor in vendors_response.data or []:
+                vendor_map[vendor["id"]] = vendor.get("store_name")
+        except Exception as e:
+            logger.info(f"Error fetching vendors: {str(e)}")
+            vendor_map = {}
+
+    product_list = []
+    for product in products:
+        category_info = category_map.get(product.get("category_id"), {})
+        vendor_name = vendor_map.get(product.get("vendor_id"))
+        product_list.append({
+            "id": product["id"],
+            "name": product["name"],
+            "description": product.get("description"),
+            "price": product["price"],
+            "stock_quantity": product.get("stock_quantity", 0),
+            "thumbnail_url": product.get("thumbnail_url"),
+            "category_slug": category_info.get("slug"),
+            "category_name": category_info.get("name"),
+            "vendor_name": vendor_name,
+            "created_at": product.get("created_at"),
+            "discount_price": product.get("discount_price"),
+            "discount_start": product.get("discount_start"),
+            "discount_end": product.get("discount_end"),
+        })
+
+    return {"products": product_list}
 
 
 @router.get("/", summary="전체 상품 목록 조회")
@@ -656,3 +776,118 @@ async def delete_product(
     result = service.execute()
 
     return result
+
+
+# ============================================
+# 상품 신고 API
+# ============================================
+
+class ProductReportRequest(BaseModel):
+    reason: str
+    description: str
+
+
+@router.post("/{product_id}/report", summary="상품 신고")
+async def report_product(
+    product_id: str,
+    request: ProductReportRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    상품을 신고합니다 (인증 필요)
+
+    - **product_id**: 신고할 상품 ID
+    - **reason**: 신고 사유 (fake, illegal, inappropriate, fraud, defective, other)
+    - **description**: 신고 내용
+    """
+    supabase = get_supabase_client()
+
+    # 신고 사유 검증
+    allowed_reasons = ['fake', 'illegal', 'inappropriate', 'fraud', 'defective', 'other']
+    if request.reason not in allowed_reasons:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"유효하지 않은 신고 사유입니다. 허용된 사유: {', '.join(allowed_reasons)}"
+        )
+
+    # 상품 존재 여부 확인
+    product_response = supabase.table("products").select("id, name").eq("id", product_id).execute()
+    if not product_response.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="상품을 찾을 수 없습니다."
+        )
+
+    # 중복 신고 확인
+    try:
+        existing_report = supabase.table("product_reports").select("id").eq("product_id", product_id).eq("reporter_id", current_user["id"]).execute()
+
+        if existing_report.data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 신고한 상품입니다."
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"중복 신고 확인 실패: {str(e)}")
+
+    # 신고 등록
+    try:
+        report_data = {
+            "product_id": product_id,
+            "reporter_id": current_user["id"],
+            "reason": request.reason,
+            "description": request.description,
+            "status": "pending"
+        }
+
+        response = supabase.table("product_reports").insert(report_data).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="신고 등록에 실패했습니다."
+            )
+
+        logger.info(f"상품 신고 등록: product_id={product_id}, reporter_id={current_user['id']}, reason={request.reason}")
+
+        return {
+            "message": "신고가 접수되었습니다.",
+            "report_id": response.data[0]["id"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"상품 신고 실패: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="신고 처리 중 오류가 발생했습니다."
+        )
+
+
+@router.get("/my-reports", summary="내가 신고한 상품 목록")
+async def get_my_reports(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    현재 로그인한 사용자가 신고한 상품 목록을 조회합니다 (인증 필요)
+    """
+    supabase = get_supabase_client()
+
+    try:
+        response = supabase.table("product_reports").select("id, product_id, reason, status, created_at").eq("reporter_id", current_user["id"]).order("created_at", desc=True).execute()
+
+        return {
+            "reports": response.data or [],
+            "count": len(response.data) if response.data else 0
+        }
+
+    except Exception as e:
+        logger.error(f"신고 목록 조회 실패: {str(e)}")
+        # 테이블이 없는 경우 빈 배열 반환
+        return {
+            "reports": [],
+            "count": 0
+        }

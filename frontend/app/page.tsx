@@ -84,11 +84,18 @@ export default function Home() {
 
     const fetchProducts = async () => {
       try {
+        // 베스트 상품 가져오기 (주문량 기준 Top 10)
+        const bestResponse = await fetch(`${API_BASE_URL}/products/best`);
+        if (bestResponse.ok) {
+          const bestData = await bestResponse.json();
+          setBestProducts(bestData.products || []);
+        }
+
+        // 전체 상품 가져오기 (특가 상품 필터링용)
         const response = await fetch(`${API_BASE_URL}/products`);
         if (response.ok) {
           const data = await response.json();
           const allProducts = data.products || data;
-          setBestProducts(allProducts.slice(0, 6));
 
           // 특가 상품: 할인 중인 상품만 필터링 후 할인율 높은 순으로 정렬
           const now = new Date();
