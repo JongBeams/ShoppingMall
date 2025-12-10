@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CRMLayout from '../components/CRMLayout';
+import Pagination from '../components/Pagination';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -24,6 +25,8 @@ export default function FAQsPage() {
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     // 관리자 로그인 체크
@@ -182,7 +185,7 @@ export default function FAQsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {faqs.map((faq) => (
+                  {faqs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((faq) => (
                     <tr
                       key={faq.id}
                       className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
@@ -241,6 +244,15 @@ export default function FAQsPage() {
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(faqs.length / itemsPerPage)}
+          onPageChange={setCurrentPage}
+          itemsPerPage={itemsPerPage}
+          totalItems={faqs.length}
+        />
       </section>
       </div>
     </CRMLayout>

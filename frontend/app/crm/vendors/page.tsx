@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CRMLayout from '../components/CRMLayout';
+import Pagination from '../components/Pagination';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -29,6 +30,8 @@ export default function VendorsPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const adminToken = localStorage.getItem('admin_token');
@@ -330,7 +333,7 @@ export default function VendorsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {vendors.map((vendor) => (
+                    {vendors.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((vendor) => (
                       <tr
                         key={vendor.id}
                         className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
@@ -397,6 +400,15 @@ export default function VendorsPage() {
               </div>
             )}
           </div>
+
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(vendors.length / itemsPerPage)}
+            onPageChange={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            totalItems={vendors.length}
+          />
         </section>
       </div>
     </CRMLayout>

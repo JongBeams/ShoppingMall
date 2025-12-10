@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CRMLayout from '../components/CRMLayout';
+import Pagination from '../components/Pagination';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -23,6 +24,8 @@ export default function NoticesPage() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     // 관리자 로그인 체크
@@ -179,7 +182,7 @@ export default function NoticesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {notices.map((notice) => (
+                  {notices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((notice) => (
                     <tr
                       key={notice.id}
                       className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
@@ -231,6 +234,15 @@ export default function NoticesPage() {
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(notices.length / itemsPerPage)}
+          onPageChange={setCurrentPage}
+          itemsPerPage={itemsPerPage}
+          totalItems={notices.length}
+        />
       </section>
       </div>
     </CRMLayout>

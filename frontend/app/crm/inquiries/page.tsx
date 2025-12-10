@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import CRMLayout from '../components/CRMLayout';
+import Pagination from '../components/Pagination';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -29,6 +30,8 @@ export default function CRMInquiriesPage() {
   const [replyText, setReplyText] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'answered'>('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     // 관리자 로그인 체크
@@ -153,6 +156,13 @@ export default function CRMInquiriesPage() {
     return inquiry.status === filter;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredInquiries.length / itemsPerPage);
+  const paginatedInquiries = filteredInquiries.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   if (isLoading) {
     return (
       <CRMLayout>
@@ -212,7 +222,7 @@ export default function CRMInquiriesPage() {
 
         {/* Inquiry List */}
         <section className="mt-3">
-          {filteredInquiries.length === 0 ? (
+          {paginatedInquiries.length === 0 ? (
             <div className="border border-gray-200 bg-white p-12 text-center dark:border-gray-700 dark:bg-gray-800">
               <svg className="mx-auto mb-4 h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
@@ -221,7 +231,7 @@ export default function CRMInquiriesPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredInquiries.map((inquiry) => (
+              {paginatedInquiries.map((inquiry) => (
                 <div
                   key={inquiry.id}
                   className="border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
@@ -310,6 +320,19 @@ export default function CRMInquiriesPage() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {filteredInquiries.length > 0 && (
+            <div className="mt-3 border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                itemsPerPage={itemsPerPage}
+                totalItems={filteredInquiries.length}
+              />
             </div>
           )}
         </section>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CRMLayout from '../components/CRMLayout';
 import { productAPI } from '@/app/lib/api';
+import Pagination from '../components/Pagination';
 
 interface Product {
   id: string;
@@ -27,6 +28,8 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [products, setProducts] = useState<Product[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const adminToken = localStorage.getItem('admin_token');
@@ -127,6 +130,12 @@ export default function ProductsPage() {
                            product.category_slug === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
 
   if (isLoading) {
     return (
@@ -283,7 +292,7 @@ export default function ProductsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredProducts.map((product) => {
+                    {paginatedProducts.map((product) => {
                       const productStatus = getProductStatus(product);
                       const formattedDate = product.created_at
                         ? new Date(product.created_at).toLocaleString('ko-KR', {
@@ -340,6 +349,15 @@ export default function ProductsPage() {
               </div>
             )}
           </div>
+
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            totalItems={filteredProducts.length}
+          />
         </section>
       </div>
     </CRMLayout>

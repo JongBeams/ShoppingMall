@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import CRMLayout from '../components/CRMLayout';
+import Pagination from '../components/Pagination';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000';
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://127.0.0.1:8000';
@@ -32,6 +33,8 @@ export default function LiveChatPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'waiting' | 'active' | 'closed'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [remoteControlActive, setRemoteControlActive] = useState(false);
   const [showRemoteModal, setShowRemoteModal] = useState(false);
   const [modalPosition, setModalPosition] = useState({ x: 100, y: 100 });
@@ -88,6 +91,7 @@ export default function LiveChatPage() {
       result = result.filter(room => room.status === statusFilter);
     }
     setFilteredRooms(result);
+    setCurrentPage(1); // 필터 변경 시 페이지를 1로 리셋
   }, [chatRooms, searchQuery, statusFilter]);
 
   useEffect(() => {
@@ -558,7 +562,7 @@ export default function LiveChatPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredRooms.map((room) => (
+                    filteredRooms.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((room) => (
                       <tr
                         key={room.id}
                         onClick={() => handleSelectRoom(room)}
@@ -574,6 +578,15 @@ export default function LiveChatPage() {
                   )}
                 </tbody>
               </table>
+
+              {/* Pagination */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={Math.ceil(filteredRooms.length / itemsPerPage)}
+                onPageChange={setCurrentPage}
+                itemsPerPage={itemsPerPage}
+                totalItems={filteredRooms.length}
+              />
             </div>
           </div>
 
