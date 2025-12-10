@@ -4,7 +4,7 @@ from supabase import Client
 from app.services.supabase import get_supabase_client
 from app.models.subscriptions import SubscriptionPlanResponse, SubscriptionPlansResponse
 from app.services.subscriptions import get_plans, get_plan_by_id, get_plan_by_slug
-from app.services.auth_middleware import get_current_user
+from app.services.auth_middleware import get_current_user, get_current_admin
 from app.config import get_settings
 from app.services.points import earn_points
 from pydantic import BaseModel
@@ -153,6 +153,65 @@ async def get_current_subscription(
     except Exception as e:
         logger.info(f"구독 정보 조회 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"구독 정보 조회 실패: {str(e)}")
+
+
+@router.get("/admin/users")
+async def get_all_subscription_users(
+    current_admin: dict = Depends(get_current_admin),
+    supabase: Client = Depends(get_supabase_client)
+):
+    """
+    [관리자] 전체 구독자 목록 조회
+    """
+    try:
+        # subscription_users와 profiles, subscription_plans를 조인하여 조회
+        subscription_response = supabase.table("subscription_users")\
+            .select("*, profiles(id, email, full_name, user_type), subscription_plans(*)")\
+            .order("created_at", desc=True)\
+            .execute()
+
+        subscriptions = subscription_response.data or []
+
+        # 각 구독에 대해 추가 정보 조회
+        for sub in subscriptions:
+            if sub.get("profiles"):
+                profile = sub["profiles"]
+
+                # user_type으로 판매자 여부 확인
+                is_seller = profile.get("user_type") == "seller"
+
+                # 판매자인 경우 vendor 정보 추가 조회
+                if is_seller:
+                    vendor_response = supabase.table("vendors")\
+                        .select("store_name, owner_name")\
+                        .eq("user_id", profile["id"])\
+                        .execute()
+
+                    if vendor_response.data:
+                        sub["vendor_info"] = vendor_response.data[0]
+
+                    # 등록 상품 수 조회
+                    product_count_response = supabase.table("products")\
+                        .select("id", count="exact")\
+                        .eq("vendor_id", profile["id"])\
+                        .execute()
+
+                    sub["product_count"] = product_count_response.count or 0
+
+                # role 필드를 user_type 기반으로 추가 (프론트엔드 호환성)
+                profile["role"] = "seller" if is_seller else "buyer"
+                # display_name을 full_name으로 대체 (프론트엔드 호환성)
+                profile["display_name"] = profile.get("full_name")
+
+        return {
+            "success": True,
+            "subscriptions": subscriptions,
+            "count": len(subscriptions)
+        }
+
+    except Exception as e:
+        logger.error(f"구독자 목록 조회 오류: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"구독자 목록 조회 실패: {str(e)}")
 
 
 @router.post("/confirm")
