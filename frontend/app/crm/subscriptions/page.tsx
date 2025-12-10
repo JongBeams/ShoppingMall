@@ -6,148 +6,76 @@ import CRMLayout from '../components/CRMLayout';
 
 type TabType = 'buyer' | 'seller';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+interface Subscription {
+  id: string;
+  profile_id: string;
+  subscription_plan_id: string;
+  started_at: string;
+  ended_at: string;
+  is_active: boolean;
+  profiles: {
+    id: string;
+    email: string;
+    display_name?: string;
+    full_name?: string;
+    user_type: string;
+    role: string;
+  };
+  subscription_plans: {
+    id: string;
+    name: string;
+    price: number;
+    is_buyer: boolean;
+  };
+  vendor_info?: {
+    store_name: string;
+    owner_name: string;
+  };
+  product_count?: number;
+}
+
 export default function SubscriptionsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('buyer');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
 
-  // 구매자 구독 데이터
-  const [buyerSubscriptions] = useState([
-    {
-      id: 'SUB-B-001250',
-      userName: '김철수',
-      email: 'kim@example.com',
-      planName: '프리미엄 플랜',
-      price: 9900,
-      status: 'active',
-      startDate: '2025-10-01',
-      endDate: '2025-11-01',
-      autoRenewal: true,
-    },
-    {
-      id: 'SUB-B-001249',
-      userName: '이영희',
-      email: 'lee@example.com',
-      planName: '베이직 플랜',
-      price: 4900,
-      status: 'active',
-      startDate: '2025-09-15',
-      endDate: '2025-10-15',
-      autoRenewal: true,
-    },
-    {
-      id: 'SUB-B-001248',
-      userName: '박민수',
-      email: 'park@example.com',
-      planName: '프리미엄 플랜',
-      price: 9900,
-      status: 'expired',
-      startDate: '2025-08-01',
-      endDate: '2025-09-01',
-      autoRenewal: false,
-    },
-    {
-      id: 'SUB-B-001247',
-      userName: '최지원',
-      email: 'choi@example.com',
-      planName: '베이직 플랜',
-      price: 4900,
-      status: 'cancelled',
-      startDate: '2025-07-10',
-      endDate: '2025-08-10',
-      autoRenewal: false,
-    },
-    {
-      id: 'SUB-B-001246',
-      userName: '정수현',
-      email: 'jung@example.com',
-      planName: '프리미엄 플랜',
-      price: 9900,
-      status: 'active',
-      startDate: '2025-10-05',
-      endDate: '2025-11-05',
-      autoRenewal: true,
-    },
-  ]);
-
-  // 판매자 구독 데이터
-  const [sellerSubscriptions] = useState([
-    {
-      id: 'SUB-S-001250',
-      storeName: 'OO농장',
-      ownerName: '홍길동',
-      email: 'hong@example.com',
-      planName: '비즈니스 플랜',
-      price: 29900,
-      status: 'active',
-      startDate: '2025-10-01',
-      endDate: '2025-11-01',
-      autoRenewal: true,
-      productCount: 45,
-    },
-    {
-      id: 'SUB-S-001249',
-      storeName: '제주특산물',
-      ownerName: '김제주',
-      email: 'jeju@example.com',
-      planName: '엔터프라이즈 플랜',
-      price: 49900,
-      status: 'active',
-      startDate: '2025-09-20',
-      endDate: '2025-10-20',
-      autoRenewal: true,
-      productCount: 120,
-    },
-    {
-      id: 'SUB-S-001248',
-      storeName: '정육점',
-      ownerName: '박정육',
-      email: 'meat@example.com',
-      planName: '스타터 플랜',
-      price: 14900,
-      status: 'active',
-      startDate: '2025-10-10',
-      endDate: '2025-11-10',
-      autoRenewal: true,
-      productCount: 25,
-    },
-    {
-      id: 'SUB-S-001247',
-      storeName: '신선마켓',
-      ownerName: '이신선',
-      email: 'fresh@example.com',
-      planName: '비즈니스 플랜',
-      price: 29900,
-      status: 'expired',
-      startDate: '2025-08-15',
-      endDate: '2025-09-15',
-      autoRenewal: false,
-      productCount: 38,
-    },
-    {
-      id: 'SUB-S-001246',
-      storeName: '유기농마을',
-      ownerName: '최유기',
-      email: 'organic@example.com',
-      planName: '비즈니스 플랜',
-      price: 29900,
-      status: 'cancelled',
-      startDate: '2025-07-01',
-      endDate: '2025-08-01',
-      autoRenewal: false,
-      productCount: 52,
-    },
-  ]);
-
-  useEffect(() => {
+  // 구독 데이터 가져오기
+  const fetchSubscriptions = async () => {
     const adminToken = localStorage.getItem('admin_token');
     if (!adminToken) {
       router.push('/crm/login');
       return;
     }
-    setIsLoading(false);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/subscription/admin/users`, {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('구독 데이터를 가져오는데 실패했습니다');
+      }
+
+      const data = await response.json();
+      setSubscriptions(data.subscriptions || []);
+    } catch (error) {
+      console.error('구독 데이터 로드 실패:', error);
+      alert('구독 데이터를 불러오는데 실패했습니다');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    fetchSubscriptions();
   }, [router]);
 
   const getStatusBadge = (status: string) => {
@@ -174,26 +102,52 @@ export default function SubscriptionsPage() {
     );
   };
 
-  const filteredBuyerSubscriptions = buyerSubscriptions.filter((sub) => {
-    const matchesSearch =
-      sub.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.planName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || sub.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // 구독 상태 계산 함수
+  const getSubscriptionStatus = (sub: Subscription): string => {
+    if (!sub.is_active) return 'cancelled';
+    const now = new Date();
+    const endDate = new Date(sub.ended_at);
+    if (endDate < now) return 'expired';
+    return 'active';
+  };
 
-  const filteredSellerSubscriptions = sellerSubscriptions.filter((sub) => {
-    const matchesSearch =
-      sub.storeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.ownerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.planName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || sub.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // 구매자 구독 필터링
+  const filteredBuyerSubscriptions = subscriptions
+    .filter((sub) => sub.subscription_plans?.is_buyer === true)
+    .filter((sub) => {
+      const status = getSubscriptionStatus(sub);
+      const userName = sub.profiles?.display_name || sub.profiles?.email || '';
+      const email = sub.profiles?.email || '';
+      const planName = sub.subscription_plans?.name || '';
+
+      const matchesSearch =
+        userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        planName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        sub.id.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+
+  // 판매자 구독 필터링
+  const filteredSellerSubscriptions = subscriptions
+    .filter((sub) => sub.subscription_plans?.is_buyer === false)
+    .filter((sub) => {
+      const status = getSubscriptionStatus(sub);
+      const storeName = sub.vendor_info?.store_name || '';
+      const ownerName = sub.vendor_info?.owner_name || '';
+      const email = sub.profiles?.email || '';
+      const planName = sub.subscription_plans?.name || '';
+
+      const matchesSearch =
+        storeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ownerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        planName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        sub.id.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
 
   if (isLoading) {
     return (
@@ -363,58 +317,51 @@ export default function SubscriptionsPage() {
                         <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                           종료일
                         </th>
-                        <th className="whitespace-nowrap px-3 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300">
-                          자동갱신
-                        </th>
                         <th className="whitespace-nowrap px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
                           관리
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredBuyerSubscriptions.map((sub) => (
-                        <tr
-                          key={sub.id}
-                          className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
-                        >
-                          <td className="whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
-                            {sub.id}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
-                            {sub.userName}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                            {sub.email}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                            {sub.planName}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-right text-xs font-medium text-gray-900 dark:text-white">
-                            {sub.price.toLocaleString()}원
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">{getStatusBadge(sub.status)}</td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                            {sub.startDate}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                            {sub.endDate}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-600 dark:text-gray-400">
-                            {sub.autoRenewal ? (
-                              <span className="text-green-600 dark:text-green-400">ON</span>
-                            ) : (
-                              <span className="text-gray-400">OFF</span>
-                            )}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            <div className="flex items-center justify-end gap-2">
-                              <button className="border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                                상세
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredBuyerSubscriptions.map((sub) => {
+                        const status = getSubscriptionStatus(sub);
+                        return (
+                          <tr
+                            key={sub.id}
+                            className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
+                          >
+                            <td className="whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
+                              {sub.id.substring(0, 13)}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
+                              {sub.profiles?.display_name || sub.profiles?.email || '-'}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                              {sub.profiles?.email || '-'}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                              {sub.subscription_plans?.name || '-'}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-right text-xs font-medium text-gray-900 dark:text-white">
+                              {(sub.subscription_plans?.price || 0).toLocaleString()}원
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3">{getStatusBadge(status)}</td>
+                            <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                              {new Date(sub.started_at).toLocaleDateString('ko-KR')}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                              {new Date(sub.ended_at).toLocaleDateString('ko-KR')}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3">
+                              <div className="flex items-center justify-end gap-2">
+                                <button className="border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                                  상세
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -460,64 +407,57 @@ export default function SubscriptionsPage() {
                         <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                           종료일
                         </th>
-                        <th className="whitespace-nowrap px-3 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300">
-                          자동갱신
-                        </th>
                         <th className="whitespace-nowrap px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
                           관리
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredSellerSubscriptions.map((sub) => (
-                        <tr
-                          key={sub.id}
-                          className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
-                        >
-                          <td className="whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
-                            {sub.id}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
-                            {sub.storeName}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                            {sub.ownerName}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                            {sub.email}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                            {sub.planName}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-right text-xs font-medium text-gray-900 dark:text-white">
-                            {sub.price.toLocaleString()}원
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-right text-xs text-gray-600 dark:text-gray-400">
-                            {sub.productCount}개
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">{getStatusBadge(sub.status)}</td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                            {sub.startDate}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                            {sub.endDate}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-600 dark:text-gray-400">
-                            {sub.autoRenewal ? (
-                              <span className="text-green-600 dark:text-green-400">ON</span>
-                            ) : (
-                              <span className="text-gray-400">OFF</span>
-                            )}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-3">
-                            <div className="flex items-center justify-end gap-2">
-                              <button className="border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
-                                상세
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredSellerSubscriptions.map((sub) => {
+                        const status = getSubscriptionStatus(sub);
+                        return (
+                          <tr
+                            key={sub.id}
+                            className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
+                          >
+                            <td className="whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
+                              {sub.id.substring(0, 13)}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
+                              {sub.vendor_info?.store_name || '-'}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                              {sub.vendor_info?.owner_name || '-'}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                              {sub.profiles?.email || '-'}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                              {sub.subscription_plans?.name || '-'}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-right text-xs font-medium text-gray-900 dark:text-white">
+                              {(sub.subscription_plans?.price || 0).toLocaleString()}원
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-right text-xs text-gray-600 dark:text-gray-400">
+                              {sub.product_count || 0}개
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3">{getStatusBadge(status)}</td>
+                            <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                              {new Date(sub.started_at).toLocaleDateString('ko-KR')}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                              {new Date(sub.ended_at).toLocaleDateString('ko-KR')}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3">
+                              <div className="flex items-center justify-end gap-2">
+                                <button className="border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700">
+                                  상세
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
