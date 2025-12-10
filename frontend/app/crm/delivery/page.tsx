@@ -3,85 +3,46 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CRMLayout from '../components/CRMLayout';
+import Pagination from '../components/Pagination';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+
+interface OrderItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  price: number;
+  quantity: number;
+  subtotal: number;
+}
+
+interface Order {
+  id: string;
+  order_number: string;
+  user_id: string;
+  user_name?: string;
+  user_email?: string;
+  items: OrderItem[];
+  total: number;
+  status: string;
+  payment_method?: string;
+  created_at: string;
+  shipping_address?: {
+    recipient_name: string;
+    recipient_phone: string;
+    address: string;
+  };
+  delivered_at?: string;
+}
 
 export default function DeliveryPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-
-  // 가짜 배송 데이터
-  const [deliveries] = useState([
-    {
-      id: 'DLV-2025-001250',
-      orderId: 'ORD-2025-001248',
-      storeName: '정육점',
-      customerName: '박민수',
-      customerAddress: '서울시 강남구 테헤란로 123',
-      customerPhone: '010-1234-5678',
-      courier: 'CJ대한통운',
-      trackingNumber: '123456789012',
-      status: 'in_transit',
-      shippedAt: '2025-11-18 14:00',
-      estimatedDelivery: '2025-11-19 18:00',
-    },
-    {
-      id: 'DLV-2025-001249',
-      orderId: 'ORD-2025-001247',
-      storeName: '제주특산물',
-      customerName: '최지은',
-      customerAddress: '부산시 해운대구 해운대로 456',
-      customerPhone: '010-2345-6789',
-      courier: '로젠택배',
-      trackingNumber: '234567890123',
-      status: 'delivered',
-      shippedAt: '2025-11-17 10:00',
-      estimatedDelivery: '2025-11-18 16:00',
-      deliveredAt: '2025-11-18 15:30',
-    },
-    {
-      id: 'DLV-2025-001248',
-      orderId: 'ORD-2025-001245',
-      storeName: 'OO농장',
-      customerName: '김영수',
-      customerAddress: '인천시 남동구 논현로 789',
-      customerPhone: '010-3456-7890',
-      courier: '한진택배',
-      trackingNumber: '345678901234',
-      status: 'preparing',
-      shippedAt: null,
-      estimatedDelivery: '2025-11-20 18:00',
-    },
-    {
-      id: 'DLV-2025-001247',
-      orderId: 'ORD-2025-001244',
-      storeName: '신선마켓',
-      customerName: '이미나',
-      customerAddress: '대전시 유성구 대학로 321',
-      customerPhone: '010-4567-8901',
-      courier: '우체국택배',
-      trackingNumber: '456789012345',
-      status: 'failed',
-      shippedAt: '2025-11-16 09:00',
-      estimatedDelivery: '2025-11-17 18:00',
-      failReason: '수취인 부재',
-    },
-    {
-      id: 'DLV-2025-001246',
-      orderId: 'ORD-2025-001243',
-      storeName: '정육점',
-      customerName: '정훈',
-      customerAddress: '광주시 서구 상무대로 654',
-      customerPhone: '010-5678-9012',
-      courier: 'CJ대한통운',
-      trackingNumber: '567890123456',
-      status: 'returned',
-      shippedAt: '2025-11-15 11:00',
-      estimatedDelivery: '2025-11-16 18:00',
-      failReason: '주소 오류',
-      returnedAt: '2025-11-17 14:00',
-    },
-  ]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const adminToken = localStorage.getItem('admin_token');
@@ -89,8 +50,51 @@ export default function DeliveryPage() {
       router.push('/crm/login');
       return;
     }
-    setIsLoading(false);
+    fetchOrders();
   }, [router]);
+
+  const fetchOrders = async () => {
+    const adminToken = localStorage.getItem('admin_token');
+    if (!adminToken) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders/admin/all`, {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(data.orders || []);
+      } else {
+        console.error('주문 목록 조회 실패');
+      }
+    } catch (error) {
+      console.error('주문 목록 조회 오류:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 주문 상태를 배송 상태로 매핑
+  const mapOrderStatusToDeliveryStatus = (orderStatus: string): string => {
+    switch (orderStatus) {
+      case 'confirmed':
+      case 'processing':
+      case 'paid':
+        return 'preparing'; // 배송준비
+      case 'shipped':
+        return 'in_transit'; // 배송중
+      case 'delivered':
+        return 'delivered'; // 배송완료
+      case 'refunded':
+      case 'cancelled':
+        return 'returned'; // 반송
+      default:
+        return 'preparing';
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; color: string }> = {
@@ -106,10 +110,6 @@ export default function DeliveryPage() {
         label: '배송완료',
         color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
       },
-      failed: {
-        label: '배송실패',
-        color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-      },
       returned: {
         label: '반송',
         color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
@@ -124,15 +124,59 @@ export default function DeliveryPage() {
     );
   };
 
-  const filteredDeliveries = deliveries.filter((delivery) => {
+  const getProductSummary = (items: OrderItem[]) => {
+    if (!items || items.length === 0) return '-';
+    if (items.length === 1) return items[0].product_name;
+    return `${items[0].product_name} 외 ${items.length - 1}건`;
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('ko-KR', {
+      style: 'currency',
+      currency: 'KRW',
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const filteredOrders = orders.filter((order) => {
+    const deliveryStatus = mapOrderStatusToDeliveryStatus(order.status);
+    const customerName = order.shipping_address?.recipient_name || order.user_name || '';
+    const customerAddress = order.shipping_address?.address || '';
+
     const matchesSearch =
-      delivery.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      delivery.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      delivery.storeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      delivery.trackingNumber.includes(searchQuery);
-    const matchesStatus = statusFilter === 'all' || delivery.status === statusFilter;
+      order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customerAddress.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getProductSummary(order.items).toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesStatus = statusFilter === 'all' || deliveryStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // 상태별 카운트
+  const statusCounts = {
+    all: orders.length,
+    preparing: orders.filter(o => mapOrderStatusToDeliveryStatus(o.status) === 'preparing').length,
+    in_transit: orders.filter(o => mapOrderStatusToDeliveryStatus(o.status) === 'in_transit').length,
+    delivered: orders.filter(o => mapOrderStatusToDeliveryStatus(o.status) === 'delivered').length,
+    returned: orders.filter(o => mapOrderStatusToDeliveryStatus(o.status) === 'returned').length,
+  };
 
   if (isLoading) {
     return (
@@ -159,7 +203,7 @@ export default function DeliveryPage() {
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-gray-900 dark:text-white">전체 배송</h2>
               <span className="rounded-full bg-gray-900 px-2.5 py-0.5 text-xs font-bold text-white dark:bg-white dark:text-gray-900">
-                {filteredDeliveries.length}
+                {filteredOrders.length}
               </span>
             </div>
 
@@ -185,7 +229,7 @@ export default function DeliveryPage() {
                   : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
               }`}
             >
-              전체
+              전체 ({statusCounts.all})
             </button>
             <button
               onClick={() => setStatusFilter('preparing')}
@@ -195,7 +239,7 @@ export default function DeliveryPage() {
                   : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
               }`}
             >
-              배송준비
+              배송준비 ({statusCounts.preparing})
             </button>
             <button
               onClick={() => setStatusFilter('in_transit')}
@@ -205,7 +249,7 @@ export default function DeliveryPage() {
                   : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
               }`}
             >
-              배송중
+              배송중 ({statusCounts.in_transit})
             </button>
             <button
               onClick={() => setStatusFilter('delivered')}
@@ -215,17 +259,7 @@ export default function DeliveryPage() {
                   : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
               }`}
             >
-              배송완료
-            </button>
-            <button
-              onClick={() => setStatusFilter('failed')}
-              className={`px-3 py-1.5 text-xs font-medium transition ${
-                statusFilter === 'failed'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
-              }`}
-            >
-              배송실패
+              배송완료 ({statusCounts.delivered})
             </button>
             <button
               onClick={() => setStatusFilter('returned')}
@@ -235,7 +269,7 @@ export default function DeliveryPage() {
                   : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300'
               }`}
             >
-              반송
+              반송 ({statusCounts.returned})
             </button>
           </div>
         </section>
@@ -243,7 +277,7 @@ export default function DeliveryPage() {
         {/* Deliveries List */}
         <section className="mt-3 border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
           <div className="p-4">
-            {filteredDeliveries.length === 0 ? (
+            {filteredOrders.length === 0 ? (
               <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                 배송 내역이 없습니다.
               </div>
@@ -256,67 +290,78 @@ export default function DeliveryPage() {
                         주문번호
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
-                        가맹점
+                        상품정보
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
-                        고객명
+                        고객정보
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         배송지
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
-                        택배사
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
+                        금액
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
-                        송장번호
+                        주문일시
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">
                         상태
                       </th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
-                        관리
-                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredDeliveries.map((delivery) => (
-                      <tr
-                        key={delivery.id}
-                        className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
-                      >
-                        <td className="px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
-                          {delivery.orderId}
-                        </td>
-                        <td className="px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
-                          {delivery.storeName}
-                        </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                          {delivery.customerName}
-                        </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                          {delivery.customerAddress}
-                        </td>
-                        <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
-                          {delivery.courier}
-                        </td>
-                        <td className="px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
-                          {delivery.trackingNumber}
-                        </td>
-                        <td className="px-3 py-3">{getStatusBadge(delivery.status)}</td>
-                        <td className="px-3 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            <button className="border border-gray-900 bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800 dark:border-white dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100">
-                              추적
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {paginatedOrders.map((order) => {
+                      const deliveryStatus = mapOrderStatusToDeliveryStatus(order.status);
+                      const customerName = order.shipping_address?.recipient_name || order.user_name || '-';
+                      const customerPhone = order.shipping_address?.recipient_phone || '-';
+                      const address = order.shipping_address?.address || '-';
+
+                      return (
+                        <tr
+                          key={order.id}
+                          className="border-b border-gray-100 transition hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50"
+                        >
+                          <td className="px-3 py-3 text-xs font-medium text-gray-900 dark:text-white">
+                            {order.order_number}
+                          </td>
+                          <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                            {getProductSummary(order.items)}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3">
+                            <div className="text-xs font-medium text-gray-900 dark:text-white">
+                              {customerName}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {customerPhone}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                            {address}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 text-right text-xs font-medium text-gray-900 dark:text-white">
+                            {formatCurrency(order.total)}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                            {formatDate(order.created_at)}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3">{getStatusBadge(deliveryStatus)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
+
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            totalItems={filteredOrders.length}
+          />
         </section>
       </div>
     </CRMLayout>
