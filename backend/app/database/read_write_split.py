@@ -47,14 +47,14 @@ class DatabaseRouter:
         # Master DB (쓰기)
         self.master: Client = create_client(
             os.getenv("SUPABASE_URL"),  # Master 주소
-            os.getenv("SUPABASE_KEY")
+            os.getenv("SUPABASE_SERVICE_ROLE_KEY")
         )
 
         # Slave DB (읽기) - 실제로는 다른 주소
         # 예: read-replica-1.supabase.co
         self.slave: Client = create_client(
             os.getenv("SUPABASE_READ_REPLICA_URL", os.getenv("SUPABASE_URL")),
-            os.getenv("SUPABASE_KEY")
+            os.getenv("SUPABASE_ANON_KEY")
         )
 
         # Redis 캐시
@@ -347,7 +347,7 @@ def warm_up_cache():
         db = get_db_router()
         popular_products = db.read("products")\
             .select("*")\
-            .order("sales_count", desc=True)\
+            .order("sale_count", desc=True)\
             .limit(100)\
             .execute()
 
@@ -357,4 +357,4 @@ def warm_up_cache():
         logger.info(f"[CACHE WARMING] 완료: {len(popular_products.data)}개 상품 캐싱")
 
     except Exception as e:
-        logger.error(f"[CACHE WARMING] 실패: {e}")
+        logger.warning(f"[CACHE WARMING] 실패: {e}")
