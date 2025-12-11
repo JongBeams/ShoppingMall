@@ -1082,10 +1082,10 @@ export default function Home() {
       <section className="border-y border-gray-200 bg-gray-50 py-6 dark:border-gray-700 dark:bg-gray-800">
         <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
           {[
-            { icon: '🚚', title: '무료배송', desc: '5만원 이상' },
-            { icon: '✓', title: '정품보장', desc: '100% 공식인증' },
-            { icon: '↺', title: '무료반품', desc: '30일 이내' },
-            { icon: '⭐', title: '적립금', desc: '최대 5%' }
+            { icon: '🚚', title: '빠른 배송', desc: '판매자별 배송' },
+            { icon: '💳', title: '안전결제', desc: '토스페이먼츠' },
+            { icon: '🎁', title: 'AI 추천', desc: '선물 마법사' },
+            { icon: '⭐', title: '포인트 적립', desc: '구매 시 적립' }
           ].map((benefit) => (
             <div key={benefit.title} className="flex items-center gap-2.5">
               <div className="text-2xl">{benefit.icon}</div>
