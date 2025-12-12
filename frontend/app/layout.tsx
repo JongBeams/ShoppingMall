@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ShopLogo - 온라인 쇼핑몰",
+  title: "오아시스",
   description: "최고의 상품을 만나보세요",
 };
 
