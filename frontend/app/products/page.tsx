@@ -234,24 +234,6 @@ export default function ProductsPage() {
       <div className="flex gap-4">
         {/* 왼쪽 카테고리 사이드바 */}
         <aside className="w-48 flex-shrink-0 space-y-4">
-          {/* 필터 섹션 */}
-          <div className="border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-            <h3 className="mb-3 text-sm font-bold text-gray-900 dark:text-white">필터</h3>
-            <div className="space-y-2">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={freeShipping}
-                  onChange={(e) => setFreeShipping(e.target.checked)}
-                  className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
-                />
-                <span className="text-xs text-gray-700 dark:text-gray-300">
-                  무료배송
-                </span>
-              </label>
-            </div>
-          </div>
-
           {/* 카테고리 섹션 */}
           <div className="border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
             <h3 className="mb-3 text-sm font-bold text-gray-900 dark:text-white">카테고리</h3>
