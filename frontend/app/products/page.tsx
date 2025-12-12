@@ -16,11 +16,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:80
 export default function ProductsPage() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams?.get('search') || '';
+  const categoryParam = searchParams?.get('category') || '';
   const isImageSearch = searchParams?.get('image_search') === 'true';
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState(categoryParam || 'all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [freeShipping, setFreeShipping] = useState(false);
@@ -124,8 +125,10 @@ export default function ProductsPage() {
 
     // 별점 필터
     if (selectedRating) {
-      // TODO: 상품에 별점 정보가 있다면 필터링
-      // filtered = filtered.filter(p => p.rating >= selectedRating);
+      filtered = filtered.filter(p => {
+        const rating = p.rating || 0;
+        return rating >= selectedRating;
+      });
     }
 
     // 가격 필터
@@ -201,6 +204,11 @@ export default function ProductsPage() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+
+  // URL의 category 파라미터가 변경될 때 selectedCategory 업데이트
+  useEffect(() => {
+    setSelectedCategory(categoryParam || 'all');
+  }, [categoryParam]);
 
   // 필터 변경 시 첫 페이지로
   useEffect(() => {
@@ -288,7 +296,7 @@ export default function ProductsPage() {
               {[5, 4, 3, 2, 1].map((rating) => (
                 <button
                   key={rating}
-                  onClick={() => setSelectedRating(rating)}
+                  onClick={() => setSelectedRating(selectedRating === rating ? null : rating)}
                   className={`flex w-full items-center gap-1 px-2 py-1 text-xs transition-colors ${
                     selectedRating === rating
                       ? 'font-bold text-blue-600 dark:text-blue-500'

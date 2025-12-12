@@ -43,7 +43,7 @@ async def search_products(q: str = ""):
         # 상품명, 설명으로 검색
         products_response = (
             supabase.table("products")
-            .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, tags, created_at")
+            .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, tags, created_at, rating, review_count")
             .eq("is_active", True)
             .or_(f"name.ilike.%{search_term}%,description.ilike.%{search_term}%")
             .order("created_at", desc=True)
@@ -66,7 +66,7 @@ async def search_products(q: str = ""):
             # 또는 cs (contains) 연산자 사용
             tag_response = (
                 supabase.table("products")
-                .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, tags, created_at")
+                .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, tags, created_at, rating, review_count")
                 .eq("is_active", True)
                 .contains("tags", [search_term])  # 태그 배열에 검색어가 포함된 경우
                 .execute()
@@ -82,7 +82,7 @@ async def search_products(q: str = ""):
             try:
                 tag_response = (
                     supabase.table("products")
-                    .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, tags, created_at")
+                    .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, tags, created_at, rating, review_count")
                     .eq("is_active", True)
                     .execute()
                 )
@@ -157,6 +157,8 @@ async def search_products(q: str = ""):
             "vendor_name": vendor_name,
             "tags": product.get("tags", []),
             "created_at": product.get("created_at"),
+            "rating": product.get("rating", 0),
+            "review_count": product.get("review_count", 0),
         })
 
     return {"products": product_list, "count": len(product_list)}
@@ -316,7 +318,7 @@ async def get_all_products():
     try:
         products_response = (
             supabase.table("products")
-            .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, is_active, created_at, discount_price, discount_start, discount_end")
+            .select("id, name, description, price, stock_quantity, category_id, vendor_id, thumbnail_url, is_active, created_at, discount_price, discount_start, discount_end, rating, review_count")
             .eq("is_active", True)
             .order("created_at", desc=True)
             .execute()
@@ -383,6 +385,8 @@ async def get_all_products():
             "discount_price": product.get("discount_price"),
             "discount_start": product.get("discount_start"),
             "discount_end": product.get("discount_end"),
+            "rating": product.get("rating", 0),
+            "review_count": product.get("review_count", 0),
         })
 
     return {"products": product_list}
