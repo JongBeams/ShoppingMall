@@ -34,7 +34,7 @@ export default function HomeScreen() {
       const response = await api.get('/products');
       const products = response.data.products || response.data;
 
-      setBestProducts(products.slice(0, 6));
+      setBestProducts(products.slice(0, 10));
 
       // Filter discount products
       const now = new Date();
@@ -151,7 +151,7 @@ export default function HomeScreen() {
       {/* Best Products */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>베스트 상품</Text>
+          <Text style={styles.sectionTitle}>베스트 상품 TOP 10</Text>
           <TouchableOpacity>
             <Text style={styles.seeAll}>전체보기 ›</Text>
           </TouchableOpacity>
