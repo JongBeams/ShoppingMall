@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 from PyPDF2 import PdfReader
 from sentence_transformers import SentenceTransformer
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from app.services.supabase import supabase
 from app.services.rag_search import rag_search
 
@@ -56,30 +57,30 @@ def extract_text_from_pdf(file_path: str) -> str:
 
 
 def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
-    """텍스트를 청크로 분할"""
-    chunks = []
-    start = 0
-    text_length = len(text)
+    """
+    LangChain의 RecursiveCharacterTextSplitter로 텍스트를 청크로 분할
 
-    while start < text_length:
-        end = start + chunk_size
-        chunk = text[start:end]
+    Args:
+        text: 분할할 텍스트
+        chunk_size: 청크 크기 (기본 500자)
+        overlap: 청크 간 오버랩 크기 (기본 50자)
 
-        # 마지막 청크가 아니면 문장 단위로 자르기
-        if end < text_length:
-            # 마지막 마침표, 줄바꿈 찾기
-            last_period = chunk.rfind('.')
-            last_newline = chunk.rfind('\n')
-            cut_point = max(last_period, last_newline)
+    Returns:
+        청크 리스트
+    """
+    # LangChain TextSplitter 사용
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=overlap,
+        length_function=len,
+        separators=["\n\n", "\n", ". ", " ", ""],  # 문단 → 줄 → 문장 → 단어 순으로 분할
+        is_separator_regex=False
+    )
 
-            if cut_point > chunk_size * 0.5:  # 너무 작게 잘리지 않도록
-                chunk = chunk[:cut_point + 1]
-                end = start + cut_point + 1
+    chunks = text_splitter.split_text(text)
 
-        chunks.append(chunk.strip())
-        start = end - overlap
-
-    return [c for c in chunks if len(c) > 20]  # 너무 짧은 청크 제외
+    # 너무 짧은 청크 제외
+    return [c.strip() for c in chunks if len(c.strip()) > 20]
 
 
 def embed_chunks(chunks: List[str]) -> List[List[float]]:
