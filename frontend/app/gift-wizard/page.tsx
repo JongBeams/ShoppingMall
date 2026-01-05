@@ -77,7 +77,7 @@ export default function GiftWizardPage() {
 
   const fetchRecommendations = async (userAnswers: any) => {
     try {
-      const response = await fetch('http://localhost:8000/gift-wizard/recommendations-json', {
+      const response = await fetch(`${API_BASE_URL}/gift-wizard/recommendations-json`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

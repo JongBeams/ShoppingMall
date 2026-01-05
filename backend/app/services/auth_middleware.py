@@ -124,6 +124,7 @@ async def get_current_user(
         response = supabase_admin.table("profiles").select("*").eq("id", user_id).execute()
 
         if not response.data:
+            logger.warning(f"사용자를 찾을 수 없음: user_id={user_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="사용자를 찾을 수 없습니다.",
@@ -133,6 +134,7 @@ async def get_current_user(
 
         # 활성화 상태 확인
         if not user.get("is_active", True):
+            logger.warning(f"비활성화된 계정 접근 시도: user_id={user_id}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="비활성화된 계정입니다. 관리자에게 문의해주세요. (wwhow2003@naver.com)",
@@ -143,7 +145,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.info(f"[ERROR] 사용자 정보 조회 실패: {str(e)}")
+        logger.error(f"사용자 정보 조회 실패: user_id={user_id}, error={str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="사용자 정보 조회 중 오류가 발생했습니다.",

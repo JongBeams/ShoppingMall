@@ -4,7 +4,10 @@
       "Bash(python:*)",
       "Bash(curl -X POST http://localhost:8000/products/product-image/temp -F \"file=@C:/Windows/System32/drivers/etc/hosts\" -H \"Authorization: Bearer test\")",
       "Bash(rm:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

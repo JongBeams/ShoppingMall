@@ -100,17 +100,23 @@ export default function Orders({ user }: OrdersProps) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('신고 목록 조회:', data); // 디버깅용
         const productIds = new Set<string>(
           (data.reports || []).map((r: any) => r.product_id)
         );
-        console.log('신고한 상품 IDs:', productIds); // 디버깅용
         setReportedProductIds(productIds);
+      } else if (response.status === 401) {
+        // 토큰이 만료되었거나 유효하지 않은 경우 - 로그인 상태 확인 필요
+        console.warn('인증 토큰이 유효하지 않습니다. 다시 로그인해주세요.');
+        setReportedProductIds(new Set());
       } else {
-        console.error('신고 목록 조회 실패 응답:', response.status);
+        // 500 에러나 기타 에러는 조용히 처리 (빈 Set 유지)
+        console.warn('신고 목록을 불러올 수 없습니다. 기본값으로 처리합니다.');
+        setReportedProductIds(new Set());
       }
     } catch (error) {
-      console.error('신고 목록 조회 실패:', error);
+      // 네트워크 에러 등은 조용히 처리
+      console.warn('신고 목록 조회 중 오류가 발생했습니다:', error);
+      setReportedProductIds(new Set());
     }
   };
 
