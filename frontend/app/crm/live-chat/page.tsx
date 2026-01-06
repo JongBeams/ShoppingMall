@@ -95,7 +95,13 @@ export default function LiveChatPage() {
   }, [chatRooms, searchQuery, statusFilter]);
 
   useEffect(() => {
-    const websocket = new WebSocket(`${WS_BASE_URL}/chat/ws/admin/monitor`);
+    const token = localStorage.getItem('admin_token');
+    if (!token) {
+      console.warn('관리자 토큰이 없습니다. WebSocket 연결을 건너뜁니다.');
+      return;
+    }
+
+    const websocket = new WebSocket(`${WS_BASE_URL}/chat/ws/admin/monitor?token=${token}`);
     websocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log('📨 관리자 WebSocket 수신:', data);
@@ -139,6 +145,19 @@ export default function LiveChatPage() {
         }
       }
     };
+
+    websocket.onerror = (error) => {
+      console.error('관리자 모니터 WebSocket 에러:', error);
+      console.error('WebSocket URL:', `${WS_BASE_URL}/chat/ws/admin/monitor?token=${token}`);
+    };
+
+    websocket.onclose = (event) => {
+      console.log(`관리자 모니터 WebSocket 연결 종료 - Code: ${event.code}, Reason: ${event.reason}`);
+      if (event.code === 4001) {
+        console.error('인증 실패: 관리자 토큰이 유효하지 않습니다.');
+      }
+    };
+
     ws.current = websocket;
     return () => websocket.close();
   }, [selectedRoom]);
@@ -253,7 +272,13 @@ export default function LiveChatPage() {
     }
 
     // 새로운 채팅방 WebSocket 연결 (WebRTC 시그널링용)
-    const newRoomWs = new WebSocket(`${WS_BASE_URL}/chat/ws/${room.id}`);
+    const token = localStorage.getItem('admin_token');
+    if (!token) {
+      console.error('관리자 토큰이 없습니다. WebSocket 연결을 할 수 없습니다.');
+      return;
+    }
+
+    const newRoomWs = new WebSocket(`${WS_BASE_URL}/chat/ws/${room.id}?token=${token}`);
 
     newRoomWs.onopen = () => {
       console.log(` 채팅방 ${room.id} WebSocket 연결됨`);
@@ -300,6 +325,16 @@ export default function LiveChatPage() {
 
     newRoomWs.onerror = (error) => {
       console.error('❌ 채팅방 WebSocket 에러:', error);
+      console.error('WebSocket URL:', `${WS_BASE_URL}/chat/ws/${room.id}?token=${token}`);
+    };
+
+    newRoomWs.onclose = (event) => {
+      console.log(`채팅방 WebSocket 연결 종료 - Code: ${event.code}, Reason: ${event.reason}`);
+      if (event.code === 4001) {
+        console.error('인증 실패: 토큰이 유효하지 않습니다.');
+      } else if (event.code === 4004) {
+        console.error('채팅방을 찾을 수 없습니다.');
+      }
     };
 
     roomWs.current = newRoomWs;

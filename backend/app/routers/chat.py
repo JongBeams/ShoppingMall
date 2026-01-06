@@ -277,7 +277,8 @@ async def websocket_endpoint(
         try:
             payload = decode_token(token)
             user_id = payload.get('sub')
-            user_type = payload.get('user_type', 'buyer')
+            # JWT 토큰의 실제 필드명은 'type'이며, 'admin' 또는 일반 사용자
+            user_type = payload.get('type', 'user')
 
             if not user_id:
                 logger.warning(f"[WebSocket] Invalid token payload for room {room_id}")
@@ -414,9 +415,61 @@ async def websocket_endpoint(
 
 # 관리자 전용 WebSocket (모든 채팅방 모니터링)
 @router.websocket("/ws/admin/monitor")
-async def admin_monitor_websocket(websocket: WebSocket):
-    """관리자가 모든 채팅방을 모니터링하는 WebSocket"""
-    await manager.connect(websocket, "admin_room", {"user_id": "admin", "role": "admin"})
+async def admin_monitor_websocket(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None)
+):
+    """
+    관리자가 모든 채팅방을 모니터링하는 WebSocket
+
+    Args:
+        websocket: WebSocket 연결
+        token: JWT Access Token (쿼리 파라미터로 전달)
+
+    보안:
+        - JWT 토큰 검증
+        - 관리자 권한 확인
+    """
+    logger.info("[WebSocket] 관리자 모니터 연결 요청")
+
+    # ✅ 1. JWT 토큰 검증 (연결 수락 전에 검증)
+    if not token:
+        logger.warning("[WebSocket] Missing admin token")
+        # WebSocket을 accept하지 않고 바로 종료하면 프론트엔드에서 에러가 발생함
+        # accept 후 close 해야 함
+        await websocket.accept()
+        await websocket.close(code=4001, reason="Missing authentication token")
+        return
+
+    try:
+        payload = decode_token(token)
+        user_id = payload.get('sub')
+        user_type = payload.get('type')  # 'admin' 또는 'user'
+
+        if not user_id:
+            logger.warning("[WebSocket] Invalid token payload")
+            await websocket.accept()
+            await websocket.close(code=4001, reason="Invalid token")
+            return
+
+        # 관리자 권한 확인
+        if user_type != 'admin':
+            logger.warning(f"[WebSocket] Unauthorized access attempt by user {user_id}")
+            await websocket.accept()
+            await websocket.close(code=4003, reason="Admin access only")
+            return
+
+        logger.info(f"[WebSocket] Authenticated admin: {user_id}")
+
+    except Exception as e:
+        logger.error(f"[WebSocket] Admin token verification failed: {e}")
+        await websocket.accept()
+        await websocket.close(code=4001, reason="Invalid or expired token")
+        return
+
+    # ✅ 2. ConnectionManager에 연결 (내부에서 websocket.accept() 호출)
+    await manager.connect(websocket, "admin_room", {"user_id": user_id, "role": "admin"})
+    logger.info(f"[WebSocket] Admin monitor connection accepted for user {user_id}")
 
     try:
         while True:
