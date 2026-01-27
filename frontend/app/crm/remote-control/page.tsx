@@ -22,11 +22,19 @@ export default function RemoteControlPage() {
   useEffect(() => {
     if (!roomId) return;
 
-    // WebSocket 연결
-    const websocket = new WebSocket(`${WS_BASE_URL}/chat/ws/${roomId}`);
+    // JWT 토큰 가져오기
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.error('❌ 관리자 인증 토큰이 없습니다.');
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    // WebSocket 연결 (JWT 토큰 포함)
+    const websocket = new WebSocket(`${WS_BASE_URL}/chat/ws/${roomId}?token=${token}`);
 
     websocket.onopen = () => {
-      console.log(' 원격 제어 WebSocket 연결됨');
+      console.log('✅ 원격 제어 WebSocket 연결됨 (관리자 인증 완료)');
       setIsConnected(true);
       sessionStartTime.current = Date.now();
     };
@@ -48,9 +56,17 @@ export default function RemoteControlPage() {
       console.error('❌ WebSocket 에러:', error);
     };
 
-    websocket.onclose = () => {
-      console.log('❌ WebSocket 연결 종료');
+    websocket.onclose = (event) => {
+      console.log(`🔌 WebSocket 연결 종료: code=${event.code}, reason=${event.reason}`);
       setIsConnected(false);
+
+      if (event.code === 4001) {
+        console.warn('⚠️ 인증 토큰 만료 또는 유효하지 않음');
+        alert('인증이 만료되었습니다. 다시 로그인해주세요.');
+      } else if (event.code === 4003) {
+        console.warn('⚠️ 접근 권한이 없습니다.');
+        alert('해당 채팅방에 접근할 권한이 없습니다.');
+      }
 
       // Analytics 기록
       const durationSeconds = Math.floor((Date.now() - sessionStartTime.current) / 1000);

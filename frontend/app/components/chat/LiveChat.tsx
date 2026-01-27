@@ -253,13 +253,28 @@ export default function LiveChat({ onBack }: LiveChatProps) {
           setMessages(historyData.messages || []);
         }
 
-        // 3. WebSocket 연결
-        console.log('🔌 WebSocket 연결 시도:', `${WS_BASE_URL}/chat/ws/${chatRoomId}`);
-        websocket = new WebSocket(`${WS_BASE_URL}/chat/ws/${chatRoomId}`);
+        // 3. WebSocket 연결 (JWT 토큰 포함)
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          console.error('❌ 인증 토큰이 없습니다. 로그인이 필요합니다.');
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('🔌 WebSocket 연결 시도:', `${WS_BASE_URL}/chat/ws/${chatRoomId}?token=***`);
+        websocket = new WebSocket(`${WS_BASE_URL}/chat/ws/${chatRoomId}?token=${token}`);
 
         websocket.onopen = () => {
-          console.log(' WebSocket 연결됨');
+          console.log('✅ WebSocket 연결됨 (인증 완료)');
           setIsLoading(false);
+        };
+
+        websocket.onclose = (event) => {
+          console.log(`🔌 WebSocket 연결 종료: code=${event.code}, reason=${event.reason}`);
+          if (event.code === 4001) {
+            console.warn('⚠️ 인증 토큰 만료 또는 유효하지 않음');
+            // 필요 시 로그인 페이지로 리다이렉트
+          }
         };
 
         websocket.onmessage = async (event) => {
