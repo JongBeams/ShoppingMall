@@ -150,7 +150,14 @@ export default function LiveChat({ onBack }: LiveChatProps) {
 
     const userData = localStorage.getItem('user');
     if (!userData) return;
-    const user = JSON.parse(userData);
+
+    let user;
+    try {
+      user = JSON.parse(userData);
+    } catch (e) {
+      console.error('❌ 사용자 정보 파싱 실패:', e);
+      return;
+    }
 
     // 사용자 화면에만 표시될 메시지 전송
     ws.current.send(JSON.stringify({
@@ -224,7 +231,14 @@ export default function LiveChat({ onBack }: LiveChatProps) {
           return;
         }
 
-        const user = JSON.parse(userData);
+        let user;
+        try {
+          user = JSON.parse(userData);
+        } catch (e) {
+          console.error('❌ 사용자 정보 파싱 실패:', e);
+          setIsLoading(false);
+          return;
+        }
 
         // 1. 채팅방 생성
         const response = await fetch(`${API_BASE_URL}/chat/rooms`, {
@@ -278,7 +292,13 @@ export default function LiveChat({ onBack }: LiveChatProps) {
         };
 
         websocket.onmessage = async (event) => {
-          const data = JSON.parse(event.data);
+          let data;
+          try {
+            data = JSON.parse(event.data);
+          } catch (e) {
+            console.error('❌ WebSocket 메시지 파싱 실패:', e);
+            return;
+          }
           console.log('📨 메시지 수신:', data);
 
           // WebRTC 시그널링 처리
@@ -583,7 +603,13 @@ export default function LiveChat({ onBack }: LiveChatProps) {
     const userData = localStorage.getItem('user');
     if (!userData) return;
 
-    const user = JSON.parse(userData);
+    let user;
+    try {
+      user = JSON.parse(userData);
+    } catch (e) {
+      console.error('❌ 사용자 정보 파싱 실패:', e);
+      return;
+    }
 
     const message = {
       sender_type: 'user',

@@ -40,7 +40,13 @@ export default function RemoteControlPage() {
     };
 
     websocket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+      let data;
+      try {
+        data = JSON.parse(event.data);
+      } catch (e) {
+        console.error('❌ WebSocket 메시지 파싱 실패:', e);
+        return;
+      }
 
       if (data.type === 'screen_capture') {
         // 사용자 화면 캡처 수신
