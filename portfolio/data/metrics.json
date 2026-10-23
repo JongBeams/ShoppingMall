@@ -1,0 +1,70 @@
+{
+  "rag": {
+    "docs": 4,
+    "chunks": 8
+  },
+  "eval": {
+    "n": 20,
+    "neg_n": 4,
+    "hit1": "100%",
+    "hit3": "100%",
+    "answer_acc": "100%",
+    "refusal": "100%",
+    "env": "측정: 로컬 재현 환경 (PostgreSQL 17 · bge-m3/CLIP CPU · qwen2.5:14b on RTX 5070, 다른 작업과 GPU 공유).",
+    "lesson": "문서에 없는 질문 4개 중 3개는 RPC(≥0.5)에서 0건이었지만, 임계값이 없는 fallback이 관련 없는 청크 3개를 그대로 LLM에 넘겼습니다. 거절은 프롬프트 덕분 → fallback에도 임계값을 적용하고 0건이면 LLM 호출 없이 안내. 오검색·오답은 없었지만 문서 4개짜리 쉬운 셋이라, 문서를 늘린 평가가 다음 과제."
+  },
+  "latency": {
+    "rows": "<tr><td><b>질문 임베딩 (bge-m3, CPU)</b></td><td class='num'>106 ms</td><td class='num'>150 ms</td><td class='small'>모델 상주 · 1문장</td></tr><tr><td><b>벡터 검색 RPC (PostgREST → PostgreSQL)</b></td><td class='num'>11 ms</td><td class='num'>16 ms</td><td class='small'>청크 8개 · 코사인</td></tr><tr><td><b>RAG 첫 토큰 (TTFT)</b></td><td class='num'>4.6 s</td><td class='num'>7.1 s</td><td class='small'>qwen2.5:14b · 프롬프트 처리 포함</td></tr><tr><td><b>RAG 전체 응답</b></td><td class='num'>7.5 s</td><td class='num'>12.9 s</td><td class='small'>검색 + 생성 + SSE</td></tr><tr><td><b>이미지 검색 API (CLIP CPU + RPC)</b></td><td class='num'>99 ms</td><td class='num'>104 ms</td><td class='small'>업로드 → 결과 JSON</td></tr>",
+    "embed_ms": "106ms",
+    "rpc_ms": "11ms",
+    "ttft_s": "4.6s",
+    "total_s": "7.5s",
+    "img_ms": "99ms"
+  },
+  "neg": {
+    "leaked": 3,
+    "n": 4
+  },
+  "tokens": {
+    "rows": "<tr><td>규정 RAG (청크 3)</td><td class='num'><b>945</b></td><td><div style='position:relative;height:8px;border-radius:4px;background:#eef2f7'><div style='height:8px;border-radius:4px;background:var(--rag-2);width:10%'></div><div style='position:absolute;left:46%;top:-4px;bottom:-4px;border-left:2px dashed #64748b'></div></div></td><td class='small'>여유</td></tr><tr><td>쇼핑 챗 · 키워드 (후보 3)</td><td class='num'><b>1,859</b></td><td><div style='position:relative;height:8px;border-radius:4px;background:#eef2f7'><div style='height:8px;border-radius:4px;background:var(--rag-2);width:21%'></div><div style='position:absolute;left:46%;top:-4px;bottom:-4px;border-left:2px dashed #64748b'></div></div></td><td class='small'>여유</td></tr><tr><td>쇼핑 챗 · 개인화</td><td class='num'><b>880</b></td><td><div style='position:relative;height:8px;border-radius:4px;background:#eef2f7'><div style='height:8px;border-radius:4px;background:var(--rag-2);width:10%'></div><div style='position:absolute;left:46%;top:-4px;bottom:-4px;border-left:2px dashed #64748b'></div></div></td><td class='small'>여유</td></tr><tr><td>쇼핑 챗 · 기본 (신상품 50 + 리뷰)</td><td class='num'><b>8,879</b></td><td><div style='position:relative;height:8px;border-radius:4px;background:#eef2f7'><div style='height:8px;border-radius:4px;background:var(--risk);width:99%'></div><div style='position:absolute;left:46%;top:-4px;bottom:-4px;border-left:2px dashed #64748b'></div></div></td><td class='small'>⚠ 초과 — 앞부분 잘림</td></tr><tr><td>선물 추천 (후보 32)</td><td class='num'><b>3,560</b></td><td><div style='position:relative;height:8px;border-radius:4px;background:#eef2f7'><div style='height:8px;border-radius:4px;background:var(--gen-2);width:40%'></div><div style='position:absolute;left:46%;top:-4px;bottom:-4px;border-left:2px dashed #64748b'></div></div></td><td class='small'>△ 출력까지 더하면 초과 위험</td></tr><tr><td>리뷰 요약 (리뷰 10)</td><td class='num'><b>541</b></td><td><div style='position:relative;height:8px;border-radius:4px;background:#eef2f7'><div style='height:8px;border-radius:4px;background:var(--rag-2);width:6%'></div><div style='position:absolute;left:46%;top:-4px;bottom:-4px;border-left:2px dashed #64748b'></div></div></td><td class='small'>여유</td></tr>",
+    "over": 1,
+    "n": 6,
+    "max": "8,879",
+    "raw": [
+      [
+        "규정 RAG (청크 3)",
+        945
+      ],
+      [
+        "쇼핑 챗 · 키워드 (후보 3)",
+        1859
+      ],
+      [
+        "쇼핑 챗 · 개인화",
+        880
+      ],
+      [
+        "쇼핑 챗 · 기본 (신상품 50 + 리뷰)",
+        8879
+      ],
+      [
+        "선물 추천 (후보 32)",
+        3560
+      ],
+      [
+        "리뷰 요약 (리뷰 10)",
+        541
+      ]
+    ]
+  },
+  "halluc": {
+    "개인화": "3 / 3",
+    "키워드": "0 / 3"
+  },
+  "vision": {
+    "summary": "운동화 사진 → 상위 5개 중 신발 5개 (1위 캔버스 하이 스니커즈 (브라운) 0.79) · 백팩 사진 → 1위 데일리 백팩 (네이비) (0.88) · API 응답 중앙값 99ms (CPU)"
+  },
+  "personal": {
+    "context": "**고객 구매 패턴 분석**\n- 총 주문 수: 6회\n- 총 구매 금액: 424,000원\n- 평균 구매 가격: 70,667원\n- 구매 주기: quarterly\n- 선호 태그: 운동(5회), 홈트(3회), 요가(2회), 요가매트(2회), 헬스(2회)\n- 재구매 상품: 논슬립 요가매트 8mm(2회)\n\n고객님의 구매 패턴 분석 결과: &#x27;운동, 홈트, 요가&#x27; 관련 상품을 자주 구매하셨습니다, 평소 70,667원대 상품을 선호하십니다, 분기별 구매하십니다, 1개 상품을 재구매하셨습니다\n\n**맞춤 추천 상품**\n1. 스마트워치 액티브 (블랙)\n   - 가격: 159,000원\n   - 평점: 4.5/5.0 (2개 리뷰)\n   - 판매량: 24개\n   - 태그: 스마트워치, 운동, 헬스, 전자기기\n   - 매칭 점수: 2/5 (고객 선호도 일치)\n\n2. 라이트핏 트레이닝화 (네온)\n   - 가격: 99,000원\n   - 평점: 3.5/5.0 (2개 리뷰)\n   - 판매량: 32개\n   - 태그: 트레이닝화, 운동화, 러닝화, 헬스, 운동\n   - 매칭 점수: 2/5 (고객 선호도 일치)\n\n… (매칭 상품 2개까지 이어짐)"
+  }
+}

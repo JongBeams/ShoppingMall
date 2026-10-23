@@ -1,0 +1,168 @@
+{
+  "vision": [
+    {
+      "query": "thumbs/query_sneaker.jpg",
+      "items": [
+        {
+          "name": "캔버스 하이 스니커즈 (브라운)",
+          "sim": 0.794,
+          "price": 89000,
+          "img": "thumbs/1549298916-b41d501d3772.jpg"
+        },
+        {
+          "name": "파스텔 플랫폼 스니커즈",
+          "sim": 0.767,
+          "price": 109000,
+          "img": "thumbs/1595950653106-6c9ebd614d3a.jpg"
+        },
+        {
+          "name": "클래식 레더 스니커즈 (화이트)",
+          "sim": 0.758,
+          "price": 79000,
+          "img": "thumbs/1608231387042-66d1773070a5.jpg"
+        },
+        {
+          "name": "쿠션 에어 러닝화 (화이트)",
+          "sim": 0.741,
+          "price": 139000,
+          "img": "thumbs/1600185365483-26d7a4cc7519.jpg"
+        },
+        {
+          "name": "에어 플로우 러닝화 (레드)",
+          "sim": 0.718,
+          "price": 119000,
+          "img": "thumbs/1542291026-7eec264c27ff.jpg"
+        }
+      ]
+    },
+    {
+      "query": "thumbs/query_backpack.jpg",
+      "items": [
+        {
+          "name": "데일리 백팩 (네이비)",
+          "sim": 0.882,
+          "price": 69000,
+          "img": "thumbs/1553062407-98eeb64c6a62.jpg"
+        },
+        {
+          "name": "MA-1 봄버 자켓 (브라운)",
+          "sim": 0.807,
+          "price": 119000,
+          "img": "thumbs/1591047139829-d91aecb6caea.jpg"
+        },
+        {
+          "name": "라탄 핸드백",
+          "sim": 0.803,
+          "price": 79000,
+          "img": "thumbs/1590874103328-eac38a683ce7.jpg"
+        },
+        {
+          "name": "미니 토트백 (레드)",
+          "sim": 0.782,
+          "price": 159000,
+          "img": "thumbs/1584917865442-de89df76afd3.jpg"
+        },
+        {
+          "name": "패브릭 라운지 체어 (그레이)",
+          "sim": 0.781,
+          "price": 179000,
+          "img": "thumbs/1598300042247-d088f8ab3a91.jpg"
+        }
+      ]
+    }
+  ],
+  "personal": {
+    "history": [
+      {
+        "date": "2026-05-11",
+        "name": "에어 플로우 러닝화 (레드)",
+        "price": 119000,
+        "img": "thumbs/1542291026-7eec264c27ff.jpg"
+      },
+      {
+        "date": "2026-06-02",
+        "name": "논슬립 요가매트 8mm",
+        "price": 39000,
+        "img": "thumbs/1601925260368-ae2f83cf8b7f.jpg"
+      },
+      {
+        "date": "2026-06-02",
+        "name": "오가닉 코튼 반팔 티셔츠 (화이트)",
+        "price": 29000,
+        "img": "thumbs/1521572163474-6864f9cf17ab.jpg"
+      },
+      {
+        "date": "2026-07-21",
+        "name": "무선 이어버드 프로",
+        "price": 129000,
+        "img": "thumbs/1590658268037-6bf12165a8df.jpg"
+      },
+      {
+        "date": "2026-08-30",
+        "name": "조거 트레이닝 세트 (옐로우)",
+        "price": 69000,
+        "img": "thumbs/1593030761757-71fae45fa0e7.jpg"
+      },
+      {
+        "date": "2026-10-02",
+        "name": "논슬립 요가매트 8mm",
+        "price": 39000,
+        "img": "thumbs/1601925260368-ae2f83cf8b7f.jpg"
+      }
+    ],
+    "tags": [
+      [
+        "운동",
+        5
+      ],
+      [
+        "홈트",
+        3
+      ],
+      [
+        "요가",
+        2
+      ],
+      [
+        "요가매트",
+        2
+      ],
+      [
+        "헬스",
+        2
+      ],
+      [
+        "트레이닝복",
+        1
+      ]
+    ],
+    "price_range": [
+      29000,
+      129000
+    ],
+    "avg_price": 70666.67,
+    "cycle": "quarterly",
+    "repurchase": [
+      {
+        "product_id": "ee8e3434-662a-4770-a8f8-aaf83f528ae0",
+        "product_name": "논슬립 요가매트 8mm",
+        "purchase_count": 2,
+        "last_purchase": "2026-10-02T04:28:40+09:00"
+      }
+    ],
+    "recs": [
+      {
+        "name": "스마트워치 액티브 (블랙)",
+        "price": 159000,
+        "score": 2,
+        "img": "thumbs/1546868871-7041f2a55e12.jpg"
+      },
+      {
+        "name": "라이트핏 트레이닝화 (네온)",
+        "price": 99000,
+        "score": 2,
+        "img": "thumbs/1606107557195-0e29a4b5b4aa.jpg"
+      }
+    ]
+  }
+}

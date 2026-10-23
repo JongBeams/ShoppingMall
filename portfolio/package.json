@@ -1,0 +1,19 @@
+{
+  "name": "shoppingmall-portfolio",
+  "private": true,
+  "type": "module",
+  "description": "RAG·LLM 포트폴리오 (HTML/CSS → Playwright → PDF·PPTX)",
+  "scripts": {
+    "env:setup": "python local-env/setup_db.py && echo 다음: npm run env:start → 새 터미널에서 npm run env:seed",
+    "env:start": "python local-env/start.py",
+    "env:seed": "python local-env/seed.py",
+    "capture": "node capture/capture.mjs",
+    "build": "node build.mjs",
+    "preview": "node build.mjs --preview",
+    "measure": "python local-env/measure.py"
+  },
+  "devDependencies": {
+    "playwright": "^1.54.2",
+    "pptxgenjs": "^3.12.0"
+  }
+}
