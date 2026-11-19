@@ -58,3 +58,6 @@ backend/ENV/
 # IDE
 .vscode/
 .idea/
+
+#포트폴리오
+포트폴리오/
