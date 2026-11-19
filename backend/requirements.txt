@@ -31,6 +31,11 @@ pypdf2==3.0.1
 sentence-transformers==3.3.1
 langchain==0.3.13
 langchain-community==0.3.13
+# RAG 에이전트 (app/services/agent) — langchain-core 0.3 과 호환되는 범위로 고정
+langgraph>=1.0,<2
+langgraph-checkpoint-postgres>=3.0,<4
+psycopg[binary]>=3.2
+psycopg-pool>=3.2
 
 # 이미지 AI (CLIP)
 transformers==4.47.0

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import LiveChat from '../chat/LiveChat';
 
-type ChatMode = 'select' | 'document' | 'general' | 'shopping' | 'agent';
+type ChatMode = 'select' | 'document' | 'general' | 'shopping' | 'agent' | 'ai_agent';
 
 interface Product {
   id: string;
@@ -16,12 +16,50 @@ interface Product {
   tags?: string[];
 }
 
+interface AgentStep {
+  kind: 'call' | 'result' | 'verify' | 'action';
+  label: string;
+  ok?: boolean;
+}
+
+// 실행 도구 확인 요청 (서버가 DB 값으로 만든 문구)
+interface AgentConfirm {
+  threadId: string;
+  actions: Array<{ name: string; label: string; summary: string }>;
+  state: 'waiting' | 'approved' | 'rejected' | 'expired';
+}
+
 interface Message {
   role: 'user' | 'ai';
   content: string;
   sources?: Array<{document_id: string; filename: string}>;
   products?: Product[];
+  steps?: AgentStep[];
+  confirm?: AgentConfirm;
 }
+
+// RAG 에이전트 도구 이름 → 화면 표시
+const TOOL_LABEL: Record<string, string> = {
+  search_policy: '규정 검색',
+  search_products: '상품 검색',
+  get_user_pattern: '구매 패턴 분석',
+  get_order_status: '주문 조회',
+  add_to_cart: '장바구니 담기',
+  cancel_order: '주문 취소',
+  request_human: '상담원 연결',
+};
+
+const describeCall = (name: string, args: Record<string, unknown> = {}) => {
+  const parts: string[] = [];
+  if (args.query) parts.push(String(args.query));
+  if (args.keyword) parts.push(String(args.keyword));
+  if (args.max_price) parts.push(`${Number(args.max_price).toLocaleString()}원 이하`);
+  if (args.min_rating) parts.push(`평점 ${args.min_rating}+`);
+  if (args.order_number) parts.push(String(args.order_number));
+  if (args.product) parts.push(String(args.product));
+  if (args.title) parts.push(String(args.title));
+  return `${TOOL_LABEL[name] || name}${parts.length ? ' · ' + parts.join(' · ') : ''}`;
+};
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -33,6 +71,92 @@ export default function AIChatButton() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // 에이전트 대화 id — 대화 상태는 서버(체크포인터)에 있고, 화면은 id 만 들고 다님
+  const agentThread = useRef<string | null>(null);
+  useEffect(() => {
+    if (messages.length === 0) agentThread.current = null;
+  }, [messages.length]);
+
+  // 고객은 JWT 로만 확인 (요청 본문에 user_id 를 넣지 않음)
+  const agentHeaders = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  };
+
+  // 에이전트 SSE 를 마지막 AI 메시지에 흘려 넣음 (/agent/chat · /agent/resume 공통)
+  const streamAgent = async (response: Response) => {
+    if (!response.ok || !response.body) throw new Error('에이전트 요청 실패');
+    setMessages(prev => [...prev, { role: 'ai', content: '', steps: [] }]);
+    const update = (fn: (m: Message) => Message) =>
+      setMessages(prev => {
+        const next = [...prev];
+        next[next.length - 1] = fn(next[next.length - 1]);
+        return next;
+      });
+    const addStep = (step: AgentStep) => update(m => ({ ...m, steps: [...(m.steps || []), step] }));
+
+    // SSE: 네트워크 조각 경계에서 잘린 줄도 이어 붙여 처리
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buffer.indexOf('\n\n')) >= 0) {
+        const line = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 2);
+        if (!line.startsWith('data: ')) continue;
+        let ev;
+        try { ev = JSON.parse(line.slice(6)); } catch { continue; }
+        if (ev.type === 'thread') {
+          agentThread.current = ev.thread_id;
+        } else if (ev.type === 'tool_call') {
+          addStep({ kind: 'call', label: describeCall(ev.name, ev.args) });
+        } else if (ev.type === 'tool_result') {
+          addStep({ kind: 'result', label: `${TOOL_LABEL[ev.name] || ev.name} → ${ev.summary}` });
+        } else if (ev.type === 'action') {
+          const label = ev.approved ? (ev.ok ? `${ev.label} 실행 완료` : `${ev.label} 실패 · ${ev.detail}`) : `${ev.label} 취소함`;
+          addStep({ kind: 'action', label, ok: ev.ok });
+        } else if (ev.type === 'verify') {
+          const label = ev.ok ? '답변 검증 통과' : `검증 실패 (${(ev.problems || []).join(', ')})${ev.retry ? ' → 다시 작성' : ''}`;
+          addStep({ kind: 'verify', label, ok: ev.ok });
+        } else if (ev.type === 'confirm') {
+          update(m => ({ ...m, confirm: { threadId: ev.thread_id, actions: ev.actions || [], state: 'waiting' } }));
+        } else if (ev.type === 'answer') {
+          update(m => ({
+            ...m,
+            content: ev.answer,
+            products: ev.products?.length ? ev.products : undefined,
+            sources: (ev.sources || []).map((f: string) => ({ document_id: f, filename: f })),
+          }));
+        } else if (ev.type === 'error') {
+          update(m => ({ ...m, content: '죄송합니다. 일시적인 오류가 발생했습니다.' }));
+        }
+      }
+    }
+  };
+
+  // 확인 카드의 [실행] / [취소] — 승인해야만 서버가 실행
+  const handleConfirm = async (msgIndex: number, approve: boolean) => {
+    const target = messages[msgIndex]?.confirm;
+    if (!target || target.state !== 'waiting') return;
+    setMessages(prev => prev.map((m, i) => (i === msgIndex && m.confirm
+      ? { ...m, confirm: { ...m.confirm, state: approve ? 'approved' : 'rejected' } } : m)));
+    setIsLoading(true);
+    try {
+      await streamAgent(await fetch(`${API_BASE_URL}/agent/resume`, {
+        method: 'POST',
+        headers: agentHeaders(),
+        body: JSON.stringify({ thread_id: target.threadId, approve }),
+      }));
+    } catch {
+      setMessages(prev => [...prev, { role: 'ai', content: '확인 처리 중 오류가 발생했습니다. 다시 시도해 주세요.' }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   // 메시지가 업데이트될 때마다 스크롤 아래로
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -50,7 +174,16 @@ export default function AIChatButton() {
 
     try {
       // 모드별 API 선택
-      if (chatMode === 'document') {
+      if (chatMode === 'ai_agent') {
+        // 🤖 RAG 에이전트 — 도구 호출 과정(steps)을 실시간으로 보여주고, 검증을 통과한 답변만 표시
+        // 확인을 기다리던 실행이 있으면 새 질문으로 무효 (서버도 같은 규칙으로 버림)
+        setMessages(prev => prev.map(m => (m.confirm?.state === 'waiting' ? { ...m, confirm: { ...m.confirm, state: 'expired' } } : m)));
+        await streamAgent(await fetch(`${API_BASE_URL}/agent/chat`, {
+          method: 'POST',
+          headers: agentHeaders(),
+          body: JSON.stringify({ message: userMessage, thread_id: agentThread.current }),
+        }));
+      } else if (chatMode === 'document') {
         // 📄 AI 규정문서 모드 - 기존 @내부문서 로직
         // 내부 문서 검색 모드 (스트리밍)
         const response = await fetch(`${API_BASE_URL}/documents/search`, {
@@ -321,7 +454,7 @@ export default function AIChatButton() {
     }
   };
 
-  const handleModeSelect = (mode: 'document' | 'general' | 'shopping' | 'agent') => {
+  const handleModeSelect = (mode: 'document' | 'general' | 'shopping' | 'agent' | 'ai_agent') => {
     setChatMode(mode);
     setMessages([]);
   };
@@ -377,11 +510,13 @@ export default function AIChatButton() {
                   {chatMode === 'select' ? '상담' :
                    chatMode === 'document' ? '📄 AI 규정문서' :
                    chatMode === 'general' ? '💬 AI 일반대화' :
-                   chatMode === 'shopping' ? '🛍️ AI 쇼핑추천' : '👤 상담사'}
+                   chatMode === 'shopping' ? '🛍️ AI 쇼핑추천' :
+                   chatMode === 'ai_agent' ? '🤖 AI 에이전트' : '👤 상담사'}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {chatMode === 'select' ? '상담 방식 선택' :
-                   chatMode === 'agent' ? '연결 중...' : 'AI 즉시 응답'}
+                   chatMode === 'agent' ? '연결 중...' :
+                   chatMode === 'ai_agent' ? '조회부터 담기 · 취소 · 상담원 연결까지' : 'AI 즉시 응답'}
                 </p>
               </div>
             </div>
@@ -457,6 +592,31 @@ export default function AIChatButton() {
                 </div>
               </button>
 
+              {/* AI 에이전트 버튼 */}
+              <button
+                onClick={() => handleModeSelect('ai_agent')}
+                className="group relative overflow-hidden rounded-lg border border-gray-900 bg-white p-3.5 text-left transition hover:shadow-md dark:border-white dark:bg-gray-800"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-gray-900 dark:bg-white">
+                    <svg className="h-5 w-5 text-white dark:text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19 14.5M14.25 3.104c.251.023.501.05.75.082M19 14.5l-1.47 4.411a2.25 2.25 0 01-2.135 1.539H8.605a2.25 2.25 0 01-2.135-1.539L5 14.5m14 0H5" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="mb-0.5 text-sm font-semibold text-gray-900 dark:text-white">
+                      🤖 AI 에이전트 <span className="ml-1 rounded bg-gray-900 px-1.5 py-0.5 text-[10px] font-bold text-white dark:bg-white dark:text-gray-900">NEW</span>
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      규정 · 상품 · 주문 조회와 담기 · 취소 · 상담원 연결 — 실행은 확인 후
+                    </p>
+                  </div>
+                  <svg className="h-5 w-5 text-gray-400 transition group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+
               {/* 쇼핑추천 버튼 */}
               <button
                 onClick={() => handleModeSelect('shopping')}
@@ -518,7 +678,7 @@ export default function AIChatButton() {
           )}
 
           {/* AI 챗봇 모드 (document, general, shopping) */}
-          {(chatMode === 'document' || chatMode === 'general' || chatMode === 'shopping') && (
+          {(chatMode === 'document' || chatMode === 'general' || chatMode === 'shopping' || chatMode === 'ai_agent') && (
             <>
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {messages.length === 0 ? (
@@ -537,11 +697,65 @@ export default function AIChatButton() {
                     </div>
                   </div>
                 ) : (
-                  messages.filter(msg => msg.content).map((msg, idx) => (
+                  messages.map((msg, idx) => (msg.content || (msg.steps && msg.steps.length > 0) || msg.confirm) && (
                     <div
                       key={idx}
                       className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
                     >
+                      {/* 에이전트 진행 과정 (도구 호출 · 결과 · 검증) */}
+                      {msg.role === 'ai' && msg.steps && msg.steps.length > 0 && (
+                        <div className="mb-1.5 w-full max-w-[85%] space-y-1 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
+                          {msg.steps.map((st, i) => (
+                            <div
+                              key={i}
+                              className={`flex items-start gap-1.5 text-xs ${
+                                st.kind === 'result'
+                                  ? 'pl-4 text-gray-500 dark:text-gray-400'
+                                  : st.kind === 'verify' || st.kind === 'action'
+                                    ? (st.ok ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400')
+                                    : 'font-medium text-gray-800 dark:text-gray-200'
+                              }`}
+                            >
+                              <span>{st.kind === 'call' ? '🔧' : st.kind === 'result' ? '↳' : st.kind === 'action' ? (st.ok ? '✔️' : '↩️') : st.ok ? '✅' : '⚠️'}</span>
+                              <span>{st.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 실행 전 확인 카드 — 승인해야만 실행 */}
+                      {msg.role === 'ai' && msg.confirm && (
+                        <div className="mb-1.5 w-full max-w-[85%] rounded-lg border-2 border-indigo-500 bg-white px-3 py-2.5 dark:bg-gray-800">
+                          <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">실행 전 확인</p>
+                          {msg.confirm.actions.map((a, ai) => (
+                            <p key={ai} className="mt-1 text-sm text-gray-900 dark:text-white">{a.summary}</p>
+                          ))}
+                          {msg.confirm.state === 'waiting' ? (
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                onClick={() => handleConfirm(idx, true)}
+                                disabled={isLoading}
+                                className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                              >
+                                실행
+                              </button>
+                              <button
+                                onClick={() => handleConfirm(idx, false)}
+                                disabled={isLoading}
+                                className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-200"
+                              >
+                                취소
+                              </button>
+                            </div>
+                          ) : (
+                            <p className="mt-1.5 text-xs text-gray-500">
+                              {msg.confirm.state === 'approved' ? '✔ 실행을 승인했습니다' : msg.confirm.state === 'rejected' ? '실행하지 않았습니다' : '새 질문으로 취소되었습니다'}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {msg.content && (
                       <div
                         className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${
                           msg.role === 'user'
@@ -551,6 +765,7 @@ export default function AIChatButton() {
                       >
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                       </div>
+                      )}
 
                       {/* 출처 표시 (AI 메시지에만) */}
                       {msg.role === 'ai' && msg.sources && msg.sources.length > 0 && (

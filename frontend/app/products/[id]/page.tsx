@@ -942,7 +942,10 @@ export default function ProductDetailPage() {
               ) : (
                 <div className="space-y-2">
                   <p className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700 dark:text-gray-300">
-                    {aiSummary}
+                    {/* 모델이 쓰는 **굵게** 표기를 기호 없이 강조로 표시 */}
+                    {aiSummary.split('**').map((part, i) =>
+                      i % 2 === 1 ? <strong key={i} className="font-semibold text-gray-900 dark:text-white">{part}</strong> : part
+                    )}
                   </p>
                   <button
                     onClick={() => {

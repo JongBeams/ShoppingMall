@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Routers
-from app.routers import auth, admin, product, vendor, notice, faq, inquiry, chat, cart, documents, orders, reviews, payment, gift_wizard, subscriptions, points, analytics, wishlist, notifications, coupons
+from app.routers import auth, admin, product, vendor, notice, faq, inquiry, chat, cart, documents, orders, reviews, payment, gift_wizard, subscriptions, points, analytics, wishlist, notifications, coupons, agent
 
 # Scheduler
 from app.services.scheduler import start_scheduler, stop_scheduler
@@ -87,12 +87,25 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"[STARTUP] Cache warming failed: {e}")
 
+    # 임베딩 모델 미리 로드 — 첫 질문의 콜드 스타트(약 5초) 제거
+    try:
+        from app.services.rag_search import embed_query
+        embed_query("워밍업")
+        logger.info("[STARTUP] Embedding model warmed up")
+    except Exception as e:
+        logger.warning(f"[STARTUP] Embedding warm-up failed: {e}")
+
     yield
 
     # 종료
     logger.info("[SHUTDOWN] Application shutting down...")
     stop_scheduler()
     logger.info("[SHUTDOWN] Scheduler stopped")
+    try:
+        from app.services.agent.memory import close_checkpointer
+        close_checkpointer()  # 에이전트 대화 상태 저장소 연결 정리
+    except Exception as e:
+        logger.warning(f"[SHUTDOWN] Agent checkpointer close failed: {e}")
 
 
 app = FastAPI(title="ShoppingMall API", version="1.0.0", lifespan=lifespan)
@@ -165,6 +178,7 @@ app.include_router(points.router)
 app.include_router(analytics.router)
 app.include_router(notifications.router)
 app.include_router(coupons.router)
+app.include_router(agent.router)
 
 @app.get("/")
 async def root():
